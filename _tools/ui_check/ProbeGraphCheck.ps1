@@ -35,6 +35,14 @@ param(
 
 . (Join-Path $PSScriptRoot "Common.ps1")
 
+# the app's log from a byte mark on: the measurement of what a key did, which the status bar may have moved past already
+$log = [IO.Path]::ChangeExtension($Exe, ".log")
+function LogMark() { return (Get-Item $log).Length }
+function LogSince([long]$mark) {
+	$fs = New-Object IO.FileStream($log, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+	try { $null = $fs.Seek($mark, 'Begin'); $sr = New-Object IO.StreamReader($fs); return $sr.ReadToEnd() } finally { $fs.Dispose() }
+}
+
 # all elements with an automation id
 function FindAll([string]$id) {
 	return $win.FindAll([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition($A::AutomationIdProperty, $id)))
@@ -129,10 +137,12 @@ try {
 	Check "moving a probe whose box sits at its position moves the box along" ([math]::Abs(($box2Moved.Left - $box2.Left) - $scale2) -lt 1.5 -and [math]::Abs($box2Moved.Top - $box2.Top) -lt 1.5) ("dx {0:0.0} expected {1:0.0}" -f ($box2Moved.Left - $box2.Left), $scale2)
 	Key $VK_LEFT 300
 	Check "and back" ([math]::Abs((Find "ProbeBox:Probe 2").Current.BoundingRectangle.Left - $box2.Left) -lt 1.5)
-	# Play after probe edits: the recordings are stale, so Play starts a run to refresh them (status: "Re-run started" then Running/Completed)
+	# Play after probe edits: the recordings are stale, so Play starts a run to refresh them. The log says so; the status
+	# bar had moved on to "Run Completed" before the harness looked when a reduced preview ran the 100 steps in 0.2 s (2026-11-07)
 	FocusOn "PreviewPlay"
+	$mark = LogMark
 	Key $VK_SPACE 20
-	Check "Play after a probe edit starts a run to refresh the recordings" (WaitFor { (RunStatus) -like "Running:*" -or ((Find "StatusMessage").Current.Name -like "Re-run started*") } 5000 10) ((Find "StatusMessage").Current.Name)
+	Check "Play after a probe edit starts a run to refresh the recordings" (WaitFor { (LogSince $mark) -match "Re-run started" } 5000 50) ((Find "StatusMessage").Current.Name)
 	Check "that run completes" (WaitFor { (RunStatus) -like "Completed: 100 / 100*" } 15000 100) (RunStatus)
 	Key $VK_SPACE 100   # stop playback
 	# ------------------------------------------------------------ a probe the run does not record

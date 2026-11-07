@@ -5,7 +5,7 @@ Last updated 2026-10-23. The long history is in git (`git show a6f85dc:CLAUDE.md
 ## What this is
 
 A 2D wave-equation simulator (field and intensity views, scenes from images, point and composite sources, probes
-with live graphs, video export): a .NET 10 library (`WaveDudeNext/`) plus a WPF app (`WaveDudeNext.WPF/`), the
+with live graphs, video export): a .NET 10 library (`WaveDudeNext/`), a UI-neutral app library (`WaveDudeNext.UI/`, see Port) plus a WPF app (`WaveDudeNext.WPF/`), the
 successor of Jeroen Vleggaar's (Huygens Optics) **Wave Dude 2D**, GPL-3.0-or-later, by Alexander Graef. Jeroen's
 VB source and the C# port of his binary live in git history up to `d3ac0d8`; read his VB there when his intent
 matters. The harnesses are `_tools/library_check` (console, not in the `.sln`) and `_tools/ui_check` (PowerShell).
@@ -98,7 +98,10 @@ harnesses run.
   the log).
 - **Do not resurrect**: a probe signal lane, timeline tracks, zoom and pan of the axis, thumbnails, a run progress
   bar, the scratch budget and its "not computed" note, a GPU JPEG front end, a Direct3D display path, a bent
-  rotation lever, an unreadable settings file moved aside (2026-11-03: nobody would find it, the log quotes it), Ideal
+  rotation lever, an unreadable settings file moved aside (2026-11-03: nobody would find it, the log quotes it), a quiet
+  period or any other timer that decides when an undo step ends (2026-11-06: an edit is a step when it has finished), a
+  quiet period or a retry with pauses before the changed scene image file is read (2026-11-06: it is read when it has been
+  written and closed, at once), Ideal
   text formatting for the manual at 100 % (2026-11-05: less readable, see UI zoom). **Do not
   change**: the readout showing both frame and step (undecided).
 - Collect the reusable rules for other projects only when he asks.
@@ -136,8 +139,8 @@ harnesses run.
 ## Architecture
 
 ```
-Project (Model/) --RunSpec.Create--> RunSpec (immutable snapshot); the scene pixels come from MainWindow.Live's
-   LoadSceneImage: the decoded image (or a blank canvas) with the enabled optical parts painted into red by
+Project (Model/) --RunSpec.Create--> RunSpec (immutable snapshot); the scene pixels come from
+   SceneComposer.Load (WaveDudeNext.UI): the decoded image (or a blank canvas) with the enabled optical parts painted into red by
    PartPainter (Parts/), cached by (image, parts version, size, background) so an unchanged scene is the same reference
 StartRun: memory budget -> DiscardRun (returns the old store's release task) -> FrameStore -> SimulationRun
 SimulationRun: stepping loop + writer threads; IWaveEngine (WaveSimulator CPU | GpuWaveSimulator OpenCL);
@@ -314,8 +317,18 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   size; an amplitude axis is symmetric about zero; an intensity graph's value axis can be logarithmic (2026-10-20,
   Jeroen's point 8: `Decades` below the fitted top, zeros on the bottom line, powers-of-ten ticks; the field stays linear).
 - **Undo and redo** (2026-10-22, the user's request, unlimited): `ProjectHistory` keeps one snapshot per step, the
-  project file's XML without the scene image plus the image's bytes by reference (equal bytes shared). A step ends after
-  0.5 s of quiet with no mouse button held (`MainWindow.History`); Undo and Redo (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z; a text
+  project file's XML without the scene image plus the image's bytes by reference (equal bytes shared). **An edit becomes a step
+  when it has finished, and time has no say in it** (2026-11-06, the user's rule, replacing a quiet period of 0.5 s
+  with no mouse button held, which he called garbage): the changes gather in a step in progress until it is clear that
+  editing the value is over. `Platform/EditBoundaries` tells the history so from the window's input, no control taking
+  part: a mouse button released (a drag, a scrub, a click; heard through the input manager's `PostProcessInput`, since
+  WPF raises no bubbling event for a release or a key whose preview event a control handled, as the number box does for
+  its scrub and the property editors for Enter), a mouse button pressed (before it changes anything: what the keys or the
+  wheel were editing is finished), the focus leaving the element (so arrow keys on a handle, taps or held, the keys and
+  the wheel on a number box and typing in a text box are one step for as long as the focus stays), Enter in a
+  single-line text box, a command before and after it (not a text box's own editing commands), a drop; and the window
+  ends the step itself where an edit comes without input (a brightness fit computed later, the scene image file
+  changed on disk). Undo and Redo end a step in progress first, so an edit can be undone while it is going on. Undo and Redo (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z; a text
   box keeps its own) write the step back into the same project object, the lists refilled and the settings objects
   replaced, so the watcher reports it as an edit (stale run, scratch frame, re-run) and nothing is recorded; the
   selection follows by name, then by index; the title's asterisk clears at the saved step. The Edit menu (between File
@@ -376,7 +389,12 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   above 8 bits per channel is a possible future goal). A better algorithm than Bayer may come later.
 - **Colour schemes** are stop lists in `.wdscheme` XML, shipped ones embedded, user ones in
   `%LOCALAPPDATA%\WaveDudeNext\ColorSchemes`, project ones in the `.wdproj`; an in-house picker edits stops;
-  renaming a project scheme repoints its layers. **The scene image** is embedded and follows its file on disk, the
+  renaming a project scheme repoints its layers. **The scene image** is embedded and follows its file on disk
+  (**read when the file has been written and closed, at once, time having no say**, 2026-11-06, the user's rule: the file
+  is opened refusing to share it with a writer, which fails while any program has it open for writing; then nothing
+  happens and the writer's closing is the next event, measured at 0 ms after the close; a quiet period of 400 ms and a
+  retry loop that slept up to 0.8 s on the UI thread had stood there; the window's activation looks too, but acts only on
+  a file changed since it was last read, so an undone re-embedding stays undone), the
   path being where it came from (2026-10-26, Jeroen's report: the scene form shows the image rows for an image scene
   only, says "(not found)" beside a path whose file is gone, which changes nothing, and has three buttons beside the name,
   2026-10-29, the user's design: "…" picks a file, a save glyph writes the embedded bytes to a file, an export that
@@ -513,7 +531,7 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   `RunSpec.StoreBytesAt`, proven by `library_check`.
 - File types `.wdproj` / `.wdscheme` are registered per user at start-up; unsaved edits ask on close.
 - **Examples** (2026-10-29, the user's request): File > Examples lists the project files of the repository's `Examples`
-  folder, embedded in the app (`EmbeddedResource` in the WPF project, `Examples.cs`), in file order with the two-digit
+  folder, embedded in `WaveDudeNext.UI` (`EmbeddedResource` there, `Examples.cs`), in file order with the two-digit
   number leading each name; one opens as an unsaved project named after its file in the title (`SuggestedFileName`, which
   Save As proposes; an import is named the same way). The set is 24 files
   curated from Jeroen's examples (the Classic ones through the importer, open edges with a rim, his drawn scenes rebuilt
@@ -587,10 +605,10 @@ without it); the glowing edges 8.8 ms on noise and 4.5 on Example 16's scene (12
 result's allocation); the preview's scene pictures about 100 ms more, so the scene rebuild is coalesced at background priority.
 **The composition runs on a worker since 2026-11-03** (the user's choice, after the log of a drag in Example 16: every
 coalesced update repainted all four rectangles, one the whole canvas, "composed in 115–270 ms" on the UI thread, then
-20–30 ms of pictures, and the handle jumped): `MainWindow.ComposeScene` clones the parts (`OpticalPart.Clone` copies the
+20–30 ms of pictures, and the handle jumped): `SceneComposer` (`Update`, in `WaveDudeNext.UI` since 2026-11-06; `MainWindow.ComposeScene` then) clones the parts (`OpticalPart.Clone` copies the
 point and node lists) and paints on the thread pool, one composition in flight, the newest request after it, the UI
 thread taking only the finished pixels (20–24 ms a time, measured on a burst of ten nudges: three compositions of 395,
-212 and 128 ms on the worker); `LoadSceneImage` (a run or scratch request) joins an in-flight composition of the same
+212 and 128 ms on the worker); `SceneComposer.Load` (a run or scratch request) joins an in-flight composition of the same
 inputs rather than painting again. **The painter's per-pixel path is out of JIT tiering** (2026-11-03, the user's choice,
 first by `AggressiveOptimization` on the shape methods a pixel reaches, the painter's row lambdas and the glowing edges',
 since that evening by quick JIT off for all of this code, see Measure properly, the attributes gone): alone
@@ -637,7 +655,19 @@ probe under `%TEMP%`, no clicks, the pointer put back; posted WM_MOUSEMOVE repro
 raises the input Windows queues like a device's). **The figure runs can leave a runaway thumbnail cache** (2026-11-04:
 a `dllhost.exe` hosting `thumbcache.dll` had used 81,000 s of CPU, 1.3 cores for seventeen hours, after the night's
 rewrites of the 38 files under Assets; a sampling of every process's CPU while the user moved the mouse found it; the
-user ended it, Windows starts it again when needed). Known flake: a second app start in one
+user ended it, Windows starts it again when needed). **Run only the harnesses listed above**: `ProjectTreeCheck`,
+`MessagesCheck`, `StatusBarCheck`, `StatusBarDoubleClickCheck` and `ComboListShot` beside them are not on `Common.ps1`
+and predate the keyboard-only rule; `ProjectTreeCheck` takes the foreground, drags with the real pointer and sends
+Ctrl+D and Delete through `SendKeys` (run once by mistake on 2026-11-06 while the user worked; its keys landed in the
+app). **A probe walks a menu by the focused entry's name, never by counting Down presses**: a disabled entry is
+skipped, so the count shifts with the app's state (2026-11-06: after an undo to the first step Undo was disabled, a
+counted walk meant for Redo pressed Cut, which removed the source and replaced the user's clipboard). And WPF reads
+the real modifier keys: a nudge posted while the user holds Shift is ten pixels, not one. A tree row's AutomationId
+keeps the name the row was made with: after a rename find the row by its Name. The tree is one tab stop, at its
+selected row, behind its toolbar; another row is reached with the arrows from there, never by more Tabs (Tab from a
+handle on the preview passes the other handles, and each selects its own item, so `FocusOn "Tree:<name>"` only works
+while that item is the selection). Space on + Part opens the menu of kinds with no entry taken: Down first. `Type` is PowerShell's alias of
+`Get-Content` and wins over a function of that name. Known flake: a second app start in one
 script sometimes comes up active; only the foreground guard fails then. UI Automation files an owned dialog (the message
 window, the memory warning) under its owner, not among the root's children: find its content below the main window and
 walk up to the Window element for its handle (2026-11-03, half an hour lost to a root search).
@@ -663,6 +693,237 @@ bitmap WPF scales) and writes the SVG with its size in CSS pixels over a view bo
 manual's converter (`SvgReader`, a uniform view-box scale) and browsers draw at the 100 % size; the PNGs declare their
 density. The window must fit the monitor (nothing off it is composed): at 2 the 1314 × 1126 window would be 2252 px
 tall, more than the 4K monitor; 1.25 and 1.5 fit, the properties session's 1400 too.
+
+## Port (macOS and Linux through Avalonia)
+
+The user's plan (2026-11-06): the WPF app stays canonical. The preparation is **`WaveDudeNext.UI`**, a plain `net10.0`
+class library for the UI-related code that no framework anchors (no WPF, no Avalonia reference; code bound to one
+operating system carries `SupportedOSPlatform`, as in the library), which both heads use; it holds `Examples` with the
+embedded example projects, `Rendering.ColorSchemeCatalog`, `Theming.AppTheme`, `FileAssociation`, `Settings` and the
+saved dock layout (`Docking.DockLayout` and its node classes) so far. Things move
+there without breaking the WPF app, each move proven by the build and the one harness that covers it (the first by
+`ExportCheck`, which walks the Examples menu). **`Settings` is framework-free by two choices of the user** (2026-11-06):
+the window state and the directions are enums of the library, `WindowMode` and `LayoutDirection`, whose members carry
+the names WPF's and Avalonia's enums have and the file has always held, bound in WPF through `EnumByNameConverter`
+(the window's state, the preview's orientation) and converted in `DockHost` where it saves and restores a split; and
+the layout classes carry no content property, an attribute of one framework or the other, so the default layout in
+`MainWindow.xaml` names `SplitLayout.Children` and `GroupLayout.Items` as property elements. The settings file is
+unchanged: the old and the new class rewrote the user's file and every value of the two enums to the same text, each
+reading the other's (a probe against a kept copy of the old build); a start without a saved layout came up in the
+declared arrangement, 1 : 3 across and 1 : 2 down; `PreviewCheck` flips the orientation through the converted binding.
+`Settings` computes its own path and never through another class's statics: its first use loads the file and logs, which
+must come after the logging is set up. The first step after the preparation is an Avalonia app **on Windows** with feature
+parity, tested against the WPF app, before anything goes to macOS or Linux. He has a Mac Mini M1 and can boot a bare-metal
+Linux. Not pursued (his decision the same day): running `library_check` on the Mac first, and a capture path of its own for
+GPUs sharing the host's memory, estimated at 9 % of a run at best, the step kernel being bound by the memory bus there.
+Whether both heads share one settings file or keep one each is open until the Avalonia app exists.
+**How the window's logic moves** (2026-11-06, the user's rules): in small steps, each one a cleanup the WPF app would
+want anyway, never at the cost of its WPF quality. The application's state and rules go into model classes of
+`WaveDudeNext.UI` that the XAML binds (plain notifying properties, no dependency properties for application state);
+a model tells the app what happened through events and returns an operation's error for the app to show; what only a
+framework can do (dialogs, the UI thread's timers and priorities, image decoding, the clipboard) will sit behind
+interfaces each app implements. **Bindings stay in XAML, command bindings included**: the routed commands, their
+`CommandBinding`s and the handlers stay in the WPF app, the handlers shrinking to calls into the model; a shared
+command catalogue with the routing set up in code was proposed and refused as an anti-pattern. The converters stay
+per app (each framework has its own interface type; about 320 lines of real code in 34 of them). The first step:
+**`ProjectDocument`** holds the open project, its file name, the dirty flag and the suggested name, and does New,
+Open (by kind: project, Wave Dude 2D import, colour scheme), the examples, Save and the recent list; the window keeps
+`Document` as a property, binds `Document.Project` and the title's three inputs there, shows the dialogs, and reacts
+to `ProjectReplacing` (the run goes first), `ProjectReplaced` (raised before the property's change notification, as
+the dependency property's callback came before its bindings), `Opened` (tree selection, export paths, scene image
+sync) and `Saved` (the history's saved step, the image watch). The jump list follows `Settings.RecentFiles`;
+`Settings.TrySave` replaced the window's own. Proven by a keyboard probe (open, edit, save, close, example, new: title,
+file, log and recent list), `ImportCheck` and `SceneImageCheck`. The second step: **`Selection`** holds the current
+item and the selected list with their rules (a current item outside the list is a plain selection, null empties it;
+`Target`, `Group`, `Set`, `SelectAll`, `Toggle`); the tree, the preview and the properties pane bind
+`Selection.Current` and `Selection.Items` in the XAML. For that `ProjectTree.SelectedItem` became an ordinary
+dependency property that binds two-way and mirrors a value set from outside into its `TreeView` without taking the
+focus, which the window had done by hand through an event and `Select(item, focus: false)`; the tree writes it with
+`SetCurrentValue`. Where a command wants more than the selection, the row in front of the user with the keyboard
+focus on it (add, remove, move, open, an undo that leaves nothing selected), it calls `Selection.Reveal(item)`,
+`Reveal(item, edit: true)` for a new item whose name is typed next, or `RevealFolder(list)`; each makes a
+**`RevealRequest`**, an object equal to no other, which the tree and the properties pane bind in the XAML
+(`RevealRequest="{Binding Selection.RevealRequest}"`) and act on in their property's change: the tree selects and
+focuses the row, the properties pane puts the caret into the first editor. So the window names neither pane in its
+code any more (2026-11-06, the user's point: a step is finished when what was said of it is done; the six tree calls
+had first been left for a later step). `Reveal` sets the current item at once; a folder's node is the tree's own, so
+there the current item follows from the tree. A file that uses the model's static helpers inside the window needs
+`using WaveDudeNext.UI`, or the property `Selection` hides the type. Proven by `SelectionCheck`, `KeyboardCheck` and
+two probes (a handle or graph box taking the focus selects its row and keeps the focus; open, add, removing the last
+source and an undo reveal the root, the name editor, the Sources folder and the root). The window reached into the
+preview pane (playing, scene pixels, colours, the shown frame, the canvas size) until the fifth and the ninth step. The third step: **`UndoHistory`** keeps the `ProjectHistory` and the rules around it (the step in progress,
+which `EndStep` ends; Undo and Redo end it first; a step written back is no edit; the selection is carried over by
+name; the document's dirty flag follows the saved step) and announces `CanUndo` and `CanRedo`; the window creates it,
+tells it `Start(project)`, `EditMade()` and `MarkSaved()` from where it did those things itself, and its four command
+handlers are one line each. It needs nothing from a framework: the first version carried the old quiet period over
+behind two interfaces (a UI-thread timer, "is a mouse button held"), which went again the same day with the rule
+(see Undo and redo); when an edit has finished is the app's to say, WPF's way being `Platform/EditBoundaries`, and an
+Avalonia app will need its own. (No interface each app implements existed then; the UI thread's timers came with the
+tenth step, as `IUiTimers`, for the pacing of the scratch frames and the re-run.) `ProjectItems.ListOf` maps an item to
+its list for the history and the window's item commands alike. Proven by three one-off probes: the watcher under a
+real press, drag and release sent to a probe's own window (11 checks: a press says "finished" before anything is
+edited, nothing is said while the button is held, the release says it after a thumb completed its drag and after a
+control that handles the preview release ended its scrub); the keyboard flows in the app (17 checks: three nudges and
+2.5 s of waiting record nothing, the focus leaving ends the step, arrow keys in a number box wait for Enter, a typed
+number and a typed name are one step when the box is left, a command is a step at once, an undo with nudges in
+progress takes them back); and the first version's rules without a window (22 checks on plain `net10.0`). The fourth step: **`ProjectItems`** carries out the item commands (add a source, a part of a kind, a
+probe, a colour scheme, or to a folder's list; duplicate, remove, move, enable), each on its parameter or the
+selection and each leaving the user where they go on (`Selection.Reveal`); the window's handlers are one line each
+and keep what needs the window: where on the shown canvas a new item lands (`CanvasCentre`, still read from the
+preview pane), the menu of part kinds, a text box's own Delete, and that a folder's node is a `NamedCollection`.
+**A folder's plus now puts a source or a probe at the centre of the shown canvas too** (a fix on the way: it had
+called the model's parameterless adders, which take the scene's own size, which an image scene does not have; the
+toolbar's buttons had passed the canvas's centre since 2026-10-26). Proven without a window (20 checks on plain
+`net10.0`), by `KeyboardCheck` and `SelectionCheck`, and by a probe in the app for what those do not press (a probe, a
+part through the menu of kinds, Space on a row, Duplicate from the row's context menu: each one undo step at once).
+The fifth step: the scene image. **`SceneImageFile`** embeds a picked file, drops the image, writes the embedded
+bytes out (the dialogs stay the window's: it asks the model what a save proposes) and keeps the embedded image in step
+with its file, the watch rebuilt without timers (see The scene image); `IsFileMissing` is bound by the scene form,
+`Reembedded` tells the window to end the undo step. **`SceneComposer`** holds the decode and composition caches,
+`Pixels` for the preview (bound in the XAML, where the window had set the pane's property) and `Load` for runs, scratch
+frames, exports and the fit. With them came **the first interface each app implements, `IImageDecoder`** (WPF's is
+`Platform/WpfImageDecoder`, the former `SceneImageLoader`; a file that is no image raises `NotSupportedException`, a
+damaged one a `FormatException`, which WPF's `FileFormatException` is). The UI thread reaches the models as plain
+`SynchronizationContext`s the window makes, as the library's runs take theirs: one at normal priority for the file
+watcher's events, one at Background priority for the composer's coalesced update; no interface was needed for that.
+**An error names its text by key**: `RunSpecException` (library) carries an optional `Key`, the two the composer raises
+have an English message for the log and the key of the string tables' text, which `ShowError` shows when there is
+one, so the model needs no strings and the log is no longer localised there. `ProjectDocument.Name` is the name a
+file made from the project takes. Proven without a window (26 checks on plain `net10.0` with a real
+`FileSystemWatcher` and a writer holding the file: nothing is embedded while it is open, the embed follows the close;
+a check queued by a watch that ended is dropped, which the probe found missing at first), by `library_check`,
+`SceneImageCheck` (9) and `RunCheck` (71).
+The sixth step: **`ObjectClipboard`** carries out Cut, Copy and Paste of project objects (what is taken, the
+clip parsed once per change of the clipboard, Paste selecting what it put in, Cut removing through `ProjectItems`
+only what was copied) on the second interface each app implements, **`IClipboard`**: a change count, text put under
+the application's format and as plain text, and one read that gives the text under that format or else the plain
+text, telling "holds nothing" from "cannot be read now", which is not kept (WPF's is `Platform/WpfClipboard`, with
+Windows' sequence number). The window's three handler pairs are one line each; a focused text box still takes the
+keys first, by WPF's routing. Drags keep their own `ObjectsData` in the panes. Proven with a stand-in clipboard and no
+window (19 checks) and on the real clipboard through the Edit menu (15 checks: copy, paste, cut, paste, the same XML
+as plain text alone, plain words not offered). **A probe that uses the real clipboard saves what it holds first and
+puts it back** (every readable format copied into a `System.Windows.Forms.DataObject`, set again with copy at the end;
+`powershell -STA`): the user's seven formats from a browser came back.
+The seventh step: **`ExportPaths`** is where exports go: what each kind's dialog starts with (`StartOfRun`,
+`StartOfStill`, `StartOfProbe`), the paths kept per project file in the settings (`Restore`, and `RunExported`,
+`StillExported`, `ProbeExported` once something was chosen), the format chosen last, the folder a dialog chose, and
+`LastRun` for Export last. The export flow itself (dialogs, the run, the job) stays in the window and asks it. Proven
+without a window (21 checks) and by `ExportCheck` (44, Export last among them).
+**A probe of a model that saves the settings writes the user's real settings file**, which lives at one fixed path
+(2026-11-06: a console probe saved temp projects through `ProjectDocument`, whose recent list is capped at ten, and
+pushed four of the user's recent projects out; they were put back from an earlier listing). The user's word the same
+day: a probe touching his settings file is fine, that way he sees what it opened; so it needs no copy and restore.
+Around a harness run the recent files and export hints are kept as blocks and put back, since the harnesses' temp
+projects go into both lists too.
+The eighth step: **`BusyState`** is what the application is busy with, for the status bar's indicator, the taskbar
+button and the preview's dimming: three inputs (`Export`, the job it follows through the job's own notifications to
+its end; `IsWaitingForRun`; `ComputingFrame`, -1 for none), the `Kind` by precedence (an export, then its wait, then
+the frame, which shows again when the export is over), `IsBusy`, `IsIndeterminate`, `IsComputingFrame`, the frames
+done and their count and `Share` (0 to 1). No words in the model: `BusyTextConverter` builds the text from the kind,
+the numbers and the language, as the run status does, and `TaskbarProgressConverter` the taskbar's state, so the
+`TaskbarItemInfo` is bound in the XAML like everything else (a Freezable set on the window resolves the window's
+DataContext). Gone with it: the three busy dependency properties, `IsExportWaiting` and `IsComputingFrame` as
+dependency properties nothing bound (the first a private forwarder to the model now), `MainWindow.Busy.cs`,
+`MainWindow.Taskbar.cs`, the `UpdateBusy` call of the language switch. Proven by a WPF probe without a shown window
+(21 checks: the rules, a real export job of 20 frames followed on the way and to its end, the app's own markup for the
+taskbar and the text parsed and bound; a binding whose source is not there at parse time attaches at DataBind
+priority, so such a probe pumps the dispatcher once after setting the DataContext) and by `ExportCheck` (41 of 44,
+the three the foreground flake of a second start; every export check passed).
+The ninth step (2026-11-07): **`PreviewState`** is the preview as the application sees it: `Position` and `IsPlaying`
+(two-way: the pane's scrubber, keys and clock move them, the application stops playback and follows the position with
+its scratch requests), `ShownFrame` (a record of the frames and the index shown, told by the pane, read by the
+brightness fit) and `CanvasWidth`/`CanvasHeight` (told by the pane, read for where a new item lands), and
+`ColorsVersion`, a count the pane binds and rebuilds its palettes on when `RefreshColors()` raises it (a number, not an
+event, so the pane binds it like the rest). The pane's `ShownFrame`, `CanvasWidth` and `CanvasHeight` became ordinary
+dependency properties it writes with `SetCurrentValue` (as the tree's `SelectedItem`), bound `OneWayToSource`; the XAML
+compiler needs a public setter to bind even that way (MC3080), so they have one. Gone: the window's `PreviewPosition`
+and `IsPreviewPlaying` dependency properties, the pane's public `RefreshColors`, and the window's colour refresh at a
+project replacement (from before the rebrand): the pane's layer settings follow the project it binds, which moves after
+`ProjectReplaced`, and each applies its palette then, so the refresh did the same work a moment earlier with the old
+project. The window reaches into the pane for nothing but `Focus()` now. Proven by a keyboard probe on `tiny_scheme.wdproj`
+(14 checks: the project scheme's colour at a quiet pixel after the start, a stop edit recolouring at once and Escape
+putting it back, a scrub asking for its frame, Auto brightness fitting the shown 16-bit frame without computing it, a
+new source at the canvas centre, an example replacing the project with its own colours; a probe's expected colour goes
+through the layer's black level, −0.05 there, c · 1.05 − 0.05 a channel) and by `PreviewCheck` (42 of 43: the playback
+check's 2-second budget failed under a Rust build of the user's that held every core, the same run taking 11.6 s
+against 2.7; machine load, not the app). **A check with a time budget needs a quiet machine**: look at the CPU before
+judging one (`PreviewCheck`'s first playback is the one such check). **The harnesses run against the user's settings
+file** (2026-11-07, the whole set after the twelfth step: 10 of 12 clean, two failed on a file at half resolution and 8-bit,
+the memory warning's levers from his session): `PreviewQualityCheck` chose "Half" on a setting that was Half already, so
+nothing went stale, and it now puts the resolution and the frames to Full first, as it did the samples; `ProbeGraphCheck`
+looked for "Running" in the status bar after Play, which a reduced run of 100 steps had left in 0.2 s, and now reads the
+log from a byte mark for "Re-run started", the measurement the app makes itself. Both passed once changed; the other ten
+had passed: `library_check` 662 ok.
+The tenth step (2026-11-07): the runs and the live-editing rules, on **two more interfaces each app implements**:
+**`IUiTimers`** (`Create(interval, tick)` → `IUiTimer` with `Restart`, `Stop`, `IsRunning`; WPF's `Platform/DispatcherTimers`,
+a `DispatcherTimer` at Background priority each, as before), the user's choice among the options offered (against a
+`SynchronizationContext` plus `Task.Delay`); its two timers pace work, the scratch frame after a burst of edits (120 ms)
+and the quiet before the re-run (1.5 s), and judge no edit; and **`IMemoryWarning`** (`Ask(spec, budget, autoBudget,
+quality)` → `MemoryWarningChoice?`, the record now in `WaveDudeNext.UI`; WPF's `Platform/WpfMemoryWarning` shows
+`MemoryWarningWindow`). **`RunHost`** holds the current run and its store: `Start(automatic, trackIntensity, fullQuality,
+intensityRoot)` (the scene composed, the RAM budget, the warning, `FrameCache.CheckSpace`, the store, the worker with the
+progress context the application gives it, Loaded priority in WPF), `Discard`, `Shutdown`, `Stop`, `TogglePause`,
+`IsActive`, the flags `IsRunStale` and `IsProbesStale`, the events `RunStateChanged` and `RunFinished` (the current run's
+only), and the static `PreviewQualitySetting`. **`LivePreview`** is the rules: `Edited(change)` (a probe edit stales the
+recordings and asks for the frame; an active probe the run does not record, or a brightness edit the 8-bit samples bake
+in, is a simulation edit; a simulation edit stales the run, stops playback and any run in progress, repaints the scene
+after a part edit, paces the scratch frame and the re-run), `PreviewQualityChanged`, `EnsureRun` (Play's rule: not during
+an export, a run refused in the warning turns playback off), `RunFinished` (also called by the export flow when its export
+ends), `ScratchFrame` (bound by the pane), the scratch runner with its pause of the run and the busy indicator, the re-run
+postponed behind a pending frame or an export (`BusyState.IsExporting`), and the first project's warm-up, which the probe
+found missing (the window had scheduled it by a direct call the document's event does not cover). **`ProjectDocument`
+owns the `ProjectWatcher` and the `GatePortFollower`** per project: every change makes it dirty, is logged at Trace with
+old → new, and is raised as `Changed`, the one event the window's edit hub (`MainWindow.Live.cs`, 62 lines) hangs the
+models on: the undo history, the scene image's watch, the preview's colours, `Live.Edited`. `MainWindow.Simulation.cs` is
+the command handlers, one line each, and `DiscardRun`, which ends an export reading the store before `RunHost.Discard`.
+Gone: the window's `Run`, `IsRunStale`, `IsProbesStale` and `ScratchFrame` dependency properties (the XAML binds
+`RunHost.Run`, `RunHost.IsRunStale`, `RunHost.IsProbesStale`, `Live.ScratchFrame`), `StartRun`, `OnProjectChanged`'s rules,
+the timers. Proven without a window (32 checks, the timers fired by hand, a warning stand-in, a pumped UI thread, real
+runs of a 64 × 48 project on the engine of the settings: the warm-up, a run followed to its end, an edit's staleness and
+the stop of playback, the re-run postponed behind the frame and started after it, an edit stopping a run, a probe added
+against a probe moved, a scheme edit meaning nothing, a scrub past the run's frames, Play's three cases, the export
+holding the re-run, the quality change, the warning asked for 19 GB against a 6.4 GB budget and refused; the warning's
+choice path, which saves the settings, was not run with the user's app open, and is the moved code) and by `RunCheck`
+(71 of 71). Settled on the way: a probe without the window must stand in for the window's edit hub
+(`document.Changed += (_, c) => live.Edited(c)`), or no edit reaches the rules.
+The eleventh step (2026-11-07): **`Exporter`** carries the exports out (`ExportAsync(field, intensity, still)`,
+`ExportLastAsync`, `ExportProbeAsync(probe)`, `Cancel`, `Shutdown`; `Job`, `IsWriting`, `IsWaiting`, `IsExporting`,
+`CanExport`, `CanExportLast`, `CanExportProbe`; the events `Failed(ExportFailure(key, error))`, which the window shows
+by the key's text, "ExportError" or "RunError", with the error's words when there is one, and `Finished`, which the
+window hands to `Live.RunFinished`), on **two more interfaces each app implements**: **`IExportDialogs`**
+(`AskWhereToSave(subject, folder, name, formats, formatIndex)` → `SavePick(path, formatIndex)?`, the `ExportSubject`
+naming what the dialog is for, so the application picks the title and the filters, the formats in its filter order,
+0-based; `AskToReplaceFolder(folder)`; WPF's `Platform/WpfExportDialogs`, the common Save dialog and the message
+window) and **`IFrameDecorators`** (`Create(project, run)` → `IFrameDecorator.For(layer)`, the painter of what the
+application draws over a layer's frames; WPF's `Platform/WpfFrameDecorators` wraps `ProbeGraphPainter` and
+`SourceMarkerPainter`, which rasterise with `RenderTargetBitmap` and `FormattedText` and so stay in WPF). The model reads
+`WAVEDUDE_EXPORT_PATH`, the harness hook, itself; it feeds `BusyState.Export` and `IsWaitingForRun`. `MainWindow.Export.cs`
+(74 lines, was 546) is the handlers, one line each, and `OnExportFailed`; the `Export` dependency property is gone
+(`Exporter.IsWriting`, `Exporter.Cancel()` for Stop and the discard). Proven without a window (19 checks, a dialog stand-in
+recording its inputs and answering as told, no decorations, real runs and files: the dialog's subject, name, formats and
+first format, Cancel, a PNG sequence with the run made first and the wait shown, Export last without the question, the
+folder question answered No, a still named with the padded frame among the stills' formats and no "last export", a
+scripted path with the format by its extension, a probe's CSV after the live rules staled the run, a failure on a drive
+that is not there with `Failed` and `Finished` both raised) and by `ExportCheck` (44 of 44). A probe of the exporter
+needs the live rules too, or a probe added never stales the run and the export rightly fails on the old one.
+The twelfth step (2026-11-07): **`AutoBrightness`** is the pictures' Auto brightness: `Fit(layer)` fits the shown 16-bit
+frame at once, else computes the frame in 16-bit on a scratch runner of its own with any run paused meanwhile and
+applies the fit when it arrives, raising `Fitted`, which the window answers with `_history.EndStep()` (an edit complete
+in itself, after the command that asked for it); `IsFitting`, `CanFit` (no fit computing, no export, steps to run).
+`MainWindow.Display.cs` is the two handlers (31 lines, was 132). Proven without a window (11 checks: the computed path
+with `Fitted` once and the brightness fitted, the shown-frame path at once without an event for both layers, a run in
+progress paused and resumed around the computed frame, an empty frame fitting nothing) and by a keyboard probe in the
+app on the 8-bit preview (the frame computed in 16-bit, the fit, the undo step recorded after it in that order, the
+scratch frame re-requested as for any brightness edit in 8-bit). **The window's logic is in models now**: the window's
+partials are 1,195 lines, command handlers of a line each, the edit hub, the dialogs, the constructor's wiring and the
+things only WPF has (the dock, the jump list, the zoom, the menu bar's F10, the focus); it reaches into a pane for
+`Focus()` and `FocusList()` alone. Six interfaces each app implements: `IImageDecoder`, `IClipboard`, `IUiTimers`,
+`IMemoryWarning`, `IExportDialogs`, `IFrameDecorators`.
+What still anchors the rest: the live dock model (`DockItem` with WPF's `ContentProperty`, `DockSplitNode` with WPF's
+`Orientation`); `RelayCommand` requeries through WPF's `CommandManager`; the converters implement
+`IValueConverter`; the 59 commands are routed commands; the scene image is decoded by WPF's `BitmapDecoder`
+(`SceneImageLoader`; the library writes PNG but reads none); the manual and license are FlowDocuments, which Avalonia has
+only in its paid tier.
 
 ## People, name, license
 

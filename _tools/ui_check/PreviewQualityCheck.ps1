@@ -96,7 +96,11 @@ function Park() {
 
 Start-App $exe $project
 try {
-	ChooseView 6 0                                 # 16-bit samples first: 8-bit is the default since 2026-10-16, and the first run must be the full quality
+	# the full quality first, whatever the user's settings hold (2026-11-07: a file at half resolution, the memory warning's
+	# lever, made "Half" below change nothing); 8-bit is the samples' default since 2026-10-16, and the first run must be the full quality
+	ChooseView 4 0                                 # resolution Full
+	ChooseView 5 0                                 # every frame
+	ChooseView 6 0                                 # 16-bit samples
 	FocusOn "PreviewPlay"                          # a window never activated has no focused element, and F5 (a routed gesture) then goes nowhere
 	Key 0x74 300                                   # F5
 	Check "F5 run completes" (WaitFor { (RunStatus) -like "Completed:*" } 30000) (RunStatus)
