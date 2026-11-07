@@ -29,15 +29,16 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
         xmlns:converters="clr-namespace:WaveDudeNext.WPF.Converters"
         xmlns:panes="clr-namespace:WaveDudeNext.WPF.Panes"
         xmlns:commands="clr-namespace:WaveDudeNext.WPF.Commands"
-        xmlns:p="clr-namespace:WaveDudeNext.WPF"
+        xmlns:ui="clr-namespace:WaveDudeNext.UI;assembly=WaveDudeNext.UI"
+        xmlns:layout="clr-namespace:WaveDudeNext.UI.Docking;assembly=WaveDudeNext.UI"
         xmlns:runs="clr-namespace:WaveDudeNext.Runs;assembly=WaveDudeNext"
         Icon="App.ico"
         DataContext="{Binding RelativeSource={RelativeSource Self}}"
-        Width="{Binding Source={x:Static p:Settings.Default}, Path=WindowWidth, Mode=TwoWay, Converter={x:Static converters:ZoomConverter.Instance}}"
-        Height="{Binding Source={x:Static p:Settings.Default}, Path=WindowHeight, Mode=TwoWay, Converter={x:Static converters:ZoomConverter.Instance}}"
-        Left="{Binding Source={x:Static p:Settings.Default}, Path=WindowLeft, Mode=TwoWay}"
-        Top="{Binding Source={x:Static p:Settings.Default}, Path=WindowTop, Mode=TwoWay}"
-        WindowState="{Binding Source={x:Static p:Settings.Default}, Path=WindowState, Mode=TwoWay}"
+        Width="{Binding Source={x:Static ui:Settings.Default}, Path=WindowWidth, Mode=TwoWay, Converter={x:Static converters:ZoomConverter.Instance}}"
+        Height="{Binding Source={x:Static ui:Settings.Default}, Path=WindowHeight, Mode=TwoWay, Converter={x:Static converters:ZoomConverter.Instance}}"
+        Left="{Binding Source={x:Static ui:Settings.Default}, Path=WindowLeft, Mode=TwoWay}"
+        Top="{Binding Source={x:Static ui:Settings.Default}, Path=WindowTop, Mode=TwoWay}"
+        WindowState="{Binding Source={x:Static ui:Settings.Default}, Path=WindowState, Mode=TwoWay, Converter={x:Static converters:EnumByNameConverter.Instance}}"
         MinWidth="800" MinHeight="500"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"
@@ -55,6 +56,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<converters:DoubleEqualsConverter x:Key="DoubleEquals" />
 		<converters:TitleConverter x:Key="TitleConverter" />
 		<converters:RunStatusConverter x:Key="RunStatus" />
+		<converters:BusyTextConverter x:Key="BusyText" />
+		<converters:TaskbarProgressConverter x:Key="TaskbarProgress" />
 
 		<RoutedUICommand x:Key="FileOpenRecent" />
 		<RoutedUICommand x:Key="FileOpenExample" />
@@ -133,7 +136,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 			<Setter Property="IsChecked">
 				<Setter.Value>
 					<MultiBinding Converter="{StaticResource Equality}" Mode="OneWay">
-						<Binding Path="FrameMemoryPercent" Source="{x:Static p:Settings.Default}" />
+						<Binding Path="FrameMemoryPercent" Source="{x:Static ui:Settings.Default}" />
 						<Binding />
 					</MultiBinding>
 				</Setter.Value>
@@ -155,18 +158,18 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		</Style>
 	</Window.Resources>
 
-	<!-- the taskbar button shows the status bar's busy state too (export progress, or the marquee while waiting or computing a frame); MainWindow.Taskbar.cs feeds it -->
+	<!-- the taskbar button shows the status bar's busy state too: the export's progress, or the marquee while an export waits or a frame is computed -->
 	<Window.TaskbarItemInfo>
-		<TaskbarItemInfo />
+		<TaskbarItemInfo ProgressState="{Binding Busy.Kind, Converter={StaticResource TaskbarProgress}}" ProgressValue="{Binding Busy.Share}" />
 	</Window.TaskbarItemInfo>
 
 	<!-- "WaveDude Next - <file>", just the name while no file is open; an asterisk after the file (or "Untitled") marks unsaved edits -->
 	<Window.Title>
 		<MultiBinding Converter="{StaticResource TitleConverter}">
 			<Binding Source="{StaticResource Title}" />
-			<Binding Path="Filename" />
-			<Binding Path="IsDirty" />
-			<Binding Path="SuggestedFileName" />
+			<Binding Path="Document.Filename" />
+			<Binding Path="Document.IsDirty" />
+			<Binding Path="Document.SuggestedFileName" />
 		</MultiBinding>
 	</Window.Title>
 
@@ -248,11 +251,11 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<MenuItem Command="ApplicationCommands.New" Header="{DynamicResource MenuFileNew}" controls:MenuIcon.Glyph="&#xE8A5;" />
 				<MenuItem Command="ApplicationCommands.Open" Header="{DynamicResource MenuFileOpen}" controls:MenuIcon.Glyph="&#xE8E5;" />
 				<MenuItem Header="{DynamicResource MenuFileRecent}"
-				          ItemsSource="{Binding RecentFiles, Source={x:Static p:Settings.Default}}"
+				          ItemsSource="{Binding RecentFiles, Source={x:Static ui:Settings.Default}}"
 				          ItemContainerStyle="{StaticResource RecentFileMenuItemStyle}" controls:MenuIcon.Glyph="&#xE81C;" />
 				<!-- the shipped examples, embedded in the application (2026-10-29) -->
 				<MenuItem Header="{DynamicResource MenuFileExamples}" AutomationProperties.AutomationId="MenuExamples"
-				          ItemsSource="{x:Static local:Examples.All}"
+				          ItemsSource="{x:Static ui:Examples.All}"
 				          ItemContainerStyle="{StaticResource ExampleMenuItemStyle}" controls:MenuIcon.Glyph="&#xE8F1;" />
 				<Separator />
 				<MenuItem Command="ApplicationCommands.Save" Header="{DynamicResource MenuFileSave}" controls:MenuIcon.Glyph="&#xE74E;" />
@@ -298,28 +301,28 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				     live (WindowZoom); the parameter is the factor with a decimal point -->
 				<MenuItem Header="{DynamicResource MenuViewUiZoom}" controls:MenuIcon.Glyph="&#xE8A3;" AutomationProperties.AutomationId="MenuUiZoom">
 					<MenuItem Header="{DynamicResource MenuViewUiZoom50}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="0.5"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=0.5, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=0.5, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom50" />
 					<MenuItem Header="{DynamicResource MenuViewUiZoom75}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="0.75"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=0.75, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=0.75, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom75" />
 					<MenuItem Header="{DynamicResource MenuViewUiZoom100}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="1"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=1, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=1, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom100" />
 					<MenuItem Header="{DynamicResource MenuViewUiZoom125}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="1.25"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=1.25, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=1.25, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom125" />
 					<MenuItem Header="{DynamicResource MenuViewUiZoom150}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="1.5"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=1.5, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=1.5, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom150" />
 					<MenuItem Header="{DynamicResource MenuViewUiZoom200}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="2"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=2, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=2, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom200" />
 					<MenuItem Header="{DynamicResource MenuViewUiZoom250}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="2.5"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=2.5, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=2.5, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom250" />
 					<MenuItem Header="{DynamicResource MenuViewUiZoom300}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="3"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=3, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=3, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom300" />
 				</MenuItem>
 				<MenuItem Header="{DynamicResource MenuViewLanguage}"
@@ -330,52 +333,52 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				     settings, never the project's, and an export always uses a full run -->
 				<MenuItem Header="{DynamicResource MenuViewResolution}" controls:MenuIcon.Drawing="PreviewResolution" AutomationProperties.AutomationId="MenuPreviewResolution">
 					<MenuItem Header="{DynamicResource MenuViewResolutionFull}" Command="{x:Static commands:ViewCommands.SetPreviewResolution}" CommandParameter="1"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewResolution, Converter={StaticResource IntEquals}, ConverterParameter=1, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewResolution, Converter={StaticResource IntEquals}, ConverterParameter=1, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewResolution1" />
 					<MenuItem Header="{DynamicResource MenuViewResolutionHalf}" Command="{x:Static commands:ViewCommands.SetPreviewResolution}" CommandParameter="2"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewResolution, Converter={StaticResource IntEquals}, ConverterParameter=2, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewResolution, Converter={StaticResource IntEquals}, ConverterParameter=2, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewResolution2" />
 					<MenuItem Header="{DynamicResource MenuViewResolutionQuarter}" Command="{x:Static commands:ViewCommands.SetPreviewResolution}" CommandParameter="4"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewResolution, Converter={StaticResource IntEquals}, ConverterParameter=4, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewResolution, Converter={StaticResource IntEquals}, ConverterParameter=4, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewResolution4" />
 				</MenuItem>
 				<MenuItem Header="{DynamicResource MenuViewFrames}" controls:MenuIcon.Drawing="PreviewFrames" AutomationProperties.AutomationId="MenuPreviewFrames">
 					<MenuItem Header="{DynamicResource MenuViewFramesFull}" Command="{x:Static commands:ViewCommands.SetPreviewFrames}" CommandParameter="1"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewFrames, Converter={StaticResource IntEquals}, ConverterParameter=1, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewFrames, Converter={StaticResource IntEquals}, ConverterParameter=1, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewFrames1" />
 					<MenuItem Header="{DynamicResource MenuViewFramesHalf}" Command="{x:Static commands:ViewCommands.SetPreviewFrames}" CommandParameter="2"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewFrames, Converter={StaticResource IntEquals}, ConverterParameter=2, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewFrames, Converter={StaticResource IntEquals}, ConverterParameter=2, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewFrames2" />
 					<MenuItem Header="{DynamicResource MenuViewFramesQuarter}" Command="{x:Static commands:ViewCommands.SetPreviewFrames}" CommandParameter="4"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewFrames, Converter={StaticResource IntEquals}, ConverterParameter=4, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewFrames, Converter={StaticResource IntEquals}, ConverterParameter=4, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewFrames4" />
 				</MenuItem>
 				<MenuItem Header="{DynamicResource MenuViewSamples}" controls:MenuIcon.Drawing="PreviewSamples" AutomationProperties.AutomationId="MenuPreviewSamples">
 					<MenuItem Header="{DynamicResource MenuViewSamples16}" Command="{x:Static commands:ViewCommands.SetPreviewSamples}" CommandParameter="2"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewSampleBytes, Converter={StaticResource IntEquals}, ConverterParameter=2, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewSampleBytes, Converter={StaticResource IntEquals}, ConverterParameter=2, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewSamples2" />
 					<MenuItem Header="{DynamicResource MenuViewSamples8}" Command="{x:Static commands:ViewCommands.SetPreviewSamples}" CommandParameter="1"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewSampleBytes, Converter={StaticResource IntEquals}, ConverterParameter=1, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewSampleBytes, Converter={StaticResource IntEquals}, ConverterParameter=1, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewSamples1" />
 				</MenuItem>
 				<!-- the dithering of the 16-bit pictures (2026-10-23): preview only, at each picture's size on screen; 8-bit samples
 				     have nothing finer to dither, so the entry waits for 16-bit ones -->
 				<MenuItem Header="{DynamicResource MenuViewDither}" controls:MenuIcon.Drawing="PreviewDither" AutomationProperties.AutomationId="MenuPreviewDither"
-				          IsEnabled="{Binding Source={x:Static p:Settings.Default}, Path=PreviewSampleBytes, Converter={StaticResource IntEquals}, ConverterParameter=2, Mode=OneWay}">
+				          IsEnabled="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewSampleBytes, Converter={StaticResource IntEquals}, ConverterParameter=2, Mode=OneWay}">
 					<MenuItem Header="{DynamicResource MenuViewDitherOff}" Command="{x:Static commands:ViewCommands.SetPreviewDither}" CommandParameter="0"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=0, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=0, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewDither0" />
 					<MenuItem Header="{DynamicResource MenuViewDither10}" Command="{x:Static commands:ViewCommands.SetPreviewDither}" CommandParameter="10"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=10, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=10, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewDither10" />
 					<MenuItem Header="{DynamicResource MenuViewDither12}" Command="{x:Static commands:ViewCommands.SetPreviewDither}" CommandParameter="12"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=12, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=12, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewDither12" />
 					<MenuItem Header="{DynamicResource MenuViewDither14}" Command="{x:Static commands:ViewCommands.SetPreviewDither}" CommandParameter="14"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=14, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=14, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewDither14" />
 					<MenuItem Header="{DynamicResource MenuViewDither16}" Command="{x:Static commands:ViewCommands.SetPreviewDither}" CommandParameter="16"
-					          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=16, Mode=OneWay}"
+					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewDitherBits, Converter={StaticResource IntEquals}, ConverterParameter=16, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuPreviewDither16" />
 				</MenuItem>
 			</MenuItem>
@@ -387,7 +390,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 						<Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource {x:Type MenuItem}}">
 							<Setter Property="Header" Value="{DynamicResource MenuSimulationPause}" />
 							<Style.Triggers>
-								<DataTrigger Binding="{Binding Run.State}" Value="{x:Static runs:RunState.Paused}">
+								<DataTrigger Binding="{Binding RunHost.Run.State}" Value="{x:Static runs:RunState.Paused}">
 									<Setter Property="Header" Value="{DynamicResource MenuSimulationResume}" />
 								</DataTrigger>
 							</Style.Triggers>
@@ -415,15 +418,15 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<Separator />
 				<!-- the engine is the application's choice, not the project's: it does not change the result -->
 				<MenuItem Header="{DynamicResource MenuSimulationUseGpu}" IsCheckable="True"
-				          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=UseGpu, Mode=TwoWay}"
+				          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UseGpu, Mode=TwoWay}"
 				          AutomationProperties.AutomationId="MenuUseGpu" />
 				<MenuItem Header="{DynamicResource MenuSimulationAutoRerun}" IsCheckable="True"
-				          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=AutoRerun, Mode=TwoWay}"
+				          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=AutoRerun, Mode=TwoWay}"
 				          AutomationProperties.AutomationId="MenuAutoRerun" />
 				<!-- a run whose frames do not fit in the RAM cache asks first (the memory warning, 2026-11-03, the user's design),
 				     offering a lower preview quality; its "Do not warn me again" clears this -->
 				<MenuItem Header="{DynamicResource MenuSimulationWarnMemory}" IsCheckable="True"
-				          IsChecked="{Binding Source={x:Static p:Settings.Default}, Path=WarnWhenRamInsufficient, Mode=TwoWay}"
+				          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=WarnWhenRamInsufficient, Mode=TwoWay}"
 				          AutomationProperties.AutomationId="MenuWarnMemory" />
 				<!-- the memory a run's frames may take before the rest goes to disk: the application decides from what is free
 				     ("Auto", 2026-10-15), a percentage of the RAM is only an upper bound on that -->
@@ -446,11 +449,22 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 			     computed for the preview (indeterminate); Esc cancels an export -->
 			<StatusBarItem DockPanel.Dock="Right" HorizontalAlignment="Right">
 				<StackPanel Orientation="Horizontal">
-					<TextBlock Text="{Binding BusyText}" AutomationProperties.AutomationId="StatusExport" VerticalAlignment="Center" />
+					<TextBlock AutomationProperties.AutomationId="StatusExport" VerticalAlignment="Center">
+						<TextBlock.Text>
+							<MultiBinding Converter="{StaticResource BusyText}">
+								<Binding Path="Busy.Kind" />
+								<Binding Path="Busy.FramesDone" />
+								<Binding Path="Busy.FrameCount" />
+								<Binding Path="Busy.ComputingFrame" />
+								<!-- the language, so the words follow a switch -->
+								<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
+							</MultiBinding>
+						</TextBlock.Text>
+					</TextBlock>
 					<ProgressBar Width="120" Height="12" Margin="6,0,8,0" VerticalAlignment="Center" ToolTip="{DynamicResource TipExportCancel}"
-					             Minimum="0" Maximum="{Binding Export.FrameCount, FallbackValue=1}" Value="{Binding Export.FramesDone, Mode=OneWay, FallbackValue=0}"
-					             IsIndeterminate="{Binding IsBusyIndeterminate}" AutomationProperties.AutomationId="StatusBusyBar"
-					             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+					             Minimum="0" Maximum="1" Value="{Binding Busy.Share, Mode=OneWay}"
+					             IsIndeterminate="{Binding Busy.IsIndeterminate}" AutomationProperties.AutomationId="StatusBusyBar"
+					             Visibility="{Binding Busy.IsBusy, Converter={StaticResource BoolToVisibility}}" />
 				</StackPanel>
 			</StatusBarItem>
 			<!-- the run's progress on the right: state, steps, engine; empty while there is no run -->
@@ -458,11 +472,11 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<TextBlock AutomationProperties.AutomationId="StatusRun">
 					<TextBlock.Text>
 						<MultiBinding Converter="{StaticResource RunStatus}">
-							<Binding Path="Run.State" />
-							<Binding Path="Run.StepsDone" />
-							<Binding Path="Run.TotalSteps" />
-							<Binding Path="Run.EngineDescription" />
-							<Binding Path="IsRunStale" />
+							<Binding Path="RunHost.Run.State" />
+							<Binding Path="RunHost.Run.StepsDone" />
+							<Binding Path="RunHost.Run.TotalSteps" />
+							<Binding Path="RunHost.Run.EngineDescription" />
+							<Binding Path="RunHost.IsRunStale" />
 							<!-- the language, so the words follow a switch (the status kept "Abgeschlossen" after one, 2026-10-15) -->
 							<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
 						</MultiBinding>
@@ -479,24 +493,34 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 			     tree in its upper third and the Properties pane below it, the preview in the rest; Messages hidden. Loaded by
 			     the window when no saved layout applies, and by the designer (2026-10-26) -->
 			<docking:DockHost.DefaultLayout>
-				<docking:DockLayout>
-					<docking:DockLayout.Root>
-						<docking:SplitLayout Orientation="Horizontal">
-							<docking:SplitLayout Orientation="Vertical" Length="1">
-								<docking:GroupLayout Active="project" Length="1"><s:String>project</s:String></docking:GroupLayout>
-								<docking:GroupLayout Active="properties" Length="2"><s:String>properties</s:String></docking:GroupLayout>
-							</docking:SplitLayout>
-							<docking:DocumentLayout Length="3" />
-						</docking:SplitLayout>
-					</docking:DockLayout.Root>
-				</docking:DockLayout>
+				<layout:DockLayout>
+					<layout:DockLayout.Root>
+						<layout:SplitLayout Orientation="Horizontal">
+							<layout:SplitLayout.Children>
+								<layout:SplitLayout Orientation="Vertical" Length="1">
+									<layout:SplitLayout.Children>
+										<layout:GroupLayout Active="project" Length="1">
+											<layout:GroupLayout.Items><s:String>project</s:String></layout:GroupLayout.Items>
+										</layout:GroupLayout>
+										<layout:GroupLayout Active="properties" Length="2">
+											<layout:GroupLayout.Items><s:String>properties</s:String></layout:GroupLayout.Items>
+										</layout:GroupLayout>
+									</layout:SplitLayout.Children>
+								</layout:SplitLayout>
+								<layout:DocumentLayout Length="3" />
+							</layout:SplitLayout.Children>
+						</layout:SplitLayout>
+					</layout:DockLayout.Root>
+				</layout:DockLayout>
 			</docking:DockHost.DefaultLayout>
 			<docking:DockHost.Items>
 				<docking:DockItem x:Name="projectDock" Id="project" Title="{StaticResource PaneProject}" DefaultSide="Left">
-					<panes:ProjectTree x:Name="projectTree" Project="{Binding Project}" SelectedItems="{Binding SelectedItems}" SelectedItemChanged="OnTreeSelectionChanged" />
+					<panes:ProjectTree x:Name="projectTree" Project="{Binding Document.Project}" SelectedItem="{Binding Selection.Current, Mode=TwoWay}" SelectedItems="{Binding Selection.Items}"
+					                   RevealRequest="{Binding Selection.RevealRequest}" />
 				</docking:DockItem>
 				<docking:DockItem x:Name="propertiesDock" Id="properties" Title="{StaticResource PaneProperties}" DefaultSide="Right">
-					<panes:PropertiesPane x:Name="propertiesPane" SelectedObject="{Binding SelectedItem}" Project="{Binding Project}" />
+					<panes:PropertiesPane x:Name="propertiesPane" SelectedObject="{Binding Selection.Current}" Project="{Binding Document.Project}"
+					                      RevealRequest="{Binding Selection.RevealRequest}" />
 				</docking:DockItem>
 				<docking:DockItem x:Name="messagesDock" Id="messages" Title="{StaticResource PaneMessages}" DefaultSide="Bottom">
 					<panes:MessagesPane x:Name="messagesPane" TargetName="messages" />
@@ -504,12 +528,14 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 			</docking:DockHost.Items>
 			<docking:DockHost.DocumentContent>
 				<Border BorderThickness="1" BorderBrush="{DynamicResource ToolWindowBorder}">
-					<panes:PreviewPane x:Name="previewPane" Project="{Binding Project}" Run="{Binding Run}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" SelectedItems="{Binding SelectedItems}"
-					                   IsStale="{Binding IsRunStale}" IsProbesStale="{Binding IsProbesStale}" ScratchFrame="{Binding ScratchFrame}"
-					                   IsComputing="{Binding IsComputingFrame}"
-					                   Position="{Binding PreviewPosition, Mode=TwoWay}" IsPlaying="{Binding IsPreviewPlaying, Mode=OneWayToSource}"
-					                   Orientation="{Binding Source={x:Static p:Settings.Default}, Path=PreviewOrientation, Mode=TwoWay}"
-				                   DitherBits="{Binding Source={x:Static p:Settings.Default}, Path=PreviewDitherBits}" />
+					<panes:PreviewPane x:Name="previewPane" Project="{Binding Document.Project}" Run="{Binding RunHost.Run}" SelectedItem="{Binding Selection.Current, Mode=TwoWay}" SelectedItems="{Binding Selection.Items}"
+					                   IsStale="{Binding RunHost.IsRunStale}" IsProbesStale="{Binding RunHost.IsProbesStale}" ScratchFrame="{Binding Live.ScratchFrame}" ScenePixels="{Binding SceneComposer.Pixels}"
+					                   IsComputing="{Binding Busy.IsComputingFrame}"
+					                   Position="{Binding Preview.Position, Mode=TwoWay}" IsPlaying="{Binding Preview.IsPlaying, Mode=TwoWay}"
+					                   ShownFrame="{Binding Preview.ShownFrame, Mode=OneWayToSource}" CanvasWidth="{Binding Preview.CanvasWidth, Mode=OneWayToSource}" CanvasHeight="{Binding Preview.CanvasHeight, Mode=OneWayToSource}"
+					                   ColorsVersion="{Binding Preview.ColorsVersion}"
+					                   Orientation="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewOrientation, Mode=TwoWay, Converter={x:Static converters:EnumByNameConverter.Instance}}"
+				                   DitherBits="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewDitherBits}" />
 				</Border>
 			</docking:DockHost.DocumentContent>
 		</docking:DockHost>

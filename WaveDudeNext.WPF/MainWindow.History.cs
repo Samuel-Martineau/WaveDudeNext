@@ -15,165 +15,28 @@
 // version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 // <https://www.gnu.org/licenses/>.
 
-using System.Collections;
 using System.Windows.Input;
-using System.Windows.Threading;
-using WaveDudeNext.Model;
+using WaveDudeNext.UI;
 
 namespace WaveDudeNext.WPF;
 
 /// <summary>
-/// Undo and redo (2026-10-22, the user's request): a <see cref="ProjectHistory"/> per open project. An edit ends a step
-/// after <see cref="RecordDelay"/> of quiet with no mouse button held, so a drag, a number box scrub or a held arrow key is
-/// one step; Undo and Redo end a pending step first. A step written back is reported by the watcher like any edit (the
-/// run goes stale, a scratch frame and the re-run follow), but not recorded again; the selection is carried over to the
-/// restored objects by name, else by position. The project is dirty unless the current step is the saved one. UI thread.
+/// Undo and redo (2026-10-22, the user's request): the Edit menu's two commands, handed to the <see cref="UndoHistory"/>
+/// model, which keeps the steps, carries the selection over and tells the document whether it is dirty. The window
+/// tells it what happens to the project: a replaced one (<c>OnProjectReplaced</c>), an edit (<c>OnProjectChanged</c>),
+/// a save (the document's <see cref="ProjectDocument.Saved"/>) and, through the <see cref="Platform.EditBoundaries"/>
+/// watching its input, the moment an edit has finished and becomes a step. UI thread.
 /// </summary>
 public partial class MainWindow
 {
-	/// <summary>How long after the last edit, with no mouse button held, the edit ends a step.</summary>
-	private static readonly TimeSpan RecordDelay = TimeSpan.FromMilliseconds(500);
+	/// <summary>The undo history of the open project; created in the constructor.</summary>
+	private readonly UndoHistory _history;
 
-	private ProjectHistory? _history;
-	private DispatcherTimer? _recordTimer;
-	/// <summary>Whether an edit has not ended its step yet.</summary>
-	private bool _recordPending;
-	/// <summary>Whether a step is being written back, so its changes are not recorded as a new one.</summary>
-	private bool _restoring;
+	private void CanUndo(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = _history.CanUndo;
 
-	/// <summary>A new project starts a new history, its present state the first step.</summary>
-	private void StartHistory(Project? project)
-	{
-		_recordTimer?.Stop();
-		_recordPending = false;
-		_history = project != null ? new ProjectHistory(project) : null;
-	}
+	private void CanRedo(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = _history.CanRedo;
 
-	/// <summary>An edit: its step ends after the quiet period (a step being written back is not an edit of its own).</summary>
-	private void ScheduleRecord()
-	{
-		if (_restoring)
-		{
-			return;
-		}
-		_recordPending = true;
-		_recordTimer ??= MakeTimer(RecordDelay, OnRecordTimer);
-		_recordTimer.Stop();
-		_recordTimer.Start();
-	}
+	private void OnUndo(object sender, ExecutedRoutedEventArgs e) => _history.Undo();
 
-	private void OnRecordTimer()
-	{
-		if (Mouse.LeftButton == MouseButtonState.Pressed || Mouse.RightButton == MouseButtonState.Pressed)
-		{
-			// a drag or a scrub goes on: its step ends when the button is let go and the quiet period has passed
-			return;
-		}
-		RecordStep();
-	}
-
-	/// <summary>Ends the pending step, if any: the project's state becomes a step when it differs from the current one.</summary>
-	private void RecordStep()
-	{
-		_recordTimer?.Stop();
-		if (!_recordPending || _history == null)
-		{
-			return;
-		}
-		_recordPending = false;
-		if (_history.Record())
-		{
-			Logger.Debug("Undo step {Step} recorded", _history.Position);
-		}
-		IsDirty = !_history.IsAtSaved;
-		CommandManager.InvalidateRequerySuggested();
-	}
-
-	/// <summary>After a save: the saved state is the current step.</summary>
-	private void MarkHistorySaved()
-	{
-		RecordStep();
-		_history?.MarkSaved();
-	}
-
-	private void CanUndo(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = _history != null && (_history.CanUndo || _recordPending);
-
-	private void CanRedo(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = _history != null && _history.CanRedo && !_recordPending;
-
-	private void OnUndo(object sender, ExecutedRoutedEventArgs e) => MoveInHistory(history => history.Undo(), "Undo");
-
-	private void OnRedo(object sender, ExecutedRoutedEventArgs e) => MoveInHistory(history => history.Redo(), "Redo");
-
-	/// <summary>Ends a pending step, then writes the step <paramref name="move"/> goes to back into the project, keeping the selection.</summary>
-	private void MoveInHistory(Func<ProjectHistory, bool> move, string what)
-	{
-		RecordStep();
-		if (_history == null)
-		{
-			return;
-		}
-		List<Place> selection = [.. SelectedItems.Select(Locate)];
-		Place? currentPlace = SelectedItem is { } current ? Locate(current) : null;
-		bool moved;
-		_restoring = true;
-		try
-		{
-			moved = move(_history);
-		}
-		finally
-		{
-			_restoring = false;
-		}
-		if (!moved)
-		{
-			return;
-		}
-		Logger.Debug("{What}: step {Step} of {Count}", what, _history.Position, _history.Count - 1);
-		List<object> found = [.. selection.Select(Find).OfType<object>()];
-		object? newCurrent = currentPlace is { } place ? Find(place) : null;
-		SelectedItems.Clear();
-		foreach (object item in found)
-		{
-			SelectedItems.Add(item);
-		}
-		SelectedItem = newCurrent ?? found.FirstOrDefault();
-		if (SelectedItem == null)
-		{
-			projectTree.SelectRoot();
-		}
-		IsDirty = !_history.IsAtSaved;
-		CommandManager.InvalidateRequerySuggested();
-	}
-
-	/// <summary>The project's settings objects a selection can hold, by their place: replaced as a whole by a step written back.</summary>
-	private static readonly Func<Project, object>[] SettingsObjects =
-	[
-		project => project,
-		project => project.Scene,
-		project => project.Simulation,
-		project => project.Display,
-		project => project.Display.Field,
-		project => project.Display.Intensity,
-		project => project.Display.Video,
-	];
-
-	/// <summary>A selected item's place: its list, name and index there; or, with no list, the index of its settings object in <see cref="SettingsObjects"/> (-1 for anything else).</summary>
-	private readonly record struct Place(IList? List, string? Name, int Index);
-
-	/// <summary>Where a selected item sits now.</summary>
-	private Place Locate(object item) =>
-		ListOf(item) is { } list && list.IndexOf(item) is >= 0 and var index
-			? new Place(list, (item as INamed)?.Name, index)
-			: new Place(null, null, Array.FindIndex(SettingsObjects, get => ReferenceEquals(get(Project), item)));
-
-	/// <summary>The restored object at a place: the item of that name in the same list, else at the same index, or the settings object at the same place; null when it is gone.</summary>
-	private object? Find(Place place)
-	{
-		if (place.List is { } list)
-		{
-			object? named = place.Name != null ? list.OfType<INamed>().FirstOrDefault(item => item.Name == place.Name) : null;
-			return named ?? (place.Index < list.Count ? list[place.Index] : null);
-		}
-		return place.Index >= 0 ? SettingsObjects[place.Index](Project) : null;
-	}
+	private void OnRedo(object sender, ExecutedRoutedEventArgs e) => _history.Redo();
 }

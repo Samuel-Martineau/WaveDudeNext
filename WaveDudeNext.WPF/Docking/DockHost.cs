@@ -20,6 +20,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using WaveDudeNext.UI;
+using WaveDudeNext.UI.Docking;
 using WaveDudeNext.WPF.Commands;
 
 namespace WaveDudeNext.WPF.Docking;
@@ -568,7 +570,7 @@ public sealed class DockHost : Grid
 		DockSplitNode split => new SplitLayout
 		{
 			Length = split.Length,
-			Orientation = split.Orientation,
+			Orientation = split.Orientation == Orientation.Horizontal ? LayoutDirection.Horizontal : LayoutDirection.Vertical,
 			Children = split.Children.Select(Export).ToList(),
 		},
 		DockGroup group => new GroupLayout
@@ -616,7 +618,7 @@ public sealed class DockHost : Grid
 
 			case SplitLayout splitLayout:
 			{
-				var split = new DockSplitNode(splitLayout.Orientation) { Length = length };
+				var split = new DockSplitNode(splitLayout.Orientation == LayoutDirection.Horizontal ? Orientation.Horizontal : Orientation.Vertical) { Length = length };
 				foreach (NodeLayout childLayout in splitLayout.Children)
 				{
 					DockNode? child = Import(childLayout, assigned);

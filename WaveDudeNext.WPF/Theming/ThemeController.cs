@@ -23,6 +23,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using Microsoft.Win32;
 using NLog;
+using WaveDudeNext.UI.Theming;
 using WaveDudeNext.WPF.Commands;
 
 namespace WaveDudeNext.WPF.Theming;

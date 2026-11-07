@@ -25,8 +25,8 @@ using Microsoft.Win32;
 using NLog;
 using WaveDudeNext.Model;
 using WaveDudeNext.Rendering;
+using WaveDudeNext.UI.Rendering;
 using WaveDudeNext.WPF.Localization;
-using WaveDudeNext.WPF.Rendering;
 
 namespace WaveDudeNext.WPF.Controls;
 
@@ -301,7 +301,7 @@ public sealed class ColorSchemePicker : ComboBox
 		Logger.Info("Colour scheme '{Name}' copied into the project for editing", copy.Name);
 		if (Application.Current.MainWindow is MainWindow main)
 		{
-			main.SelectedItem = copy;
+			main.Selection.Current = copy;
 		}
 	}
 }

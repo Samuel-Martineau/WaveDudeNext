@@ -15,17 +15,18 @@
 // version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 // <https://www.gnu.org/licenses/>.
 
-namespace WaveDudeNext.WPF.Theming;
+using System.Windows;
+using WaveDudeNext.Runs;
+using WaveDudeNext.UI;
+using WaveDudeNext.WPF.Dialogs;
 
-/// <summary>
-/// User-selectable colour theme of the application.
-/// </summary>
-public enum AppTheme
+namespace WaveDudeNext.WPF.Platform;
+
+/// <summary>The memory warning for the models of <c>WaveDudeNext.UI</c> (<see cref="IMemoryWarning"/>): <see cref="MemoryWarningWindow"/>, modal over <paramref name="owner"/>.</summary>
+/// <param name="owner">The window the dialog belongs to.</param>
+public sealed class WpfMemoryWarning(Window owner) : IMemoryWarning
 {
-	/// <summary>Follow the Windows "app mode" setting.</summary>
-	System,
-	/// <summary>Always light.</summary>
-	Light,
-	/// <summary>Always dark.</summary>
-	Dark,
+	/// <inheritdoc/>
+	public MemoryWarningChoice? Ask(RunSpec spec, long budget, long autoBudget, PreviewQuality current) =>
+		MemoryWarningWindow.Show(owner, spec, budget, autoBudget, current);
 }

@@ -26,7 +26,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
                     xmlns:docking="clr-namespace:WaveDudeNext.WPF.Docking"
                     xmlns:theming="clr-namespace:WaveDudeNext.WPF.Theming"
                     xmlns:converters="clr-namespace:WaveDudeNext.WPF.Converters"
-                    xmlns:p="clr-namespace:WaveDudeNext.WPF">
+                    xmlns:ui="clr-namespace:WaveDudeNext.UI;assembly=WaveDudeNext.UI">
 
 	<BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 	<!-- the UI zoom for a tooltip or context menu, whose popup of WPF's own sits outside any window's tree and takes no
@@ -365,8 +365,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 	<Style TargetType="{x:Type ContextMenu}">
 		<Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
 		<Setter Property="HasDropShadow" Value="False" />
-		<Setter Property="LayoutTransform" Value="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTransform}}" />
-		<Setter Property="TextOptions.TextFormattingMode" Value="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTextFormatting}}" />
+		<Setter Property="LayoutTransform" Value="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTransform}}" />
+		<Setter Property="TextOptions.TextFormattingMode" Value="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTextFormatting}}" />
 		<Setter Property="TextOptions.TextRenderingMode" Value="{x:Static theming:WindowZoom.TextRendering}" />
 		<Setter Property="theming:WindowZoom.Standalone" Value="True" />
 		<Setter Property="Template">
@@ -744,8 +744,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
 		<Setter Property="BorderBrush" Value="{DynamicResource ToolTipBorder}" />
 		<Setter Property="HasDropShadow" Value="False" />
-		<Setter Property="LayoutTransform" Value="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTransform}}" />
-		<Setter Property="TextOptions.TextFormattingMode" Value="{Binding Source={x:Static p:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTextFormatting}}" />
+		<Setter Property="LayoutTransform" Value="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTransform}}" />
+		<Setter Property="TextOptions.TextFormattingMode" Value="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTextFormatting}}" />
 		<Setter Property="TextOptions.TextRenderingMode" Value="{x:Static theming:WindowZoom.TextRendering}" />
 		<Setter Property="theming:WindowZoom.Standalone" Value="True" />
 		<Setter Property="Template">

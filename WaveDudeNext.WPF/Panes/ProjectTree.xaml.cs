@@ -27,6 +27,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using NLog;
 using WaveDudeNext.Model;
+using WaveDudeNext.UI;
 using WaveDudeNext.WPF.Controls;
 using WaveDudeNext.WPF.Converters;
 
@@ -49,11 +50,14 @@ public partial class ProjectTree : UserControl
 	public static readonly DependencyProperty ProjectProperty = DependencyProperty.Register(
 		nameof(Project), typeof(Project), typeof(ProjectTree));
 
-	private static readonly DependencyPropertyKey SelectedItemKey = DependencyProperty.RegisterReadOnly(
-		nameof(SelectedItem), typeof(object), typeof(ProjectTree), new PropertyMetadata(null));
-
 	/// <summary>Identifies the <see cref="SelectedItem"/> property.</summary>
-	public static readonly DependencyProperty SelectedItemProperty = SelectedItemKey.DependencyProperty;
+	public static readonly DependencyProperty SelectedItemProperty = DependencyProperty.Register(
+		nameof(SelectedItem), typeof(object), typeof(ProjectTree),
+		new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedItemPropertyChanged));
+
+	/// <summary>Identifies the <see cref="RevealRequest"/> property.</summary>
+	public static readonly DependencyProperty RevealRequestProperty = DependencyProperty.Register(
+		nameof(RevealRequest), typeof(RevealRequest), typeof(ProjectTree), new PropertyMetadata(null, OnRevealRequestChanged));
 
 	/// <summary>Identifies the <see cref="SelectedItems"/> property.</summary>
 	public static readonly DependencyProperty SelectedItemsProperty = DependencyProperty.Register(
@@ -112,15 +116,61 @@ public partial class ProjectTree : UserControl
 		set => SetValue(ProjectProperty, value);
 	}
 
-	/// <summary>The model object of the selected node, or null.</summary>
+	/// <summary>
+	/// The model object of the selected node, or null; binds two-way by default (the window's current item). The tree
+	/// writes it when the user selects a row, and shows a value set from outside (see <see cref="OnSelectedItemPropertyChanged"/>).
+	/// </summary>
 	public object? SelectedItem
 	{
 		get => GetValue(SelectedItemProperty);
-		private set => SetValue(SelectedItemKey, value);
+		set => SetValue(SelectedItemProperty, value);
 	}
 
-	/// <summary>Raised when <see cref="SelectedItem"/> changes.</summary>
-	public event RoutedPropertyChangedEventHandler<object>? SelectedItemChanged;
+	/// <summary>
+	/// A selection made elsewhere (a marker or graph box on the preview, a command) is mirrored in the tree, which then
+	/// raises its own change with the same item; the tree's own change is already shown. The row does not take the
+	/// focus: a handle on the preview keeps it, so Tab can move on to the next handle (the tree stole it and broke the Tab
+	/// cycle, 2026-10-14). Null, a click on empty preview space, deselects the row.
+	/// </summary>
+	private static void OnSelectedItemPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+	{
+		var owner = (ProjectTree)d;
+		if (e.NewValue == null)
+		{
+			owner.ClearSelection();
+		}
+		else if (!ReferenceEquals(owner.tree.SelectedItem, e.NewValue))
+		{
+			owner.Select(e.NewValue, focus: false);
+		}
+	}
+
+	/// <summary>
+	/// The newest request to bring an item or a folder to the user (the selection's; <see cref="UI.RevealRequest"/>): on
+	/// each change the tree selects that row, expanded, and gives it the keyboard focus, once it has generated the row.
+	/// </summary>
+	public RevealRequest? RevealRequest
+	{
+		get => (RevealRequest?)GetValue(RevealRequestProperty);
+		set => SetValue(RevealRequestProperty, value);
+	}
+
+	private static void OnRevealRequestChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+	{
+		var owner = (ProjectTree)d;
+		if (e.NewValue is not RevealRequest request)
+		{
+			return;
+		}
+		if (request.IsFolder)
+		{
+			owner.SelectFolder((IEnumerable)request.Target);
+		}
+		else
+		{
+			owner.Select(request.Target);
+		}
+	}
 
 	/// <summary>The shared selection (the main window's); the tree adds and removes items on Ctrl, Shift, Insert and marks their rows.</summary>
 	public ObservableCollection<object>? SelectedItems
@@ -171,7 +221,7 @@ public partial class ProjectTree : UserControl
 	}
 
 	/// <summary>Deselects the selected node, if any; the tree then raises its change with null (2026-10-15, a click on empty preview space).</summary>
-	public void ClearSelection()
+	private void ClearSelection()
 	{
 		if (tree.SelectedItem is { } item)
 		{
@@ -180,7 +230,7 @@ public partial class ProjectTree : UserControl
 	}
 
 	/// <summary>Selects the node of a model object once the tree has generated it; with <paramref name="focus"/> the node also takes keyboard focus. A selection mirrored from elsewhere leaves the shared selection as it is.</summary>
-	public void Select(object item, bool focus = true) =>
+	private void Select(object item, bool focus = true) =>
 		Dispatcher.InvokeAsync(() => Mirror(() => tree.SetSelectedItem(item, expand: true, focus)), DispatcherPriority.Loaded);
 
 	private void Mirror(Action action)
@@ -196,17 +246,8 @@ public partial class ProjectTree : UserControl
 		}
 	}
 
-	/// <summary>Selects the root node; call after setting <see cref="Project"/>.</summary>
-	public void SelectRoot()
-	{
-		if (Project != null)
-		{
-			Select(Project);
-		}
-	}
-
 	/// <summary>Selects the folder node that shows <paramref name="list"/> (the project's sources or probes).</summary>
-	public void SelectFolder(IEnumerable list) =>
+	private void SelectFolder(IEnumerable list) =>
 		Dispatcher.InvokeAsync(() =>
 		{
 			if (FindNode(tree, node => node is NamedCollection folder && ReferenceEquals(folder.Items, list)) is { } folder)
@@ -234,7 +275,8 @@ public partial class ProjectTree : UserControl
 
 	/// <summary>
 	/// The TreeView's selection changed: by the user (a click, the arrows) the shared selection becomes that item alone,
-	/// or with Shift held the range from the anchor to it; mirrored from elsewhere it is left alone. Then the window hears.
+	/// or with Shift held the range from the anchor to it; mirrored from elsewhere it is left alone. Then
+	/// <see cref="SelectedItem"/> takes it, and with it whatever is bound there.
 	/// </summary>
 	private void OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
 	{
@@ -251,8 +293,7 @@ public partial class ProjectTree : UserControl
 				_anchor = e.NewValue;
 			}
 		}
-		SelectedItem = e.NewValue;
-		SelectedItemChanged?.Invoke(this, e);
+		SetCurrentValue(SelectedItemProperty, e.NewValue);
 	}
 
 	/// <summary>Every source, part and probe in tree order.</summary>

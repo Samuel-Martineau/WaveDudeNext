@@ -30,6 +30,8 @@ using System.Windows.Threading;
 using WaveDudeNext.Model;
 using WaveDudeNext.Rendering;
 using WaveDudeNext.Runs;
+using WaveDudeNext.UI;
+using WaveDudeNext.UI.Rendering;
 using WaveDudeNext.WPF.Commands;
 using WaveDudeNext.WPF.Converters;
 using WaveDudeNext.WPF.Rendering;
@@ -199,14 +201,20 @@ public partial class PreviewPane : UserControl
 
 	public static void SetSettings(DependencyObject element, DisplayLayer? value) => element.SetValue(SettingsProperty, value);
 
+	/// <summary>Identifies the <see cref="ShownFrame"/> property.</summary>
+	public static readonly DependencyProperty ShownFrameProperty = DependencyProperty.Register(
+		nameof(ShownFrame), typeof(ShownFrame), typeof(PreviewPane), new PropertyMetadata(null));
+
 	/// <summary>
 	/// The frames the pictures show and the index of the one shown (the scratch frame, index 0, or the run's frame at the
-	/// position), or null when nothing is shown; for the brightness fit. UI thread.
+	/// position), or null when nothing is shown. The pane sets it, with <see cref="DependencyObject.SetCurrentValue"/> so
+	/// the binding stays, for the application's brightness fit, which binds it (<see cref="PreviewState.ShownFrame"/>).
 	/// </summary>
-	public (IFrameSource Source, int Frame)? ShownFrame => _presenter.Source is { } source ? (source, _shownFrame) : null;
-
-	/// <summary>Index of the frame last asked of the presenter in its source (see <see cref="ShownFrame"/>).</summary>
-	private int _shownFrame;
+	public ShownFrame? ShownFrame
+	{
+		get => (ShownFrame?)GetValue(ShownFrameProperty);
+		set => SetValue(ShownFrameProperty, value);
+	}
 
 	/// <summary>Identifies the <see cref="IntensityImage"/> property.</summary>
 	public static readonly DependencyProperty IntensityImageProperty = DependencyProperty.Register(
@@ -251,17 +259,17 @@ public partial class PreviewPane : UserControl
 	/// <summary>Identifies the <see cref="GraphScratch"/> property.</summary>
 	public static readonly DependencyProperty GraphScratchProperty = GraphScratchKey.DependencyProperty;
 
-	private static readonly DependencyPropertyKey CanvasWidthKey = DependencyProperty.RegisterReadOnly(
+	/// <summary>Identifies the <see cref="CanvasWidth"/> property.</summary>
+	public static readonly DependencyProperty CanvasWidthProperty = DependencyProperty.Register(
 		nameof(CanvasWidth), typeof(int), typeof(PreviewPane), new PropertyMetadata(1));
 
-	/// <summary>Identifies the <see cref="CanvasWidth"/> property.</summary>
-	public static readonly DependencyProperty CanvasWidthProperty = CanvasWidthKey.DependencyProperty;
-
-	private static readonly DependencyPropertyKey CanvasHeightKey = DependencyProperty.RegisterReadOnly(
+	/// <summary>Identifies the <see cref="CanvasHeight"/> property.</summary>
+	public static readonly DependencyProperty CanvasHeightProperty = DependencyProperty.Register(
 		nameof(CanvasHeight), typeof(int), typeof(PreviewPane), new PropertyMetadata(1));
 
-	/// <summary>Identifies the <see cref="CanvasHeight"/> property.</summary>
-	public static readonly DependencyProperty CanvasHeightProperty = CanvasHeightKey.DependencyProperty;
+	/// <summary>Identifies the <see cref="ColorsVersion"/> property.</summary>
+	public static readonly DependencyProperty ColorsVersionProperty = DependencyProperty.Register(
+		nameof(ColorsVersion), typeof(int), typeof(PreviewPane), new PropertyMetadata(0, (d, _) => ((PreviewPane)d).RefreshColors()));
 
 	/// <summary>The project's canvas width, bound privately; the canvas size follows the run while one exists.</summary>
 	private static readonly DependencyProperty SceneWidthProperty = DependencyProperty.Register(
@@ -598,18 +606,32 @@ public partial class PreviewPane : UserControl
 		set => SetValue(IsProbesStaleProperty, value);
 	}
 
-	/// <summary>Width in pixels of the canvas the pictures show: the run's while one exists, else the project's blank canvas size.</summary>
+	/// <summary>
+	/// Width in pixels of the canvas the pictures show: the run's while one exists, else the project's blank canvas size.
+	/// The pane sets it, with <see cref="DependencyObject.SetCurrentValue"/> so the binding stays; the application binds it
+	/// (<see cref="PreviewState.CanvasWidth"/>) for where a new item lands.
+	/// </summary>
 	public int CanvasWidth
 	{
 		get => (int)GetValue(CanvasWidthProperty);
-		private set => SetValue(CanvasWidthKey, value);
+		set => SetValue(CanvasWidthProperty, value);
 	}
 
-	/// <summary>Height in pixels of the canvas the pictures show.</summary>
+	/// <summary>Height in pixels of the canvas the pictures show (see <see cref="CanvasWidth"/>).</summary>
 	public int CanvasHeight
 	{
 		get => (int)GetValue(CanvasHeightProperty);
-		private set => SetValue(CanvasHeightKey, value);
+		set => SetValue(CanvasHeightProperty, value);
+	}
+
+	/// <summary>
+	/// Counts the application's colour changes (<see cref="PreviewState.ColorsVersion"/>, bound): a project colour scheme
+	/// edited, added or removed rebuilds both palettes and redraws. A display setting's change the pane sees itself.
+	/// </summary>
+	public int ColorsVersion
+	{
+		get => (int)GetValue(ColorsVersionProperty);
+		set => SetValue(ColorsVersionProperty, value);
 	}
 
 	/// <summary>The project's display settings of the field picture (scheme, brightness, black level, whether shown). Bound.</summary>
@@ -727,7 +749,7 @@ public partial class PreviewPane : UserControl
 			_presenter.Source = _scratchSource;
 			GraphScratch = scratch;
 			UpdateCanvas(_scratchSource);
-			_shownFrame = 0;
+			SetCurrentValue(ShownFrameProperty, new ShownFrame(_scratchSource, 0));
 			_presenter.Show(0);
 		}
 		else if (run != null && run.FrameCount > Position)
@@ -737,7 +759,7 @@ public partial class PreviewPane : UserControl
 			// the stored frame is right even with the probes stale; the graphs then take the scratch recording for this position once it is there
 			GraphScratch = IsProbesStale && scratch is { Snapshot: not null } && scratch.Frame == Position ? scratch : null;
 			UpdateCanvas(run.Frames);
-			_shownFrame = Position;
+			SetCurrentValue(ShownFrameProperty, new ShownFrame(run.Frames, Position));
 			_presenter.Show(Position);
 		}
 		else if (run == null && scratch == null && _presenter.Source != null)
@@ -747,6 +769,7 @@ public partial class PreviewPane : UserControl
 			// without a run flash the empty picture before the new frame arrived (2026-10-13)
 			_presenter.Source = null;
 			GraphScratch = null;
+			SetCurrentValue(ShownFrameProperty, null);
 			UpdateCanvas(null);
 		}
 		else
@@ -763,8 +786,8 @@ public partial class PreviewPane : UserControl
 		// picture's own size is)
 		int width = Math.Max(1, source?.CanvasWidth ?? Run?.Spec.Width ?? ScenePixels?.Width ?? (int)GetValue(SceneWidthProperty));
 		int height = Math.Max(1, source?.CanvasHeight ?? Run?.Spec.Height ?? ScenePixels?.Height ?? (int)GetValue(SceneHeightProperty));
-		CanvasWidth = width;
-		CanvasHeight = height;
+		SetCurrentValue(CanvasWidthProperty, width);
+		SetCurrentValue(CanvasHeightProperty, height);
 		if (_blackFrame.PixelWidth != width || _blackFrame.PixelHeight != height)
 		{
 			_blackFrame = BlackFrame(width, height);
@@ -992,8 +1015,8 @@ public partial class PreviewPane : UserControl
 		}
 	}
 
-	/// <summary>Rebuilds both palettes and redraws: a project colour scheme changed, or the project was replaced.</summary>
-	public void RefreshColors()
+	/// <summary>Rebuilds both palettes and redraws: a project colour scheme changed (<see cref="ColorsVersion"/>).</summary>
+	private void RefreshColors()
 	{
 		ApplyLayer(FrameLayer.Field);
 		ApplyLayer(FrameLayer.Intensity);

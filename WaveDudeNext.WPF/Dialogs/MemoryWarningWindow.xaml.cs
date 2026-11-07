@@ -23,15 +23,10 @@ using System.Windows.Input;
 using NLog;
 using WaveDudeNext.Engine;
 using WaveDudeNext.Runs;
+using WaveDudeNext.UI;
 using WaveDudeNext.WPF.Theming;
 
 namespace WaveDudeNext.WPF.Dialogs;
-
-/// <summary>What the memory warning was answered with.</summary>
-/// <param name="Quality">The preview quality to run at: the current one with each ticked lever a notch lower, the current one itself when nothing was ticked.</param>
-/// <param name="CacheAuto">"RAM cache size to Auto" was ticked: the caller sets the share to automatic.</param>
-/// <param name="Mute">"Do not warn me again" was ticked: the caller clears the setting.</param>
-public sealed record MemoryWarningChoice(PreviewQuality Quality, bool CacheAuto, bool Mute);
 
 /// <summary>
 /// The memory warning (2026-11-03, the user's design): shown before a preview run whose frames would not all fit in the

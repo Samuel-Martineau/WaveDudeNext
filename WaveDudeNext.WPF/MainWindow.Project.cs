@@ -24,6 +24,7 @@ using Microsoft.Win32;
 using WaveDudeNext.Model;
 using WaveDudeNext.Rendering;
 using WaveDudeNext.Runs;
+using WaveDudeNext.UI;
 using WaveDudeNext.WPF.Commands;
 using WaveDudeNext.WPF.Converters;
 using WaveDudeNext.WPF.Rendering;
@@ -31,88 +32,38 @@ using WaveDudeNext.WPF.Rendering;
 namespace WaveDudeNext.WPF;
 
 /// <summary>
-/// Handlers of <see cref="Commands.ProjectCommands"/>: structural edits of the open project.
-/// A command parameter names the node to act on; without one the tree selection is used.
+/// Handlers of <see cref="Commands.ProjectCommands"/>: structural edits of the open project, carried out by the
+/// <see cref="ProjectItems"/> model. A command parameter names the node to act on; without one the selection is used.
+/// What stays here is what needs the window: where on the shown canvas a new item lands, the menu of part kinds, a
+/// text box's own Delete, and the dialogs of the scene image's commands, which the <see cref="SceneImageFile"/> model
+/// carries out.
 /// </summary>
 public partial class MainWindow
 {
-	private object? Target(object? parameter) => parameter ?? SelectedItem;
+	/// <summary>The item commands of the open project; created in the constructor.</summary>
+	private readonly ProjectItems _items;
 
-	/// <summary>
-	/// What a command acts on: the whole selection when its target is one of several selected items (Explorer's rule,
-	/// 2026-10-19), else the target alone. A snapshot, since acting changes the selection.
-	/// </summary>
-	private object[] Group(object? parameter)
-	{
-		object? target = Target(parameter);
-		if (target == null)
-		{
-			return [];
-		}
-		return SelectedItems.Count > 1 && SelectedItems.Contains(target) ? [.. SelectedItems] : [target];
-	}
-
-	/// <summary>Every source, part and probe in tree order; the range selections and Select all draw on it.</summary>
-	private IEnumerable<object> Selectable() => Project.Sources.Cast<object>().Concat(Project.Parts).Concat(Project.Probes);
-
-	private void CanSelectAll(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = Selectable().Any();
+	private void CanSelectAll(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = Selection.Groupable(Project).Any();
 
 	/// <summary>Ctrl+A: every source, part and probe; the last one becomes the current item.</summary>
-	private void OnSelectAll(object sender, ExecutedRoutedEventArgs e)
-	{
-		object[] all = [.. Selectable()];
-		SelectedItems.Clear();
-		foreach (object item in all)
-		{
-			SelectedItems.Add(item);
-		}
-		SelectedItem = all.Length > 0 ? all[^1] : null;
-	}
+	private void OnSelectAll(object sender, ExecutedRoutedEventArgs e) => Selection.SelectAll(Project);
 
 	private void CanToggleSelected(object sender, CanExecuteRoutedEventArgs e) =>
-		e.CanExecute = Target(e.Parameter) is Source or OpticalPart or Probe;
+		e.CanExecute = Selection.IsGroupable(Selection.Target(e.Parameter));
 
 	/// <summary>Insert or Ctrl+Space on a tree row: into the selection, or out of it (the current item then moves to the last one left).</summary>
 	private void OnToggleSelected(object sender, ExecutedRoutedEventArgs e)
 	{
-		object? item = Target(e.Parameter);
-		if (item is not (Source or OpticalPart or Probe))
+		if (Selection.Target(e.Parameter) is { } item && Selection.IsGroupable(item))
 		{
-			return;
-		}
-		if (SelectedItems.Contains(item))
-		{
-			SelectedItems.Remove(item);
-			if (ReferenceEquals(SelectedItem, item))
-			{
-				SelectedItem = SelectedItems.LastOrDefault();
-			}
-		}
-		else
-		{
-			SelectedItems.Add(item);
-			SelectedItem = item;
+			Selection.Toggle(item);
 		}
 	}
 
-	/// <summary>The project list a tree node stands for: a folder's list, or the list containing an item.</summary>
-	private IList? ListOf(object? node) => node switch
-	{
-		NamedCollection folder when ReferenceEquals(folder.Items, Project.Sources) => Project.Sources,
-		NamedCollection folder when ReferenceEquals(folder.Items, Project.Parts) => Project.Parts,
-		NamedCollection folder when ReferenceEquals(folder.Items, Project.Probes) => Project.Probes,
-		NamedCollection folder when ReferenceEquals(folder.Items, Project.ColorSchemes) => Project.ColorSchemes,
-		Source => Project.Sources,
-		OpticalPart => Project.Parts,
-		Probe => Project.Probes,
-		ColorScheme => Project.ColorSchemes,
-		_ => null,
-	};
-
 	/// <summary>The centre of the canvas the preview shows (an image scene's own size), where a new source, probe or part lands (2026-10-26, Jeroen's report: one at the corner went unnoticed).</summary>
-	private (int X, int Y) CanvasCentre => (previewPane.CanvasWidth / 2, previewPane.CanvasHeight / 2);
+	private (int X, int Y) CanvasCentre => (Preview.CanvasWidth / 2, Preview.CanvasHeight / 2);
 
-	private void OnAddSource(object sender, ExecutedRoutedEventArgs e) => Added(Project.AddSource(CanvasCentre.X, CanvasCentre.Y));
+	private void OnAddSource(object sender, ExecutedRoutedEventArgs e) => _items.AddSource(CanvasCentre.X, CanvasCentre.Y);
 
 	/// <summary>
 	/// Add part: with an <see cref="OpticalPart"/> subclass as parameter (the menu entries) the part is appended; without one (the
@@ -121,9 +72,9 @@ public partial class MainWindow
 	/// </summary>
 	private void OnAddPart(object sender, ExecutedRoutedEventArgs e)
 	{
-		if (e.Parameter is Type type)
+		if (e.Parameter is Type kind)
 		{
-			Added(Project.AddPart(type, CanvasCentre.X, CanvasCentre.Y));
+			_items.AddPart(kind, CanvasCentre.X, CanvasCentre.Y);
 		}
 		else
 		{
@@ -142,94 +93,45 @@ public partial class MainWindow
 		}
 	}
 
-	private void OnAddProbe(object sender, ExecutedRoutedEventArgs e) => Added(Project.AddProbe(CanvasCentre.X, CanvasCentre.Y));
+	private void OnAddProbe(object sender, ExecutedRoutedEventArgs e) => _items.AddProbe(CanvasCentre.X, CanvasCentre.Y);
 
+	/// <summary>A folder's plus: the command's parameter is the folder's node, whose list takes the new item.</summary>
 	private void CanAdd(object sender, CanExecuteRoutedEventArgs e) =>
-		e.CanExecute = Target(e.Parameter) is NamedCollection folder && ListOf(folder) != null;
+		e.CanExecute = Selection.Target(e.Parameter) is NamedCollection folder && _items.IsList(folder.Items);
 
 	private void OnAdd(object sender, ExecutedRoutedEventArgs e)
 	{
-		IList? list = ListOf(Target(e.Parameter) as NamedCollection);
-		if (ReferenceEquals(list, Project.Sources))
-		{
-			Added(Project.AddSource());
-		}
-		else if (ReferenceEquals(list, Project.Parts))
-		{
-			OpenPartMenu(e.OriginalSource);
-		}
-		else if (ReferenceEquals(list, Project.Probes))
-		{
-			Added(Project.AddProbe());
-		}
-		else if (ReferenceEquals(list, Project.ColorSchemes))
-		{
-			Added(Project.AddColorScheme());
-		}
-	}
-
-	private void CanEditItem(object sender, CanExecuteRoutedEventArgs e) =>
-		e.CanExecute = Target(e.Parameter) is INamed;
-
-	private void CanToggleEnabled(object sender, CanExecuteRoutedEventArgs e) =>
-		e.CanExecute = Target(e.Parameter) is Source or OpticalPart or Probe;
-
-	/// <summary>The tree's check boxes by keyboard: Space on a selected source, part or probe flips it (the author's point 11, 2026-10-13); each of a selected group flips on its own.</summary>
-	private void OnToggleEnabled(object sender, ExecutedRoutedEventArgs e)
-	{
-		foreach (object item in Group(e.Parameter))
-		{
-			switch (item)
-			{
-				case Source source:
-					source.Enabled = !source.Enabled;
-					break;
-				case OpticalPart part:
-					part.Enabled = !part.Enabled;
-					break;
-				case Probe probe:
-					probe.Active = !probe.Active;
-					break;
-			}
-		}
-	}
-
-	/// <summary>A copy after each original; the copies become the selection, the last one the current item with the caret in its name.</summary>
-	private void OnDuplicate(object sender, ExecutedRoutedEventArgs e)
-	{
-		var copies = new List<object>();
-		foreach (object item in Group(e.Parameter))
-		{
-			object? copy = item switch
-			{
-				Source source => Project.Duplicate(source),
-				OpticalPart part => Project.Duplicate(part),
-				Probe probe => Project.Duplicate(probe),
-				ColorScheme scheme => Project.Duplicate(scheme),
-				_ => null,
-			};
-			if (copy != null)
-			{
-				copies.Add(copy);
-			}
-		}
-		if (copies.Count == 0)
+		if (Selection.Target(e.Parameter) is not NamedCollection folder)
 		{
 			return;
 		}
-		SelectedItems.Clear();
-		foreach (object copy in copies)
+		if (ReferenceEquals(folder.Items, Project.Parts))
 		{
-			SelectedItems.Add(copy);
+			// a part's kind is chosen first: the menu of kinds under the button
+			OpenPartMenu(e.OriginalSource);
 		}
-		Added(copies[^1]);
+		else
+		{
+			// at the centre of the shown canvas, as the toolbar's buttons put it (the folder's plus had taken the scene's
+			// own size until 2026-11-06, which an image scene does not have)
+			_items.AddTo(folder.Items, CanvasCentre.X, CanvasCentre.Y);
+		}
 	}
+
+	private void CanEditItem(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = _items.CanEdit(e.Parameter);
+
+	private void CanToggleEnabled(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = _items.CanToggleEnabled(e.Parameter);
+
+	/// <summary>The tree's check boxes by keyboard: Space on a selected source, part or probe flips it (the author's point 11, 2026-10-13); each of a selected group flips on its own.</summary>
+	private void OnToggleEnabled(object sender, ExecutedRoutedEventArgs e) => _items.ToggleEnabled(e.Parameter);
+
+	private void OnDuplicate(object sender, ExecutedRoutedEventArgs e) => _items.Duplicate(e.Parameter);
 
 	/// <summary>Edit > Delete: in a text box (the menu's command starts from the element that had the focus) its selected text; else what Remove takes.</summary>
 	private void CanDelete(object sender, CanExecuteRoutedEventArgs e) =>
 		e.CanExecute = e.OriginalSource is System.Windows.Controls.TextBox box
 			? box is { IsReadOnly: false, SelectionLength: > 0 }
-			: Target(null) is INamed;
+			: _items.CanEdit(null);
 
 	private void OnDelete(object sender, ExecutedRoutedEventArgs e)
 	{
@@ -243,94 +145,19 @@ public partial class MainWindow
 		}
 	}
 
-	/// <summary>Removes the target, or the whole selection it belongs to; the user is kept in place at the slot of the last one removed.</summary>
-	private void OnRemove(object sender, ExecutedRoutedEventArgs e)
-	{
-		object[] group = Group(e.Parameter);
-		if (group.Length == 0 || ListOf(group[^1]) is not { } list)
-		{
-			return;
-		}
-		int index = list.IndexOf(group[^1]);
-		foreach (object item in group)
-		{
-			SelectedItems.Remove(item);
-			switch (item)
-			{
-				case Source source:
-					Project.Remove(source);
-					break;
-				case OpticalPart part:
-					Project.Remove(part);
-					break;
-				case Probe probe:
-					Project.Remove(probe);
-					break;
-				case ColorScheme scheme:
-					Project.Remove(scheme);
-					break;
-			}
-		}
-		// keep the user in place: the item that took the slot, else the folder
-		if (list.Count > 0)
-		{
-			projectTree.Select(list[Math.Clamp(index, 0, list.Count - 1)]!);
-		}
-		else
-		{
-			projectTree.SelectFolder(list);
-		}
-	}
+	private void OnRemove(object sender, ExecutedRoutedEventArgs e) => _items.Remove(e.Parameter);
 
-	private void CanMoveUp(object sender, CanExecuteRoutedEventArgs e)
-	{
-		object? item = Target(e.Parameter);
-		e.CanExecute = ListOf(item) is { } list && item is INamed && list.IndexOf(item) > 0;
-	}
+	private void CanMoveUp(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = _items.CanMove(e.Parameter, -1);
 
-	private void CanMoveDown(object sender, CanExecuteRoutedEventArgs e)
-	{
-		object? item = Target(e.Parameter);
-		e.CanExecute = ListOf(item) is { } list && item is INamed && list.IndexOf(item) < list.Count - 1;
-	}
+	private void CanMoveDown(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = _items.CanMove(e.Parameter, +1);
 
-	private void OnMoveUp(object sender, ExecutedRoutedEventArgs e) => MoveBy(Target(e.Parameter), -1);
+	private void OnMoveUp(object sender, ExecutedRoutedEventArgs e) => _items.Move(e.Parameter, -1);
 
-	private void OnMoveDown(object sender, ExecutedRoutedEventArgs e) => MoveBy(Target(e.Parameter), +1);
-
-	private void MoveBy(object? item, int delta)
-	{
-		IList? list = ListOf(item);
-		if (list == null)
-		{
-			return;
-		}
-		int index = list.IndexOf(item) + delta;
-		bool moved = item switch
-		{
-			Source source => Project.Move(source, index),
-			OpticalPart part => Project.Move(part, index),
-			Probe probe => Project.Move(probe, index),
-			ColorScheme scheme => Project.Move(scheme, index),
-			_ => false,
-		};
-		if (moved)
-		{
-			projectTree.Select(item!);
-		}
-	}
-
-	/// <summary>Selects a newly added item and puts the caret into its first editor (the name).</summary>
-	private void Added(object item)
-	{
-		projectTree.Select(item);
-		propertiesPane.FocusFirstEditor();
-	}
+	private void OnMoveDown(object sender, ExecutedRoutedEventArgs e) => _items.Move(e.Parameter, +1);
 
 	/// <summary>
-	/// Scene > Browse: picks an image file and embeds its bytes in the project (2026-10-13; the file is
-	/// decoded once to prove it is an image and to log its size). The scene switches to image mode and
-	/// shows the file's name; the watcher treats the change like any scene edit.
+	/// Scene > Browse: picks an image file, which the scene image model embeds in the project (2026-10-13). A file
+	/// that cannot be read as an image is logged there as an error, which the status bar shows.
 	/// </summary>
 	private void OnBrowseSceneImage(object sender, ExecutedRoutedEventArgs e)
 	{
@@ -339,75 +166,31 @@ public partial class MainWindow
 			Filter = (string)FindResource("SceneImageFilter"),
 			Title = (string)FindResource("TipBrowseSceneImage"),
 		};
-		if (dialog.ShowDialog(this) != true)
+		if (dialog.ShowDialog(this) == true)
 		{
-			return;
-		}
-		try
-		{
-			byte[] bytes = File.ReadAllBytes(dialog.FileName);
-			ScenePixels pixels = SceneImageLoader.Load(bytes);
-			Project.Scene.ImageData = bytes;
-			Project.Scene.Image = Path.GetFileName(dialog.FileName);
-			Project.Scene.ImagePath = Scene.StoredImagePath(ProjectFolder, dialog.FileName);
-			Project.Scene.Mode = SceneMode.Image;
-			Logger.Info("Scene image '{Name}' embedded: {Width}×{Height}, {Size} KB", Project.Scene.Image, pixels.Width, pixels.Height, Math.Max(1, bytes.Length / 1024));
-		}
-		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or FileFormatException)
-		{
-			Logger.Error(ex, "The image could not be loaded: {Message}", ex.Message);
+			SceneImage.TryEmbed(dialog.FileName);
 		}
 	}
 
-	private void CanRemoveSceneImage(object sender, CanExecuteRoutedEventArgs e) =>
-		e.CanExecute = Project.Scene is { } scene && (scene.ImageData != null || scene.Image.Length > 0 || scene.ImagePath.Length > 0);
+	private void CanRemoveSceneImage(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = SceneImage.CanRemove;
 
-	/// <summary>
-	/// Remove beside Browse (2026-10-26, Jeroen's report: there was no way to drop an image): the canvas takes the image's
-	/// size, so nothing moves, then the scene drops the name, the path and the embedded bytes and is a blank canvas. The
-	/// watcher treats it like any scene edit, one undo step.
-	/// </summary>
-	private void OnRemoveSceneImage(object sender, ExecutedRoutedEventArgs e)
-	{
-		Scene scene = Project.Scene;
-		if (scene.ImageData != null)
-		{
-			try
-			{
-				ScenePixels pixels = SceneImageLoader.Load(scene.ImageData);
-				scene.Width = pixels.Width;
-				scene.Height = pixels.Height;
-			}
-			catch (Exception ex) when (ex is NotSupportedException or FileFormatException or IOException)
-			{
-				Logger.Debug("The embedded image could not be decoded for its size; the canvas keeps {Width}×{Height}: {Message}", scene.Width, scene.Height, ex.Message);
-			}
-		}
-		scene.RemoveImage();
-		Logger.Info("Scene image removed: a blank canvas of {Width}×{Height}", scene.Width, scene.Height);
-	}
+	/// <summary>Remove beside Browse (2026-10-26, Jeroen's report: there was no way to drop an image): a blank canvas of the image's size remains, one undo step.</summary>
+	private void OnRemoveSceneImage(object sender, ExecutedRoutedEventArgs e) => SceneImage.Remove();
 
-	private void CanSaveSceneImage(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = Project.Scene is { ImageData: not null };
+	private void CanSaveSceneImage(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = SceneImage.CanSave;
 
 	/// <summary>
 	/// The save button between the picker and the X (2026-10-29, the user's design): writes the embedded bytes, the file as
 	/// it was embedded, to a file of the user's choice, proposed under the image's name in its folder when that exists, else
-	/// the project's. An export: the project, its path and the watcher stay as they are.
+	/// the project's. An export: the project, its path and the watch stay as they are.
 	/// </summary>
 	private void OnSaveSceneImage(object sender, ExecutedRoutedEventArgs e)
 	{
-		Scene scene = Project.Scene;
-		if (scene.ImageData is not { } bytes)
+		if (!SceneImage.CanSave)
 		{
 			return;
 		}
-		string extension = Path.GetExtension(scene.Image);
-		if (extension.Length == 0)
-		{
-			extension = ImageExtension(bytes);
-		}
-		string resolved = scene.ResolveImagePath(ProjectFolder);
-		string? folder = resolved.Length > 0 ? Path.GetDirectoryName(resolved) : null;
+		string extension = SceneImage.SaveExtension;
 		var dialog = new SaveFileDialog
 		{
 			Title = (string)FindResource("TipSaveSceneImage"),
@@ -415,34 +198,17 @@ public partial class MainWindow
 			Filter = extension.Length > 0 ? string.Format((string)FindResource("SceneImageSaveFilterFormat"), extension) : (string)FindResource("SceneImageFilter"),
 			AddExtension = extension.Length > 0,
 			DefaultExt = extension,
-			FileName = scene.Image.Length > 0 ? scene.Image : ProjectName() + "_scene" + extension,
-			InitialDirectory = folder != null && Directory.Exists(folder) ? folder : ProjectFolder ?? "",
+			FileName = SceneImage.SaveFileName,
+			InitialDirectory = SceneImage.SaveFolder,
 		};
 		if (dialog.ShowDialog(this) != true)
 		{
 			Logger.Debug("Scene image save cancelled in the Save dialog");
 			return;
 		}
-		try
+		if (!SceneImage.TrySave(dialog.FileName, out Exception? error) && error != null)
 		{
-			File.WriteAllBytes(dialog.FileName, bytes);
-			Logger.Info("Scene image saved: {Size} KB to {Path}", Math.Max(1, bytes.Length / 1024), dialog.FileName);
-		}
-		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-		{
-			Logger.Error(ex, "The scene image could not be saved: {Message}", ex.Message);
-			ShowError(string.Format((string)FindResource("SceneImageSaveError"), dialog.FileName), ex);
+			ShowError(string.Format((string)FindResource("SceneImageSaveError"), dialog.FileName), error);
 		}
 	}
-
-	/// <summary>The file extension of an image's bytes by their signature: PNG, JPEG, BMP, GIF or TIFF; "" when unknown.</summary>
-	private static string ImageExtension(byte[] bytes) => bytes switch
-	{
-		[0x89, 0x50, 0x4E, 0x47, ..] => ".png",
-		[0xFF, 0xD8, 0xFF, ..] => ".jpg",
-		[0x42, 0x4D, ..] => ".bmp",
-		[0x47, 0x49, 0x46, 0x38, ..] => ".gif",
-		[0x49, 0x49, 0x2A, 0x00, ..] or [0x4D, 0x4D, 0x00, 0x2A, ..] => ".tif",
-		_ => "",
-	};
 }

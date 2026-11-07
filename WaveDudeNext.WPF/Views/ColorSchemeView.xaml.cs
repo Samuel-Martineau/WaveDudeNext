@@ -21,8 +21,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using WaveDudeNext.Model;
 using WaveDudeNext.Rendering;
+using WaveDudeNext.UI.Rendering;
 using WaveDudeNext.WPF.Panes;
-using WaveDudeNext.WPF.Rendering;
 
 namespace WaveDudeNext.WPF.Views;
 

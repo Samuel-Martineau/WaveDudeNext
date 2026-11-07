@@ -96,7 +96,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<!-- the path and, when the file is not on disk, a note (the window checks; the embedded image is what is simulated) -->
 				<DockPanel Style="{StaticResource ImageRow}">
 					<TextBlock DockPanel.Dock="Right" Margin="4,0,0,0" VerticalAlignment="Center" Text="{DynamicResource SceneImageNotFound}"
-					           Visibility="{Binding SceneImageFileMissing, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}, Converter={StaticResource BoolToVisibility}}"
+					           Visibility="{Binding SceneImage.IsFileMissing, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}, Converter={StaticResource BoolToVisibility}}"
 					           AutomationProperties.AutomationId="SceneImageNotFound" />
 					<TextBlock VerticalAlignment="Center" Text="{Binding ImagePath}" TextTrimming="CharacterEllipsis" ToolTip="{meta:Hint model:Scene.ImagePath}"
 					           AutomationProperties.AutomationId="SceneImagePath" />

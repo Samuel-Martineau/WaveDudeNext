@@ -17,6 +17,7 @@
 
 using System.Globalization;
 using System.Windows.Data;
+using WaveDudeNext.UI;
 
 namespace WaveDudeNext.WPF.Converters;
 

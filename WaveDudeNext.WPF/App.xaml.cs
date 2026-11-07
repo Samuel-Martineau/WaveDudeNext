@@ -29,7 +29,8 @@ using WaveDudeNext.WPF.Localization;
 using WaveDudeNext.WPF.Logging;
 using WaveDudeNext.Rendering;
 using WaveDudeNext.Runs;
-using WaveDudeNext.WPF.Rendering;
+using WaveDudeNext.UI;
+using WaveDudeNext.UI.Rendering;
 using WaveDudeNext.WPF.Theming;
 
 namespace WaveDudeNext.WPF;
@@ -201,7 +202,7 @@ public partial class App : Application
 		// double-clicking a project file in Explorer then starts this exe with the path as e.Args[0]
 		if (Environment.ProcessPath is string executable)
 		{
-			FileAssociation.Register(WPF.MainWindow.ProjectExtension, FileAssociation.ProjectProgId, FileAssociation.ProjectDescription, executable);
+			FileAssociation.Register(ProjectDocument.Extension, FileAssociation.ProjectProgId, FileAssociation.ProjectDescription, executable);
 			FileAssociation.Register(ColorSchemeStore.XmlExtension, FileAssociation.SchemeProgId, FileAssociation.SchemeDescription, executable);
 		}
 

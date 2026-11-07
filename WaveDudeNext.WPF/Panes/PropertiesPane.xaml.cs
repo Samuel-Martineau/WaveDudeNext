@@ -20,6 +20,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WaveDudeNext.Model;
+using WaveDudeNext.UI;
 
 namespace WaveDudeNext.WPF.Panes;
 
@@ -38,9 +39,30 @@ public partial class PropertiesPane : UserControl
 	public static readonly DependencyProperty ProjectProperty = DependencyProperty.Register(
 		nameof(Project), typeof(Project), typeof(PropertiesPane));
 
+	/// <summary>Identifies the <see cref="RevealRequest"/> property.</summary>
+	public static readonly DependencyProperty RevealRequestProperty = DependencyProperty.Register(
+		nameof(RevealRequest), typeof(RevealRequest), typeof(PropertiesPane),
+		new PropertyMetadata(null, (d, e) =>
+		{
+			if (e.NewValue is RevealRequest { Edit: true })
+			{
+				((PropertiesPane)d).FocusFirstEditor();
+			}
+		}));
+
 	public PropertiesPane()
 	{
 		InitializeComponent();
+	}
+
+	/// <summary>
+	/// The newest request to bring an item to the user (the selection's; <see cref="UI.RevealRequest"/>): one that asks
+	/// for editing puts the caret into the first editor of the item's view, a new item's name.
+	/// </summary>
+	public RevealRequest? RevealRequest
+	{
+		get => (RevealRequest?)GetValue(RevealRequestProperty);
+		set => SetValue(RevealRequestProperty, value);
 	}
 
 	/// <summary>The model object to edit, or null for the empty hint.</summary>
@@ -58,7 +80,7 @@ public partial class PropertiesPane : UserControl
 	}
 
 	/// <summary>Puts the caret into the first text box of the current view once it is built, selecting its text.</summary>
-	public void FocusFirstEditor() =>
+	private void FocusFirstEditor() =>
 		Dispatcher.InvokeAsync(() =>
 		{
 			if (FirstDescendant<TextBox>(this) is { } box)

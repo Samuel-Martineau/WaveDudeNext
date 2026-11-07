@@ -28,6 +28,7 @@ using System.Windows.Media.Media3D;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using NLog;
+using WaveDudeNext.UI;
 using WaveDudeNext.WPF.Theming;
 
 namespace WaveDudeNext.WPF.Help;

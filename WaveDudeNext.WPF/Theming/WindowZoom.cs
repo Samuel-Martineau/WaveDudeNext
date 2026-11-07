@@ -23,6 +23,7 @@ using System.Windows.Data;
 using System.Windows.Interop;
 using System.Windows.Media;
 using NLog;
+using WaveDudeNext.UI;
 
 namespace WaveDudeNext.WPF.Theming;
 
