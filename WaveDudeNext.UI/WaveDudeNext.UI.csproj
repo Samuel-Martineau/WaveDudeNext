@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The part of the application that no UI framework anchors (2026-11-06, the user's design, as the preparation of a
+       second head on Avalonia beside the WPF one): what both heads share above the simulation library. Plain .NET, no
+       WPF and no Avalonia reference; a type that needs either stays in its head. Code bound to one operating system is
+       marked with SupportedOSPlatform, as in the library. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- every public member needs a /// comment; CS1591 flags the ones that lack it -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- read by the file properties; the license text is LICENSE.md, the header of every source file names it.
+         Authors and Company are the product's name (2026-10-26, the user's rule): .NET puts the company into folder names,
+         and the author's name is nobody's business on a user's disk; the Copyright line names him -->
+    <Authors>WaveDudeNext</Authors>
+    <Company>WaveDudeNext</Company>
+    <Copyright>Copyright (C) 2026 Alexander Gräf</Copyright>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <!-- the .editorconfig code-style rules are build warnings too: a file without the license header (IDE0073) -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <!-- the shipped examples (2026-10-29, the user's request): the repository's Examples folder, embedded so the single file
+       carries them; File > Examples lists them in file order (Examples.cs). Linked into an Examples folder of the project,
+       so Solution Explorer shows them there and not among the sources -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\Examples\*.wdproj" Link="Examples\%(Filename)%(Extension)" LogicalName="Examples/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NLog" Version="6.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WaveDudeNext\WaveDudeNext.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -23,8 +23,18 @@ using WaveDudeNext.Probes;
 
 namespace WaveDudeNext.Runs;
 
-/// <summary>A project cannot be run as it stands; the message is meant for the user.</summary>
-public sealed class RunSpecException(string message) : Exception(message);
+/// <summary>
+/// A project cannot be run as it stands; the message is meant for the user and, in English, for the log. An error the
+/// application has a text for in the user's language names it by <see cref="Key"/> (2026-11-06: the code that raises
+/// these left the window for a library that has no string tables, and the log's messages are not localised).
+/// </summary>
+/// <param name="message">What is wrong, in English.</param>
+/// <param name="key">The name of the application's text for this error, or null when the message is all there is.</param>
+public sealed class RunSpecException(string message, string? key = null) : Exception(message)
+{
+	/// <summary>The name of the application's text for this error in the user's language ("RunErrorNoImage"), or null.</summary>
+	public string? Key { get; } = key;
+}
 
 /// <summary>
 /// Everything a run needs, snapshotted from the <see cref="Project"/> on the UI thread by <see cref="Create"/>
