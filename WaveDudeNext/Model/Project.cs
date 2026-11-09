@@ -36,7 +36,7 @@ namespace WaveDudeNext.Model;
 public sealed class Project : ObservableObject
 {
 	/// <summary>Format version written to new files; bump when the layout changes incompatibly.</summary>
-	public const int CurrentVersion = 3;
+	public const int CurrentVersion = 4;
 
 	private int _version = CurrentVersion;
 	private int _seed = NewSeed();
@@ -106,7 +106,7 @@ public sealed class Project : ObservableObject
 		}
 	}
 
-	/// <summary>Hands <see cref="Seed"/> to every part with a random decision in it (<see cref="ISeeded"/>, a diffusor's roughness).</summary>
+	/// <summary>Hands <see cref="Seed"/> to every part with a random decision in it (<see cref="ISeeded"/>, a diffuser's roughness).</summary>
 	private void SeedParts()
 	{
 		foreach (ISeeded part in Parts.OfType<ISeeded>())
@@ -187,7 +187,7 @@ public sealed class Project : ObservableObject
 	[XmlElement("AndGate", typeof(AndGatePart))]
 	[XmlElement("OrGate", typeof(OrGatePart))]
 	[XmlElement("ZonePlate", typeof(ZonePlatePart))]
-	[XmlElement("Diffusor", typeof(DiffusorPart))]
+	[XmlElement("Diffuser", typeof(DiffuserPart))]
 	[XmlElement("InterferenceFilter", typeof(InterferenceFilterPart))]
 	[XmlElement("SimpleGrating", typeof(SimpleGratingPart))]
 	[XmlElement("FacettedGrating", typeof(FacettedGratingPart))]
@@ -593,6 +593,30 @@ public sealed class Project : ObservableObject
 			// until version 3 (2026-10-22) a file without a damping edge meant none; the rim of 32 that is the default since
 			// must not reach it either
 			project.Scene.DampingEdge = 0;
+		}
+		if (project.Version < 4)
+		{
+			// until version 4 (2026-11-09) a layer without "Outline in the export" meant off, and a zone plate without a
+			// thickness or an anti-reflection depth meant 64 and 32; the defaults since (on; 32 and none, Jeroen's choices of
+			// 2026-11-08) must not reach an older file, whose exports and plates stay as they were made
+			foreach (DisplayLayer layer in (DisplayLayer[])[project.Display.Field, project.Display.Intensity])
+			{
+				if (!layer.OverlayInExportRead)
+				{
+					layer.OverlayInExport = false;
+				}
+			}
+			foreach (ZonePlatePart plate in project.Parts.OfType<ZonePlatePart>())
+			{
+				if (!plate.ThicknessRead)
+				{
+					plate.Thickness = ZonePlatePart.Version3Thickness;
+				}
+				if (!plate.CoatingRead)
+				{
+					plate.Coating = ZonePlatePart.Version3Coating;
+				}
+			}
 		}
 		project.Version = CurrentVersion;
 		project.Normalize();

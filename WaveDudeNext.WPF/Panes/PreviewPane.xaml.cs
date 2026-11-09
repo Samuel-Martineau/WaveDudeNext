@@ -308,6 +308,17 @@ public partial class PreviewPane : UserControl
 	/// <summary>The scratch frame currently wrapped as the presenter's source, to reuse the wrapper.</summary>
 	private SnapshotFrameSource? _scratchSource;
 
+	/// <summary>
+	/// The scratch result <see cref="_scratchSource"/> wraps. A new result is a new picture, and the result says so, not
+	/// its snapshot: the scratch runner writes its outcomes into two snapshots in turn, and since it finishes the frame in
+	/// flight before the newest request (2026-11-09) a scrub leaves outcomes behind that are for positions already left
+	/// and are not shown, so the frame the scrub ends on can come in the very snapshot whose earlier content is on
+	/// screen. Compared by snapshot, that frame made no new source and the presenter drew nothing: the pictures kept an
+	/// early frame while the graphs showed the last (2026-11-09, found when the manual's figures came out black; a probe
+	/// of eight bursts of Home and forty PageUp drew the last frame's picture in none of them before, in all after).
+	/// </summary>
+	private ScratchResult? _scratchShown;
+
 	public PreviewPane()
 	{
 		InitializeComponent();
@@ -742,9 +753,10 @@ public partial class PreviewPane : UserControl
 			&& (run == null || IsStale || run.FrameCount <= Position);
 		if (useScratch)
 		{
-			if (_scratchSource == null || !ReferenceEquals(_scratchSource.Snapshot, scratch!.Snapshot))
+			if (_scratchSource == null || !ReferenceEquals(_scratchShown, scratch))
 			{
 				_scratchSource = new SnapshotFrameSource(scratch!.Snapshot);
+				_scratchShown = scratch;
 			}
 			_presenter.Source = _scratchSource;
 			GraphScratch = scratch;

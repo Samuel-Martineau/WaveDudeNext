@@ -302,7 +302,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 	<!-- a plate, open in the middle, its blocks narrowing outwards -->
 	<StreamGeometry x:Key="IconZonePlateFill">M6,3 H10 V6 H6 Z M6,10 H10 V13 H6 Z M6,0.5 H10 V1.75 H6 Z M6,14.25 H10 V15.5 H6 Z</StreamGeometry>
 	<!-- a plate whose left face is rippled -->
-	<StreamGeometry x:Key="IconDiffusor">M12.5,1.5 V14.5 H5.5 L3.5,13 L6.5,11 L3.5,9 L6.5,7 L3.5,5 L6.5,3 L5.5,1.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconDiffuser">M12.5,1.5 V14.5 H5.5 L3.5,13 L6.5,11 L3.5,9 L6.5,7 L3.5,5 L6.5,3 L5.5,1.5 Z</StreamGeometry>
 	<!-- a plate with thin layers on its left face -->
 	<StreamGeometry x:Key="IconInterferenceFilter">M7.5,1.5 H13.5 V14.5 H7.5 Z M2.5,1.5 V14.5 M4.5,1.5 V14.5 M6.5,1.5 V14.5 M2.5,1.5 H7.5 M2.5,14.5 H7.5</StreamGeometry>
 	<!-- a column of dots: a line grating -->

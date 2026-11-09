@@ -20,7 +20,7 @@ using System.Windows.Data;
 
 namespace WaveDudeNext.WPF.Converters;
 
-/// <summary>A length in pixels as read-only text, "12.3 px", one decimal in the binding's culture (a diffusor's profile height); "–" for anything but a number.</summary>
+/// <summary>A length in pixels as read-only text, "12.3 px", one decimal in the binding's culture (a diffuser's profile height); "–" for anything but a number.</summary>
 public sealed class PixelsConverter : IValueConverter
 {
 	/// <inheritdoc/>

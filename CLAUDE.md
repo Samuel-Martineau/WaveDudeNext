@@ -79,7 +79,14 @@ harnesses run.
   the bounds are readable from outside, `library_check` proves each against `Normalize()`; a bound that depends on another
   value stays in code alone and is named in its `dependentBounds`; since 2026-10-22 it finds every part kind itself and
   fails a persisted number that `Normalize()` clamps without a `[Range]`), and `Label.`/`Hint.`/`Enum.<Type>.<Member>` keys in all four string tables. Randomness from
-  `Project.Seed` through `Pcg32`; generated data is never persisted.
+  `Project.Seed` through `Pcg32`; generated data is never persisted. **A changed default is a new file version**
+  (2026-11-09, the user's choice at the integration of Jeroen's drop): the XML is sparse, so an attribute left out means
+  the default of the version that wrote the file. `Project.CurrentVersion` is 4 for "Outline in the export" on and a zone
+  plate 32 px thick without a rise (Jeroen's choices of 2026-11-08; off, 64 and 32 before): `Load` gives a file up to
+  version 3 the old values where it names none (`OverlayInExportRead`, `ThicknessRead`, `CoatingRead`, set by the setters
+  as `Scene.DampingEdgeRead` is), and it is saved as version 4 with them written out; `library_check` proves it. The
+  examples and the harnesses' projects stay version 3, `figures.wdproj` is 4. Clipboard fragments carry no version and
+  read with today's defaults.
 - **C# style**: modern and concise, expression-bodied accessors, no `this.`, no `IDisposable` on interfaces,
   `out` not `ref`, tabs, Allman; `///` docs state threading, units and coordinate systems. `grep -E`, not `-P`.
 - **Log decisions at Debug** (scratch requests, stale marks, postponed re-runs, export steps). Info and up reach
@@ -108,6 +115,18 @@ harnesses run.
   written and closed, at once), Ideal
   text formatting for the manual at 100 % (2026-11-05: less readable, see UI zoom). **Do not
   change**: the readout showing both frame and step (undecided).
+- **Jeroen's drops** (2026-11-09, the first since the port's preparation: `C:\Work\WDN-0.1.3-JV_20261108`, his folder,
+  a patch against the release it started from and a list of changes): the patch is applied to master's working tree
+  (`git apply`; 56 of 57 files fitted, 53 of them untouched by master and then equal to his folder), and what master
+  has moved is ported by hand into the models (`ProjectItems` for his window code). What a plain apply does not show
+  and each drop is read for: a changed `[DefaultValue]` (a new file version, see Model conventions); the menus'
+  mnemonics in all four tables (German had N twice in the Add part menu); the non-ASCII characters of the Markdown
+  files, which his session's tooling had written back double-encoded (180 sequences in `MANUAL.md` and
+  `OpticalParts.md`, repaired by the exact inverse; the code and the string tables were clean, his French additions
+  in numeric entities); names that become file format; a fix without a reproduction (said so where it stays); and
+  "the user" in his notes and comments, who is Jeroen: named in this file, left in the code's comments as the gates'
+  and the zone plate's were, with a line in `OpticalParts.md` saying so. He works on from the merged tree, not from
+  the old release: his sessions' window code otherwise lands where the logic no longer is.
 - Collect the reusable rules for other projects only when he asks.
 
 ## Build and run
@@ -170,7 +189,7 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   everything, so the rim absorbs alone; measured against a reference canvas too wide to reflect, Example 3's beam got
   1 % back from the earlier linear ramp to a tenth at -64, 0.09 % from the quadratic one, 0.03 % at -128; the measuring
   method is in `library_check`); a version-1 file loads as
-  Reflective, a version-2 file without a damping edge with none (its default then; files are version 3 since 2026-10-22), an
+  Reflective, a version-2 file without a damping edge with none (its default then; files were version 3 from 2026-10-22 and are version 4 since 2026-11-09, see Model conventions), an
   import as Reflective with his band; one driver thread at a time, no locking; the kernels over the grid and the captures run in explicit 32 × 8 work groups over a global size rounded up to whole groups (2026-10-27, Jeroen's report: left to the driver, the group had to divide the grid, and a prime width, 1789 for a 1725 px canvas with the rim, got groups one cell wide, 13–19× slower on the RTX 2080; every candidate shape from 16 × 16 to 256 × 1 measured the same); captures
   deliver planes in the spec's `FrameShape` (halves or palette index bytes, the GPU converting on the card) into snapshots
   the engine made (`IWaveEngine.CreateSnapshot`, 2026-11-03, the user's choice): the GPU's planes are page-locked host
@@ -270,8 +289,18 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   run never moves the preview. A probe edit never starts a run: only
   the recordings are stale, the scratch frame refreshes the graph; except that an active probe the run does not
   record (switched on, added) is a simulation edit (2026-10-18). No scratch frame while playback runs. Any run
-  is paused while a scratch frame computes. Every scratch request taken is computed in full, however long (no time
-  budget, 2026-10-16); since 2026-11-09 none is abandoned for a newer one (see above).
+  is paused while a scratch frame computes. Every scratch request taken is computed in full, however long (no
+  time budget, 2026-10-16); since 2026-11-09 none is abandoned for a newer one (see above). **A new scratch result is
+  a new picture, whichever of the runner's two snapshots it came in** (`PreviewPane._scratchShown`, 2026-11-09, found
+  when the manual's figures came out with black pictures under graphs of frame 1200): the pane had made a new source
+  for the presenter only when the result's snapshot was another object than the one on screen; since the runner
+  finishes the frame in flight, a scrub leaves outcomes for positions already left, which are not shown but take
+  their turn of the two snapshots, so the frame the scrub ends on came, as often as not, in the snapshot on screen
+  and nothing was drawn. A probe of eight bursts of Home and forty PageUp, read from the log (the live rules' "frame N
+  from scratch" followed by the presenter's new source): the last picture drawn in 0 and 1 of 8 before, 8 of 8 after;
+  `PreviewCheck` 43 of 43. Left as it is: a picture kept on screen during such a burst belongs to a snapshot the
+  runner has reused meanwhile (`ScratchResult.Snapshot` is valid until the next outcome), so a re-render of it before
+  the burst's last frame arrives, a resize in mid-scrub, would read the newer frame.
 - **A picture changes only when a frame for its position arrives**; otherwise the last picture stays. A long wait
   dims the pictures under a spinner, mirrored on the taskbar.
 - **Brightness** (2026-10-20, Jeroen's point 9) sits in each picture's header strip (`HeaderStrip`: title, a caption that
@@ -314,7 +343,7 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   frames a second across a 3-second freeze). Measured on the way and settled: the app's input handling is not the cost,
   injected moves at ten thousand a second changed the frame times by nothing once the clock was posted. Live follows a running run until the user scrubs; it ends with a last follow to the
   final frame. A replaced project goes to frame 0; a discarded run keeps the position. In/out points are steps.
-- **Probabilistic detectors** (2026-11-07, the user's request; the user's choices: Poisson statistics, the counting
+- **Probabilistic detectors** (2026-11-07, Jeroen's addition, integrated 2026-11-09; his choices: Poisson statistics, the counting
   detector's steps drawn from its frame's rate, a Probabilistic submenu under "+ Probe", the imaging detector's picture
   accumulated to the frame shown): `Probe.Detector` Standard, Counting or Imaging, with `Sensitivity` (expected
   detections per unit of intensity per step at a point); a detector is a line probe of the integrated intensity (the
@@ -327,9 +356,10 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   steps, each step the process's events in its share (the scratch runner collects profiles frame by frame when one
   exists, `ProbeSampler.HasCounting`); an imaging detector's profile: each pixel's process up to its total. The graph,
   the CSV and the layout choose series or profile by `Probe.ShowsProfile`, not the kind. `AddProbe(x, y, detector)`
-  names a detector "Detector n". The default sensitivity is 20 (2026-11-08, the user's report: 0.05, set from a plane
+  names a detector "Detector n"; the "+ Probe" button and the Probes folder's plus open a menu of kinds as the parts' do
+  (`ProbeMenuEntries`; `ProjectItems.HasKinds` and `AddProbe(x, y, detector)`). The default sensitivity is 20 (2026-11-08, Jeroen's report: 0.05, set from a plane
   wave's 0.175 intensity a pixel, showed nothing, since a point source's wave at a hundred pixels is a few hundredths
-  of a percent of that; the user needed 10 to 50). An imaging detector has `BinSize` (1 to 20 px, default 4, the user's
+  of a percent of that; he needed 10 to 50). An imaging detector has `BinSize` (1 to 20 px, default 4, his
   request the same day): the bin's pixels' detections added up and shown at each of them, the last bin shorter. `library_check` proves the statistics (mean, dispersion), the monotone image, the
   agreement of once and frame by frame, the seeds and the CSV.
 - **A new source, probe or part lands at the centre of the canvas the preview shows** (2026-10-26, Jeroen's report: one
@@ -529,25 +559,25 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
 - **Optical parts** (2026-10-18; **`OpticalParts.md` is the reference**: the kinds, the painting rules, the measurements
   and how to add a kind): subclasses of `OpticalPart` in `Project.Parts`, one class and one XML element per kind, the
   class being the kind (no enum, 2026-10-22): a lens or mirror, the shapes under `ShapePart` (polygon, rectangle, ellipse,
-  triangle, outline), a diffusor (`DiffusorPart`, a `ShapePart` whose front face is rough, 2026-11-07, the user's request:
+  triangle, outline), the kinds of Jeroen's sessions of 2026-11-07/08 (his requests and choices, integrated 2026-11-09):
+  a diffuser (`DiffuserPart`, delivered as "Diffusor" and renamed before any release, the element's name being file
+  format; a `ShapePart` whose front face is rough:
   a spread of ripples about a centre wavelength, the phases from the project's seed through `ISeeded`, which the project
   hands such a part on add, load, paste and reseed; the profile kept until a roughness value changes; its shape's depth the
-  exact polygon distance by a pruned search; see `OpticalParts.md`), an interference filter (`InterferenceFilterPart`, 2026-11-07,
-  the user's request: a plate with a list of `FilterLayer`s on its front, outside it, the first outermost, painted as two
+  exact polygon distance by a pruned search; see `OpticalParts.md`), an interference filter (`InterferenceFilterPart`: a plate with a list of `FilterLayer`s on its front, outside it, the first outermost, painted as two
   shapes through `PartShape.PiecesOf` so a mirror plate keeps glass layers; the form reorders by buttons and by a drag), a simple
-  2D grating (`SimpleGratingPart`, 2026-11-07, the user's request, in a "Diffraction gratings" submenu among the optics: a
+  2D grating (`SimpleGratingPart`, in a "Diffraction gratings" submenu among the optics: a
   lattice of round dots of the shapes' material, a mirror by default, the diameter at most half the smaller spacing, a
-  dependent bound), a facetted grating (`FacettedGratingPart`, 2026-11-08, the user's request, in that submenu: the
-  diffusor's plate with one wavelength, `Pattern` sawtooth, square wave or sinusoidal every `Pitch` with `Amplitude`,
-  the band on the back alone; both plates are `IProfiledPlate`s painted by `DiffusorShape`; its own check and figures
-  wait for the end, the user's wish), a meta lens (`MetaLensPart`, 2026-11-08, the user's request, in a "Meta surfaces"
+  dependent bound), a facetted grating (`FacettedGratingPart`, in that submenu: the
+  diffuser's plate with one wavelength, `Pattern` sawtooth, square wave or sinusoidal every `Pitch` with `Amplitude`,
+  the band on the back alone; both plates are `IProfiledPlate`s painted by `DiffuserShape`), a meta lens (`MetaLensPart`, in a "Meta surfaces"
   submenu: the filter's plate with a ridge per sub-wavelength cell in front, the fill from the lens phase at the design
   wavelength and focal length through the lamellar effective index, converging or diverging; two shapes through
-  `PiecesOf`, the band on the ridges' tops and the back; check and figures at the end too) and a meta prism
-  (`MetaPrismPart`, the same day: a linear delay, `Deflection` degrees counter-clockwise) and a meta axicon
+  `PiecesOf`, the band on the ridges' tops and the back) and a meta prism
+  (`MetaPrismPart`: a linear delay, `Deflection` degrees counter-clockwise) and a meta axicon
   (`MetaAxiconPart`: a delay in |y'|, `ConeAngle`, a line of focus of half the width over tan β); all three derive from
   the abstract `MetaSurfacePart`, which holds the plate, the pattern, the design frequency and the fill from a
-  subclass's `Delay`; the shared strings are `MetaSurfacePart.*`), a Fresnel lens (`FresnelLensPart : LensPart`, 2026-11-07, the user's request: the lens, unsealed, with
+  subclass's `Delay`; the shared strings are `MetaSurfacePart.*`), a Fresnel lens (`FresnelLensPart : LensPart`: the lens, unsealed, with
   its curved surfaces cut into `Zones` of equal width or equal depth (`ZoneDivision`, a lighthouse lens's elements), each
   arc restarted at the vertex plane; the lens reckons with `ZoneCount` and `ZoneDivision` through the deepest zone's sag
   for the fit, the edge, the handles; a 20 px plate 500 across with radii of ±1500 when new; no Concave box), a fibre on a Bézier path, a Bragg reflector, a GRIN lens, the XOR, AND and OR gates under
@@ -649,12 +679,16 @@ order, the line probes, then the sources (axes and dots, cached), then the parts
 with and without the cache differ on the dot rows alone, at most 53 levels at an antialiased edge, and the frame is
 14–21 ms with 6–8 at the bitmap. The dots' halo pen is frozen, since an unfrozen pen is cloned by every draw call. The
 probe graph overlay stays uncached: its drawing changes with the frame by design. **The sources' cache is renewed at
-every source edit** (`RefreshSourcesCache`, 2026-11-08, the user's report: after a mouse drag of Example 3's composite
-source its dots stayed put until another edit; the log showed the model moved and the scratch frame followed, twenty
-keyboard moves with and without a rebuild of the overlay could not repeat it, and a drag cannot be scripted under the
-no-clicks rule, so the one thing the dots have that nothing else has, the bitmap cache, gets a new object per edit;
-the user's choice over a mouse probe). **An item added from a menu of kinds gets the focus once the dispatcher is
-idle** (`MainWindow.Added`, the same day, found by that probe: the closing menu had taken the focus back to nothing). The measurement is the presenter's log
+every source edit** (`RefreshSourcesCache`, 2026-11-08, Jeroen's report from his machine: after a mouse drag of Example 3's
+composite source its dots stayed put until another edit; the log showed the model moved and the scratch frame followed,
+and twenty keyboard moves could not repeat it, so the one thing the dots have that nothing else has, the bitmap cache,
+gets a new object per edit). **A precaution, its cause unknown** (2026-11-09, at the integration): on the workstation
+eighteen mouse drags of that source through WPF's own input pipeline (the in-app drag probe, see Harnesses), paced and
+in bursts, on both pictures, rendered by the card and in software, left no dot behind on a build without the renewal:
+the window as composed after each drag against the same after a cache replaced by hand, no pixel differing. His focus
+mechanism for a pick from a menu of kinds (`MainWindow.Added` waiting for the menu's closing, 2026-11-08) was not
+carried over: on the models the reveal request puts the caret into the new item's name after a pick from either menu
+(a keyboard probe, the window inactive as in his). The measurement is the presenter's log
 line during playback after a completed run, with Loop on, F5 and Space posted; a stale Debug build had once "proven" the
 whole-overlay cache harmless, so the figure script's build is checked against the source now. **A child element drawn
 from its parent's ArrangeOverride must draw by its own size** (2026-11-04, the user's report: a resize left the dots, the
@@ -707,7 +741,7 @@ machine has), no Direct3D display path.
 
 ## Harnesses
 
-`library_check` (100+ checks: engines, store, renderer, half tables, screen path, schemes, probes, scratch, reduced preview, importer, export, parts, group move, open edges, work groups on a prime grid, ranges, XOR gate, zone plate, gate port follower, history, clipboard, the project file's DTD, the first start's tiers, the engine's page-locked snapshots, scene replacement, the memory warning's store bytes, the painter's runs and the glowing edges' lanes byte for byte against pixel by pixel, the diffusor, the interference filter, the simple and the facetted grating, the Fresnel lens, the meta surfaces' fills and the detectors' statistics).
+`library_check` (100+ checks: engines, store, renderer, half tables, screen path, schemes, probes, scratch, reduced preview, importer, export, parts, group move, open edges, work groups on a prime grid, ranges, XOR gate, zone plate, gate port follower, history, clipboard, the project file's DTD, the first start's tiers, the engine's page-locked snapshots, scene replacement, the memory warning's store bytes, the painter's runs and the glowing edges' lanes byte for byte against pixel by pixel, the diffuser, the interference filter, the simple and the facetted grating, the Fresnel lens, the meta surfaces' fills and the detectors' statistics).
 UI, all on `Common.ps1`, with their check counts: `PreviewCheck` 43, `RunCheck` 71, `LanguageCheck` 11,
 `ProbeGraphCheck` 39, `ImportCheck` 10, `ExportCheck` 44, `PreviewQualityCheck` 35, `SceneImageCheck` 8,
 `ColorPickerCheck` 13, `KeyboardCheck` 13, `AboutCheck` 18, `SelectionCheck` 10. Test projects `tiny*.wdproj` sit beside them. The
@@ -718,7 +752,16 @@ fixtures folder). A harness
 sets the persisted settings it expects (split orientation, preview quality). **A one-off probe may move the real pointer
 when the user says so** (2026-11-04, his instruction for a mouse-related report: `SetCursorPos` and `SendInput` from a
 probe under `%TEMP%`, no clicks, the pointer put back; posted WM_MOUSEMOVE reproduced nothing, and only `SendInput`
-raises the input Windows queues like a device's). **The figure runs can leave a runaway thumbnail cache** (2026-11-04:
+raises the input Windows queues like a device's). **A mouse flow in the real app without the real pointer: the in-app
+drag probe** (2026-11-09, for Jeroen's emitter-dot report): a .NET startup hook (`DOTNET_STARTUP_HOOKS`, a class
+`StartupHook` with `Initialize()` in a library built under `%TEMP%` against the Debug build's assemblies) starts a
+thread inside the app, which opens an example through `MainWindow.Document`, finds a handle in the visual tree and has
+the UI thread send its own window the mouse messages (`SetCapture` first, the button as the thread's key state, the
+window `Topmost` for the moment, as the in-process probe of 2026-11-06 found), then captures the window with
+`PrintWindow` from that thread: the app's whole path from the press to the composed picture, the process path the
+Debug exe's, so the file types stay registered to it. The first run's press was not taken (the window had just
+started); a diagnostic line per condition (capture, `WindowFromPoint`, `Mouse.DirectlyOver`, the button state) tells
+which is missing. **The figure runs can leave a runaway thumbnail cache** (2026-11-04:
 a `dllhost.exe` hosting `thumbcache.dll` had used 81,000 s of CPU, 1.3 cores for seventeen hours, after the night's
 rewrites of the 38 files under Assets; a sampling of every process's CPU while the user moved the mouse found it; the
 user ended it, Windows starts it again when needed). **Run only the harnesses listed above**: `ProjectTreeCheck`,
@@ -751,7 +794,16 @@ too), **UI zoom 1.25** (2026-11-02, the user's choice,
 so the figures are sharp on denser screens; the window 1642 × 1408 px on the monitor at 100 %), the user's 1314 × 1126
 arrangement, his settings put back afterwards. A pointer resting on the window is parked just outside it for a capture and put back at
 the end (2026-10-30: it lay on a probe's graph box, whose hover border changed the main window's picture between two
-runs); the harnesses' one mouse action, clicking and activating nothing. A figure must come out byte for byte the same
+runs); the harnesses' one mouse action, clicking and activating nothing. **Only a pointer that lies on a window of the
+app itself is moved** (`Shot.ProcessAt`, 2026-11-09, the user's report, in anger: the test had been the app window's
+rectangle alone, so the pointer was taken from under his hand at every capture while he worked in a window covering
+the app's). **A figure shows the window inactive**: an active window's frame is drawn in the accent colour, one pixel
+column of every form's crop (2026-11-09: a second session came up active, the known flake, and 18 forms carried an
+orange line), so each session's start is made again while the window holds the foreground (`Start-Inactive`, three
+times at most) and a figure taken with the window active is a PROBLEM line. **A figure run needs the machine**: about
+six minutes, no other WaveDude start (it takes the harness window's keyboard focus: "tree row not reached; focus is at
+(none)") and no click on its window; with the user at the machine it is announced and waits for his word, and a
+failed run is reported, not started again (2026-11-09: three runs in a row collided with his work). A figure must come out byte for byte the same
 from an unchanged app. `-Zoom <factor>` (2026-11-01; 1.25 is the default and the figures' zoom, 1 for figures at the
 monitor's own pixels) puts the UI zoom
 setting into the figures' settings, scales the script's pixel constants, takes 16-bit samples (the 8-bit picture is a
@@ -1009,7 +1061,14 @@ README and a documentation file (he writes them); an integer
 upscale in exports; HEVC;
 dropping the 9-point Laplacian (undecided);
 **optical parts**: the open points at the end of `OpticalParts.md` (a `PartCheck.ps1` harness, example projects,
-Bragg thicknesses in pixels) wait for the user.
+Bragg thicknesses in pixels) wait for the user; **after Jeroen's drop of 2026-11-08**: example projects for the new
+kinds, and by hand, since no harness presses the mouse: the caret in a new item's name after a pick from "+ Part" and
+"+ Probe" with the window active, a filter layer dragged by its grip as one undo step, and the emitter dots after a
+drag on Jeroen's machine with and without the cache renewal. The figures were retaken that afternoon with the user's word (51, 14 of them new; of the 37 there before, 22 came out
+byte for byte as committed and 15 differ where the change shows: the "+ Probe" arrow in the toolbar, in the tree, the
+main window and behind the menus, the Add part menu's entries, format version 4, the outline ticked in the Display
+form, the probes' three new rows, the zone plate's defaults). The script's restart of a session that comes
+up active and the pointer's move when it does lie on the app's window had no occasion in those runs.
 
 **Unsolved: clicks on the intensity picture selected nothing** (2026-10-22, seen once, not reproduced). In
 Jeroen's `logical_elements_example.wdproj` (git history up to 02d0e2d; Example 18 is its curated form), after several

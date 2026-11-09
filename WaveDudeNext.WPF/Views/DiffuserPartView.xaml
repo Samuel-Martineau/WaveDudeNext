@@ -17,7 +17,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 <https://www.gnu.org/licenses/>.
 -->
 
-<UserControl x:Class="WaveDudeNext.WPF.Views.DiffusorPartView"
+<UserControl x:Class="WaveDudeNext.WPF.Views.DiffuserPartView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:WaveDudeNext.WPF.Controls"
@@ -37,24 +37,24 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 
 			<Label Style="{StaticResource FormSection}" Content="{DynamicResource SectionShape}" />
 			<controls:FormPanel>
-				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffusorPart.Length}" />
-				<controls:NumberBox Text="{Binding Length}" Minimum="1" Increment="10" ToolTip="{meta:Hint model:DiffusorPart.Length}" AutomationProperties.AutomationId="PartLength" />
+				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffuserPart.Length}" />
+				<controls:NumberBox Text="{Binding Length}" Minimum="1" Increment="10" ToolTip="{meta:Hint model:DiffuserPart.Length}" AutomationProperties.AutomationId="PartLength" />
 
-				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffusorPart.Width}" />
-				<controls:NumberBox Text="{Binding Width}" Minimum="2" Increment="10" ToolTip="{meta:Hint model:DiffusorPart.Width}" AutomationProperties.AutomationId="PartWidth" />
+				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffuserPart.Width}" />
+				<controls:NumberBox Text="{Binding Width}" Minimum="2" Increment="10" ToolTip="{meta:Hint model:DiffuserPart.Width}" AutomationProperties.AutomationId="PartWidth" />
 			</controls:FormPanel>
 
 			<!-- the roughness of the front face: a spectrum of ripples about a centre wavelength, their sum the face -->
 			<Label Style="{StaticResource FormSection}" Content="{DynamicResource SectionRoughness}" />
 			<controls:FormPanel>
-				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffusorPart.CenterWavelength}" />
-				<controls:NumberBox Text="{Binding CenterWavelength}" Minimum="2" Maximum="10000" DragStep="0.1" Decimals="2" ToolTip="{meta:Hint model:DiffusorPart.CenterWavelength}" AutomationProperties.AutomationId="PartCenterWavelength" />
+				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffuserPart.CenterWavelength}" />
+				<controls:NumberBox Text="{Binding CenterWavelength}" Minimum="2" Maximum="10000" DragStep="0.1" Decimals="2" ToolTip="{meta:Hint model:DiffuserPart.CenterWavelength}" AutomationProperties.AutomationId="PartCenterWavelength" />
 
-				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffusorPart.Amplitude}" />
-				<controls:NumberBox Text="{Binding Amplitude}" Minimum="0" Maximum="10000" DragStep="0.1" Decimals="2" ToolTip="{meta:Hint model:DiffusorPart.Amplitude}" AutomationProperties.AutomationId="PartAmplitude" />
+				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffuserPart.Amplitude}" />
+				<controls:NumberBox Text="{Binding Amplitude}" Minimum="0" Maximum="10000" DragStep="0.1" Decimals="2" ToolTip="{meta:Hint model:DiffuserPart.Amplitude}" AutomationProperties.AutomationId="PartAmplitude" />
 
-				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffusorPart.Sigma}" />
-				<controls:NumberBox Text="{Binding Sigma}" Minimum="0" Maximum="10000" DragStep="0.1" Decimals="2" ToolTip="{meta:Hint model:DiffusorPart.Sigma}" AutomationProperties.AutomationId="PartSigma" />
+				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:DiffuserPart.Sigma}" />
+				<controls:NumberBox Text="{Binding Sigma}" Minimum="0" Maximum="10000" DragStep="0.1" Decimals="2" ToolTip="{meta:Hint model:DiffuserPart.Sigma}" AutomationProperties.AutomationId="PartSigma" />
 
 				<!-- read-only: what the ripples add up to, and how many there are -->
 				<TextBlock Style="{StaticResource FormLabel}" Text="{DynamicResource LabelProfileHeight}" />

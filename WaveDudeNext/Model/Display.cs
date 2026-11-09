@@ -217,6 +217,7 @@ public sealed class DisplayLayer : ObservableObject
 	private bool _overlay = true;
 	private double _overlayGain = DefaultOverlayGain;
 	private bool _overlayInExport = true;
+	private bool _overlayInExportRead;
 
 	/// <summary>Name of the colour scheme mapped onto the values.</summary>
 	[XmlAttribute]
@@ -303,8 +304,21 @@ public sealed class DisplayLayer : ObservableObject
 	public bool OverlayInExport
 	{
 		get => _overlayInExport;
-		set => SetProperty(ref _overlayInExport, value);
+		set
+		{
+			_overlayInExportRead = true;
+			SetProperty(ref _overlayInExport, value);
+		}
 	}
+
+	/// <summary>
+	/// Whether <see cref="OverlayInExport"/> has been set since construction: right after a file is read, whether the
+	/// file carried the attribute. A file up to version 3 left it out for off, its default then, which
+	/// <see cref="Project.Load(System.IO.Stream)"/> restores (2026-11-09, when the default became on).
+	/// </summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	internal bool OverlayInExportRead => _overlayInExportRead;
 
 	/// <summary>Clamps every value into its valid range; an empty scheme name falls back to <paramref name="defaultScheme"/>.</summary>
 	public void Normalize(string defaultScheme)

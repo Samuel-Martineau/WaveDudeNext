@@ -19,10 +19,10 @@ using System.Windows.Controls;
 
 namespace WaveDudeNext.WPF.Views;
 
-/// <summary>Editor for a <see cref="WaveDudeNext.Model.DiffusorPart"/>: the shape's material, the plate's size, and the roughness of its front face with what it adds up to, read-only.</summary>
-public partial class DiffusorPartView : UserControl
+/// <summary>Editor for a <see cref="WaveDudeNext.Model.DiffuserPart"/>: the shape's material, the plate's size, and the roughness of its front face with what it adds up to, read-only.</summary>
+public partial class DiffuserPartView : UserControl
 {
-	public DiffusorPartView()
+	public DiffuserPartView()
 	{
 		InitializeComponent();
 	}

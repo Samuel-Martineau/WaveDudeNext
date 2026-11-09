@@ -31,7 +31,7 @@ The Project pane with the example project.
 2. **Add a source**  
    Add a source (appended at the end)
 3. **Add a probe**  
-   Add a probe (appended at the end)
+   Add a probe: a standard probe, or a probabilistic detector (appended at the end)
 4. **Add a part (a menu of the kinds)**  
    Add an optical part (a menu of kinds; appended at the end)
 5. **Move the selected object up**  
@@ -274,6 +274,27 @@ Includes the use of two probes, an A-B (line) field probe and a single point int
 24. **24. Fibre cross over**  
    Two single-mode fibres side by side, their cores a dozen pixels apart: the evanescent field of one reaches into the other, so light launched into fibre A crosses over into fibre B and back along the length, a directional coupler. The probe along A shows the beating, the cross-fibre probe the field across both cores. Switch source A off and B on to launch from the other fibre.
 
+## The Add probe menu
+
+![menu-add-probe](menu-add-probe.svg)
+
+The Add probe menu of the project tree: a standard probe, or a probabilistic detector.
+
+1. **Standard probe**  
+   A standard probe: the field's amplitude, or the intensity's value or its integral, at a point over time or along a line.
+2. **Probabilistic**
+
+## Add probe > Probabilistic
+
+![menu-add-probe-probabilistic](menu-add-probe-probabilistic.svg)
+
+The Probabilistic submenu of the Add probe menu: the detectors.
+
+1. **Counting detector**  
+   A counting detector: the detections of the whole line, step by step, as a photomultiplier's pulses, drawn over time. Their rate is the line's intensity times the sensitivity; each detection is a chance.
+2. **Imaging detector**  
+   An imaging detector: the detections at every point of the line added up over the run, as a SPAD array or an image intensifier builds an image, drawn along the line.
+
 ## The Add part menu
 
 ![menu-add-part](menu-add-part.svg)
@@ -282,25 +303,57 @@ The Add part menu of the project tree: the kinds of optical parts.
 
 1. **Lens/Mirror**  
    A lens or a mirror: a strip of the diameter between two spherical surfaces, each bulging outward, flat or hollow by the sign of its radius, the centre thickness apart. As a mirror it reflects everything; as a lens it refracts by its index, with an anti-reflection coating and absorption if wanted.
-2. **Fibre**  
+2. **Fresnel lens**  
+   A Fresnel lens: a lens whose curved surfaces are cut into zones from the axis to the rim, equal in width or in depth, each zone's arc starting again at the vertex plane, so a thin plate bends light as a thick lens would. The settings are the lens's, with the number of zones and their division; a flat surface stays flat.
+3. **Fibre**  
    A fibre: a core of higher index inside a cladding, along a smooth path of Bézier segments through its nodes, with flat or round ends. A wave coupled into the core is guided along the path; the cladding can absorb stray light at its rim.
-3. **Bragg reflector**  
+4. **Bragg reflector**  
    A Bragg reflector: pairs of layers of two indices stacked along the axis. It reflects strongly around the wavelength the layer thicknesses are tuned to, a quarter wave each, and passes others.
-4. **GRIN lens**  
+5. **GRIN lens**  
    A gradient-index lens: a rectangle whose index falls from the axis to the edge in a parabolic profile, so it focuses like a lens with flat faces.
-5. **Zone plate**  
+6. **Zone plate**  
    A zone plate: Fresnel zones cut for a design frequency and a focal length, every second zone an absorbing block, the central zone open or, inverted, a block. It focuses by diffraction; an optional mount stops light passing outside the diameter.
-6. **Polygon**  
+7. **Diffuser**  
+   A diffuser: a plate of glass or mirror whose front face is rough, the back flat. The roughness is a spread of ripples about a centre wavelength, their phases random from the project's seed; it scatters what passes or reflects.
+8. **Interference filter**  
+   An interference filter: a plate of glass or mirror with a stack of thin layers on its front, each with its own thickness and index. Waves reflected at the layers' boundaries interfere, so the stack reflects some wavelengths and passes others; a new filter is a quarter-wave stack for a wavelength of 16 pixels.
+9. **Diffraction gratings**
+10. **Meta surfaces**
+11. **Polygon**  
    A regular polygon of glass or mirror, by its number of sides and the side length.
-7. **Rectangle**  
+12. **Rectangle**  
    A rectangle of glass or mirror, by length and width; linked, a square. A flat mirror is a long, narrow one.
-8. **Ellipse**  
+13. **Ellipse**  
    An ellipse of glass or mirror, by the length and width of its box; linked, a circle.
-9. **Triangle**  
+14. **Triangle**  
    A triangle of glass or mirror: the base across the axis, the apex along it, the base angles set by a preset or by hand.
-10. **Outline**  
+15. **Outline**  
    A free outline of glass or mirror: a closed shape through the points you place and drag; fewer than three paint nothing.
-11. **Optical logic**
+16. **Optical logic**
+
+## Add part > Diffraction gratings
+
+![menu-add-part-gratings](menu-add-part-gratings.svg)
+
+The Diffraction gratings submenu of the Add part menu.
+
+1. **Simple 2D grating**  
+   A simple 2D grating: a lattice of round dots, so many columns along the axis by so many rows across, each direction with its own spacing, nothing between them. The dots are mirror, or glass with an index; a wave passing the lattice is diffracted into the orders the spacings set. One column makes a line grating.
+2. **Facetted grating**  
+   A facetted grating: a plate of glass or mirror whose front face carries a periodic relief, a sawtooth, a square wave or a sinusoid repeated every pitch, the back flat. A diffuser of one wavelength: the pitch and the wavelength set the angles the orders leave at.
+
+## menu-add-part-metasurfaces
+
+![menu-add-part-metasurfaces](menu-add-part-metasurfaces.svg)
+
+The Meta surfaces submenu of the Add part menu.
+
+1. **Meta lens**  
+   A meta lens: a carrier plate with a sub-wavelength pattern on its front, a ridge of its own index in every cell, whose fill is computed from the target frequency and the focal length so the cells delay the wave as a lens would, zone by zone. Converging or diverging; the pattern's tops and the plate's back can carry an anti-reflection coating.
+2. **Meta prism**  
+   A meta prism: a carrier plate with a sub-wavelength pattern on its front whose cells delay the wave in a line across the face, so a wave arriving along the axis leaves turned by a set angle, as a blazed grating's first order. Cut for a target frequency; the pattern's tops and the plate's back can carry an anti-reflection coating.
+3. **Meta axicon**  
+   A meta axicon: a carrier plate with a sub-wavelength pattern on its front whose cells delay the wave in proportion to the distance from the axis, so the two halves of a wave arriving along the axis are turned toward it by a set angle and cross along a line behind the surface rather than at a point. Cut for a target frequency; the pattern's tops and the plate's back can carry an anti-reflection coating.
 
 ## Add part > Optical logic
 
@@ -588,6 +641,57 @@ A lens or a mirror: a strip of the diameter between two spherical surfaces, each
 20. **Centre thickness**  
    Distance between the two surfaces on the axis in pixels.
 21. **Edge thickness**  
+   Thickness at the rim: the centre thickness less what the convex surfaces take, plus what the concave ones add; 0 when the surfaces meet at the rim
+
+## Fresnel lens
+
+![properties-fresnel-lens](properties-fresnel-lens.svg)
+
+A Fresnel lens: a lens whose curved surfaces are cut into zones from the axis to the rim, equal in width or in depth, each zone's arc starting again at the vertex plane, so a thin plate bends light as a thick lens would. The settings are the lens's, with the number of zones and their division; a flat surface stays flat.
+
+1. **Description of the kind, opened and closed with Space; one setting for every kind**  
+   Show or hide what this kind of part is
+2. **Name**  
+   Name shown in the project tree and on the canvas.
+3. **Enabled**  
+   Paint the part into the scene; a disabled part has no effect on a run.
+4. **X**  
+   X of the part's centre in canvas pixels.
+5. **Y**  
+   Y of the part's centre in canvas pixels.
+6. **Angle**  
+   Rotation about the centre in degrees, counter-clockwise on the screen. 0 points the part's axis to the right.
+7. **Mirror**  
+   Make the part a mirror instead of a lens. The refractive index, the coating and the absorption are ignored then.
+8. **Refractive index**  
+   Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
+9. **AR coating**  
+   Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+10. **Coating profile**  
+   How the index runs through the band: a layer at √n, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
+11. **Coat the front**  
+   Put the band on the front: the faces turned toward a source on the left, a lens's first surface. Clear it to leave them bare, as the inner faces of a cavity are.
+12. **Coat the back**  
+   Put the band on the back: the faces turned away from a source on the left, a lens's second surface. Clear it to leave them bare.
+13. **Coat the sides**  
+   Put the band on the sides: the faces that are neither front nor back, a lens's rim, a slab's narrow ends. Clear it to leave them bare.
+14. **Absorption**  
+   How strongly the part absorbs waves, 0 (not at all) to 255, as the scene image's blue channel. It rises from nothing at the outline over the absorption ramp, so a wave enters the part instead of being reflected. A mirror ignores it.
+15. **Absorption ramp**  
+   Depth in pixels over which the absorption rises from nothing at the outline to its full value; the longer, the less of a wave is reflected. A part thinner than twice the ramp reaches its full absorption in its middle.
+16. **Diameter**  
+   Extent across the axis in pixels.
+17. **R1**  
+   Radius of the first surface in pixels: positive bulges outward, negative is concave, 0 is flat. A radius too curved for the diameter and the centre thickness is raised to the smallest that fits.
+18. **R2**  
+   Radius of the second surface in pixels: negative bulges outward, positive is concave, 0 is flat. A radius too curved for the diameter and the centre thickness is raised to the smallest that fits.
+19. **Centre thickness**  
+   Distance between the two surfaces on the axis in pixels.
+20. **Zones**  
+   Number of zones each curved surface is cut into, from the axis to the rim, equal in width or in depth as the zone division says. At each zone's inner edge the arc starts again at the vertex plane, so the plate stays thin; 1 is a plain lens.
+21. **Zone division**  
+   How the zones are divided from the axis to the rim: equal in width, the outer zone the deepest; or equal in depth, each zone cut to the same depth and the zones narrowing outward, as the elements of a lighthouse lens are.
+22. **Edge thickness**  
    Thickness at the rim: the centre thickness less what the convex surfaces take, plus what the concave ones add; 0 when the surfaces meet at the rim
 
 ## Polygon
@@ -1119,6 +1223,355 @@ A zone plate: Fresnel zones cut for a design frequency and a focal length, every
 16. **Number of zones**
 17. **Outermost zone**
 
+## Diffuser
+
+![properties-diffuser](properties-diffuser.svg)
+
+A diffuser: a plate of glass or mirror whose front face is rough, the back flat. The roughness is a spread of ripples about a centre wavelength, their phases random from the project's seed; it scatters what passes or reflects.
+
+1. **Description of the kind, opened and closed with Space; one setting for every kind**  
+   Show or hide what this kind of part is
+2. **Name**  
+   Name shown in the project tree and on the canvas.
+3. **Enabled**  
+   Paint the part into the scene; a disabled part has no effect on a run.
+4. **X**  
+   X of the part's centre in canvas pixels.
+5. **Y**  
+   Y of the part's centre in canvas pixels.
+6. **Angle**  
+   Rotation about the centre in degrees, counter-clockwise on the screen. 0 points the part's axis to the right.
+7. **Mirror**  
+   Make the part a mirror instead of glass. The refractive index, the coating and the absorption are ignored then.
+8. **Refractive index**  
+   Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
+9. **AR coating**  
+   Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+10. **Coating profile**  
+   How the index runs through the band: a layer at √n, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
+11. **Coat the front**  
+   Put the band on the front: the faces turned toward a source on the left, a lens's first surface. Clear it to leave them bare, as the inner faces of a cavity are.
+12. **Coat the back**  
+   Put the band on the back: the faces turned away from a source on the left, a lens's second surface. Clear it to leave them bare.
+13. **Coat the sides**  
+   Put the band on the sides: the faces that are neither front nor back, a lens's rim, a slab's narrow ends. Clear it to leave them bare.
+14. **Absorption**  
+   How strongly the part absorbs waves, 0 (not at all) to 255, as the scene image's blue channel. It rises from nothing at the outline over the absorption ramp, so a wave enters the part instead of being reflected. A mirror ignores it.
+15. **Absorption ramp**  
+   Depth in pixels over which the absorption rises from nothing at the outline to its full value; the longer, the less of a wave is reflected. A part thinner than twice the ramp reaches its full absorption in its middle.
+16. **Length**  
+   Extent along the axis in pixels: the plate's thickness at the mean of its rough face.
+17. **Width**  
+   Extent across the axis in pixels: the width of the rough face.
+18. **Centre wavelength**  
+   The spatial wavelength in pixels at the middle of the roughness's spectrum: the ripple along the face that has the full amplitude. Two pixels at least.
+19. **Amplitude**  
+   The amplitude in pixels of the ripple at the centre wavelength. The other wavelengths of the spread get less, by their distance from the centre, and the face carries the sum of them all; 0 makes the face flat.
+20. **Sigma**  
+   The spread of the roughness's wavelengths about the centre wavelength, in pixels: a wavelength gets the amplitude times the bell e^(−(λ − centre)² / 2σ²). 0 leaves the centre wavelength alone, a single regular ripple; the larger, the more wavelengths join in and the less regular the face.
+21. **Profile height**  
+   The rough face from its highest point to its lowest: what the ripples add up to
+22. **Ripples**  
+   How many wavelengths make up the roughness: one at sigma 0, thirteen otherwise, those below two pixels left out
+
+## Interference filter
+
+![properties-interference-filter](properties-interference-filter.svg)
+
+An interference filter: a plate of glass or mirror with a stack of thin layers on its front, each with its own thickness and index. Waves reflected at the layers' boundaries interfere, so the stack reflects some wavelengths and passes others; a new filter is a quarter-wave stack for a wavelength of 16 pixels.
+
+1. **Description of the kind, opened and closed with Space; one setting for every kind**  
+   Show or hide what this kind of part is
+2. **Name**  
+   Name shown in the project tree and on the canvas.
+3. **Enabled**  
+   Paint the part into the scene; a disabled part has no effect on a run.
+4. **X**  
+   X of the part's centre in canvas pixels.
+5. **Y**  
+   Y of the part's centre in canvas pixels.
+6. **Angle**  
+   Rotation about the centre in degrees, counter-clockwise on the screen. 0 points the part's axis to the right.
+7. **Mirror**  
+   Make the part a mirror instead of glass. The refractive index, the coating and the absorption are ignored then.
+8. **Refractive index**  
+   Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
+9. **AR coating**  
+   Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+10. **Coating profile**  
+   How the index runs through the band: a layer at √n, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
+11. **Coat the back**  
+   Put the band on the back: the faces turned away from a source on the left, a lens's second surface. Clear it to leave them bare.
+12. **Absorption**  
+   How strongly the part absorbs waves, 0 (not at all) to 255, as the scene image's blue channel. It rises from nothing at the outline over the absorption ramp, so a wave enters the part instead of being reflected. A mirror ignores it.
+13. **Absorption ramp**  
+   Depth in pixels over which the absorption rises from nothing at the outline to its full value; the longer, the less of a wave is reflected. A part thinner than twice the ramp reaches its full absorption in its middle.
+14. **Length**  
+   Extent of the plate along the axis in pixels, without the layers, which lie on its front.
+15. **Width**  
+   Extent across the axis in pixels, of the plate and the layers alike.
+16. **Stack thickness**  
+   The layers' thicknesses added up: how far the stack stands out of the plate's front
+17. **Per layer: grip, number, thickness, index, up, down, remove**  
+   Remove this layer
+18. **Add a layer**  
+   Append a copy of the last layer
+19. **Remove all layers**  
+   Remove every layer, to build another stack from nothing; Undo brings them back
+
+## Simple 2D grating
+
+![properties-simple-grating](properties-simple-grating.svg)
+
+A simple 2D grating: a lattice of round dots, so many columns along the axis by so many rows across, each direction with its own spacing, nothing between them. The dots are mirror, or glass with an index; a wave passing the lattice is diffracted into the orders the spacings set. One column makes a line grating.
+
+1. **Description of the kind, opened and closed with Space; one setting for every kind**  
+   Show or hide what this kind of part is
+2. **Name**  
+   Name shown in the project tree and on the canvas.
+3. **Enabled**  
+   Paint the part into the scene; a disabled part has no effect on a run.
+4. **X**  
+   X of the part's centre in canvas pixels.
+5. **Y**  
+   Y of the part's centre in canvas pixels.
+6. **Angle**  
+   Rotation about the centre in degrees, counter-clockwise on the screen. 0 points the part's axis to the right.
+7. **Mirror**  
+   Make the part a mirror instead of glass. The refractive index, the coating and the absorption are ignored then.
+8. **Refractive index**  
+   Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
+9. **Absorption**  
+   How strongly the part absorbs waves, 0 (not at all) to 255, as the scene image's blue channel. It rises from nothing at the outline over the absorption ramp, so a wave enters the part instead of being reflected. A mirror ignores it.
+10. **Absorption ramp**  
+   Depth in pixels over which the absorption rises from nothing at the outline to its full value; the longer, the less of a wave is reflected. A part thinner than twice the ramp reaches its full absorption in its middle.
+11. **Columns**  
+   Number of dots along the axis. Odd counts keep the middle dot on the part's position; one column is a line grating across the axis.
+12. **Rows**  
+   Number of dots across the axis. Odd counts keep the middle dot on the part's position.
+13. **Column spacing**  
+   Distance between neighbouring columns along the axis in pixels: the grating's period in that direction. The dots can be at most half the smaller spacing across.
+14. **Row spacing**  
+   Distance between neighbouring rows across the axis in pixels: the grating's period in that direction. The dots can be at most half the smaller spacing across.
+15. **Dot diameter**  
+   Diameter of each dot in pixels, at most half the smaller spacing. A dot of 2 pixels on a whole-pixel position covers a square of 2 × 2 pixels; a mirror dot under 2 pixels covers no pixel centre and paints nothing.
+
+## Facetted grating
+
+![properties-facetted-grating](properties-facetted-grating.svg)
+
+A facetted grating: a plate of glass or mirror whose front face carries a periodic relief, a sawtooth, a square wave or a sinusoid repeated every pitch, the back flat. A diffuser of one wavelength: the pitch and the wavelength set the angles the orders leave at.
+
+1. **Description of the kind, opened and closed with Space; one setting for every kind**  
+   Show or hide what this kind of part is
+2. **Name**  
+   Name shown in the project tree and on the canvas.
+3. **Enabled**  
+   Paint the part into the scene; a disabled part has no effect on a run.
+4. **X**  
+   X of the part's centre in canvas pixels.
+5. **Y**  
+   Y of the part's centre in canvas pixels.
+6. **Angle**  
+   Rotation about the centre in degrees, counter-clockwise on the screen. 0 points the part's axis to the right.
+7. **Mirror**  
+   Make the part a mirror instead of glass. The refractive index, the coating and the absorption are ignored then.
+8. **Refractive index**  
+   Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
+9. **AR coating**  
+   Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+10. **Coating profile**  
+   How the index runs through the band: a layer at √n, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
+11. **Coat the back**  
+   Put the band on the back: the faces turned away from a source on the left, a lens's second surface. Clear it to leave them bare.
+12. **Absorption**  
+   How strongly the part absorbs waves, 0 (not at all) to 255, as the scene image's blue channel. It rises from nothing at the outline over the absorption ramp, so a wave enters the part instead of being reflected. A mirror ignores it.
+13. **Absorption ramp**  
+   Depth in pixels over which the absorption rises from nothing at the outline to its full value; the longer, the less of a wave is reflected. A part thinner than twice the ramp reaches its full absorption in its middle.
+14. **Length**  
+   Extent along the axis in pixels: the plate's thickness at the mean of its facetted face.
+15. **Width**  
+   Extent across the axis in pixels: the width of the facetted face.
+16. **Pattern**  
+   The facets' shape over each pitch: a sawtooth, a ramp then a step; a square wave, a crest and a trough of half a pitch each; or a sinusoid.
+17. **Pitch**  
+   The period of the facets across the face in pixels: the grating's pitch, which with the wavelength sets the diffraction angles. Two pixels at least.
+18. **Amplitude**  
+   The relief's height either side of the mean face in pixels: the facets run from this far out to this far in, twice it from crest to trough. 0 makes the face flat.
+
+## Meta lens
+
+![properties-meta-lens](properties-meta-lens.svg)
+
+A meta lens: a carrier plate with a sub-wavelength pattern on its front, a ridge of its own index in every cell, whose fill is computed from the target frequency and the focal length so the cells delay the wave as a lens would, zone by zone. Converging or diverging; the pattern's tops and the plate's back can carry an anti-reflection coating.
+
+1. **Description of the kind, opened and closed with Space; one setting for every kind**  
+   Show or hide what this kind of part is
+2. **Name**  
+   Name shown in the project tree and on the canvas.
+3. **Enabled**  
+   Paint the part into the scene; a disabled part has no effect on a run.
+4. **X**  
+   X of the part's centre in canvas pixels.
+5. **Y**  
+   Y of the part's centre in canvas pixels.
+6. **Angle**  
+   Rotation about the centre in degrees, counter-clockwise on the screen. 0 points the part's axis to the right.
+7. **Mirror**  
+   Make the part a mirror instead of glass. The refractive index, the coating and the absorption are ignored then.
+8. **Refractive index**  
+   Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
+9. **AR coating**  
+   Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+10. **Coating profile**  
+   How the index runs through the band: a layer at √n, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
+11. **Coat the front**  
+   Put the band on the front: the faces turned toward a source on the left, a lens's first surface. Clear it to leave them bare, as the inner faces of a cavity are.
+12. **Coat the back**  
+   Put the band on the back: the faces turned away from a source on the left, a lens's second surface. Clear it to leave them bare.
+13. **Absorption**  
+   How strongly the part absorbs waves, 0 (not at all) to 255, as the scene image's blue channel. It rises from nothing at the outline over the absorption ramp, so a wave enters the part instead of being reflected. A mirror ignores it.
+14. **Absorption ramp**  
+   Depth in pixels over which the absorption rises from nothing at the outline to its full value; the longer, the less of a wave is reflected. A part thinner than twice the ramp reaches its full absorption in its middle.
+15. **Length**  
+   Thickness of the carrier plate along the axis in pixels; the pattern stands on its front, outside it.
+16. **Width**  
+   Width of the plate and its pattern across the axis in pixels.
+17. **Target frequency**  
+   The source frequency the surface is designed for, on the same scale as a source's frequency. The cells' fill follows from the wavelength it gives, so the surface does its work at this frequency: a lens focuses it at the focal length, a prism turns it by its angle, an axicon by its cone angle. Another frequency sees another surface.
+18. **Wavelength**  
+   The wavelength the design frequency gives in a medium of index 1, with the simulation's source frequency scale
+19. **Focal length**  
+   Distance in pixels from the lens to its focus, for a plane wave arriving along the axis; a diverging lens spreads the wave as if from a focus that far behind it.
+20. **Lens type**  
+   Converging, the fill greatest at the centre and falling outward within each zone, as a convex lens's glass thins; or diverging, the fill growing outward.
+21. **Zones**  
+   The zones from the centre to the rim, each a full turn of phase, the last one cut by the rim
+22. **Pattern index**  
+   Refractive index of the ridges, 1.00 to 2.55 in steps of 0.01, usually above the plate's. The higher, the lower the pattern can be.
+23. **Pitch**  
+   The width of a cell of the pattern across the face in pixels, one ridge per cell. Well below the wavelength, so the wave sees each cell as a mean index rather than diffracting at it.
+24. **Height**  
+   The height of the ridges in front of the plate in pixels. A full turn of phase, which the zones need, takes a height of the wavelength over the pattern index less one; a lower pattern cannot delay enough and its fill saturates.
+25. **Full-turn height**  
+   The pattern height at which a filled cell delays by a whole turn, the wavelength over the pattern index less one; a lower pattern saturates
+
+## Meta prism
+
+![properties-meta-prism](properties-meta-prism.svg)
+
+A meta prism: a carrier plate with a sub-wavelength pattern on its front whose cells delay the wave in a line across the face, so a wave arriving along the axis leaves turned by a set angle, as a blazed grating's first order. Cut for a target frequency; the pattern's tops and the plate's back can carry an anti-reflection coating.
+
+1. **Description of the kind, opened and closed with Space; one setting for every kind**  
+   Show or hide what this kind of part is
+2. **Name**  
+   Name shown in the project tree and on the canvas.
+3. **Enabled**  
+   Paint the part into the scene; a disabled part has no effect on a run.
+4. **X**  
+   X of the part's centre in canvas pixels.
+5. **Y**  
+   Y of the part's centre in canvas pixels.
+6. **Angle**  
+   Rotation about the centre in degrees, counter-clockwise on the screen. 0 points the part's axis to the right.
+7. **Mirror**  
+   Make the part a mirror instead of glass. The refractive index, the coating and the absorption are ignored then.
+8. **Refractive index**  
+   Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
+9. **AR coating**  
+   Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+10. **Coating profile**  
+   How the index runs through the band: a layer at √n, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
+11. **Coat the front**  
+   Put the band on the front: the faces turned toward a source on the left, a lens's first surface. Clear it to leave them bare, as the inner faces of a cavity are.
+12. **Coat the back**  
+   Put the band on the back: the faces turned away from a source on the left, a lens's second surface. Clear it to leave them bare.
+13. **Absorption**  
+   How strongly the part absorbs waves, 0 (not at all) to 255, as the scene image's blue channel. It rises from nothing at the outline over the absorption ramp, so a wave enters the part instead of being reflected. A mirror ignores it.
+14. **Absorption ramp**  
+   Depth in pixels over which the absorption rises from nothing at the outline to its full value; the longer, the less of a wave is reflected. A part thinner than twice the ramp reaches its full absorption in its middle.
+15. **Length**  
+   Thickness of the carrier plate along the axis in pixels; the pattern stands on its front, outside it.
+16. **Width**  
+   Width of the plate and its pattern across the axis in pixels.
+17. **Target frequency**  
+   The source frequency the surface is designed for, on the same scale as a source's frequency. The cells' fill follows from the wavelength it gives, so the surface does its work at this frequency: a lens focuses it at the focal length, a prism turns it by its angle, an axicon by its cone angle. Another frequency sees another surface.
+18. **Wavelength**  
+   The wavelength the design frequency gives in a medium of index 1, with the simulation's source frequency scale
+19. **Deflection**  
+   The angle in degrees by which a wave arriving along the axis is turned, counter-clockwise on the screen for a positive angle; 0 turns nothing. The steeper, the narrower the zones, which must stay a few cells wide.
+20. **Zone width**  
+   The width of a zone across the face, a full turn of phase: the wavelength over the sine of the deflection
+21. **Zones**  
+   The zones from the centre to the rim, each a full turn of phase, the last one cut by the rim
+22. **Pattern index**  
+   Refractive index of the ridges, 1.00 to 2.55 in steps of 0.01, usually above the plate's. The higher, the lower the pattern can be.
+23. **Pitch**  
+   The width of a cell of the pattern across the face in pixels, one ridge per cell. Well below the wavelength, so the wave sees each cell as a mean index rather than diffracting at it.
+24. **Height**  
+   The height of the ridges in front of the plate in pixels. A full turn of phase, which the zones need, takes a height of the wavelength over the pattern index less one; a lower pattern cannot delay enough and its fill saturates.
+25. **Full-turn height**  
+   The pattern height at which a filled cell delays by a whole turn, the wavelength over the pattern index less one; a lower pattern saturates
+
+## Meta axicon
+
+![properties-meta-axicon](properties-meta-axicon.svg)
+
+A meta axicon: a carrier plate with a sub-wavelength pattern on its front whose cells delay the wave in proportion to the distance from the axis, so the two halves of a wave arriving along the axis are turned toward it by a set angle and cross along a line behind the surface rather than at a point. Cut for a target frequency; the pattern's tops and the plate's back can carry an anti-reflection coating.
+
+1. **Description of the kind, opened and closed with Space; one setting for every kind**  
+   Show or hide what this kind of part is
+2. **Name**  
+   Name shown in the project tree and on the canvas.
+3. **Enabled**  
+   Paint the part into the scene; a disabled part has no effect on a run.
+4. **X**  
+   X of the part's centre in canvas pixels.
+5. **Y**  
+   Y of the part's centre in canvas pixels.
+6. **Angle**  
+   Rotation about the centre in degrees, counter-clockwise on the screen. 0 points the part's axis to the right.
+7. **Mirror**  
+   Make the part a mirror instead of glass. The refractive index, the coating and the absorption are ignored then.
+8. **Refractive index**  
+   Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
+9. **AR coating**  
+   Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+10. **Coating profile**  
+   How the index runs through the band: a layer at √n, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
+11. **Coat the front**  
+   Put the band on the front: the faces turned toward a source on the left, a lens's first surface. Clear it to leave them bare, as the inner faces of a cavity are.
+12. **Coat the back**  
+   Put the band on the back: the faces turned away from a source on the left, a lens's second surface. Clear it to leave them bare.
+13. **Absorption**  
+   How strongly the part absorbs waves, 0 (not at all) to 255, as the scene image's blue channel. It rises from nothing at the outline over the absorption ramp, so a wave enters the part instead of being reflected. A mirror ignores it.
+14. **Absorption ramp**  
+   Depth in pixels over which the absorption rises from nothing at the outline to its full value; the longer, the less of a wave is reflected. A part thinner than twice the ramp reaches its full absorption in its middle.
+15. **Length**  
+   Thickness of the carrier plate along the axis in pixels; the pattern stands on its front, outside it.
+16. **Width**  
+   Width of the plate and its pattern across the axis in pixels.
+17. **Target frequency**  
+   The source frequency the surface is designed for, on the same scale as a source's frequency. The cells' fill follows from the wavelength it gives, so the surface does its work at this frequency: a lens focuses it at the focal length, a prism turns it by its angle, an axicon by its cone angle. Another frequency sees another surface.
+18. **Wavelength**  
+   The wavelength the design frequency gives in a medium of index 1, with the simulation's source frequency scale
+19. **Cone angle**  
+   The angle in degrees by which each half of a wave arriving along the axis is turned toward it. The steeper, the shorter the line of focus behind the surface and the narrower the zones, which must stay a few cells wide.
+20. **Line of focus**  
+   How far behind the surface the line of focus reaches: half the width over the tangent of the cone angle, where the rim's rays cross the axis
+21. **Zone width**  
+   The width of a zone across the face, a full turn of phase: the wavelength over the sine of the deflection
+22. **Zones**  
+   The zones from the centre to the rim, each a full turn of phase, the last one cut by the rim
+23. **Pattern index**  
+   Refractive index of the ridges, 1.00 to 2.55 in steps of 0.01, usually above the plate's. The higher, the lower the pattern can be.
+24. **Pitch**  
+   The width of a cell of the pattern across the face in pixels, one ridge per cell. Well below the wavelength, so the wave sees each cell as a mean index rather than diffracting at it.
+25. **Height**  
+   The height of the ridges in front of the plate in pixels. A full turn of phase, which the zones need, takes a height of the wavelength over the pattern index less one; a lower pattern cannot delay enough and its fill saturates.
+26. **Full-turn height**  
+   The pattern height at which a filled cell delays by a whole turn, the wavelength over the pattern index less one; a lower pattern saturates
+
 ## Probe
 
 ![properties-probe](properties-probe.svg)
@@ -1131,45 +1584,51 @@ A point probe of the field.
    Sample and draw this probe.
 3. **Start after step**  
    Step at which recording starts; 0 records from the first step.
-4. **Layer**  
+4. **Detector**  
+   A standard probe, or a probabilistic detector: counting, the detections of the whole line step by step over time, as a photomultiplier's pulses; or imaging, the detections at every point of the line added up over the run, as a SPAD array builds an image. A detector is a line probe of the integrated intensity.
+5. **Detector sensitivity**  
+   Expected detections per unit of intensity per step at a point of the line: the detector's quantum efficiency and the scale from intensity to detections in one number. The detections are Poisson-distributed about intensity × sensitivity; 0 detects nothing.
+6. **Bin size**  
+   Pixels of the line per bin of an imaging detector's histogram, 1 to 20: the detections of a bin's pixels are added up, and the graph shows the bin's total across them. Wider bins fill faster and show less detail.
+7. **Layer**  
    Output the probe samples and is drawn on.
-5. **Measurement**  
+8. **Measurement**  
    Recorded quantity. The field offers its amplitude only; the intensity layer its value, or the value integrated over the run.
-6. **Kind**  
+9. **Kind**  
    A single point, or a line from A to B.
-7. **A x**  
+10. **A x**  
    X of the probe pixel, or of the start of the line, in canvas pixels.
-8. **A y**  
+11. **A y**  
    Y of the probe pixel, or of the start of the line, in canvas pixels.
-9. **B x**  
+12. **B x**  
    X of the end of the line in canvas pixels; line probes only.
-10. **B y**  
+13. **B y**  
    Y of the end of the line in canvas pixels; line probes only.
-11. **Box size**  
+14. **Box size**  
    Nominal size of the graph box drawn over the output; a box larger than the canvas is shrunk to fit it, aspect kept.
-12. **Box x**  
+15. **Box x**  
    Left edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
-13. **Box y**  
+16. **Box y**  
    Top edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
-14. **Box width**  
+17. **Box width**  
    Width of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
-15. **Box height**  
+18. **Box height**  
    Height of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
-16. **Step axis**  
+19. **Step axis**  
    Sliding window of the last steps, or the whole run; point probes only.
-17. **Window**  
+20. **Window**  
    Width of the sliding step window, in steps.
-18. **Auto-scale steps**  
+21. **Auto-scale steps**  
    Let the step axis follow the samples recorded so far; point probes only.
-19. **Auto-scale values**  
+22. **Auto-scale values**  
    Fit the value axis to the data instead of the fixed minimum and maximum.
-20. **Value axis**  
+23. **Value axis**  
    A linear or a logarithmic value axis; intensity probes only, the field is always linear.
-21. **Decades**  
+24. **Decades**  
    Decades a logarithmic value axis spans below its top; smaller values, zero included, sit on the bottom line.
-22. **Value minimum**  
+25. **Value minimum**  
    Lower bound of the value axis when it is not auto-scaled.
-23. **Value maximum**  
+26. **Value maximum**  
    Upper bound of the value axis when it is not auto-scaled.
 
 ## Line probe
@@ -1184,45 +1643,169 @@ A line probe of the intensity, logarithmic.
    Sample and draw this probe.
 3. **Start after step**  
    Step at which recording starts; 0 records from the first step.
-4. **Layer**  
+4. **Detector**  
+   A standard probe, or a probabilistic detector: counting, the detections of the whole line step by step over time, as a photomultiplier's pulses; or imaging, the detections at every point of the line added up over the run, as a SPAD array builds an image. A detector is a line probe of the integrated intensity.
+5. **Detector sensitivity**  
+   Expected detections per unit of intensity per step at a point of the line: the detector's quantum efficiency and the scale from intensity to detections in one number. The detections are Poisson-distributed about intensity × sensitivity; 0 detects nothing.
+6. **Bin size**  
+   Pixels of the line per bin of an imaging detector's histogram, 1 to 20: the detections of a bin's pixels are added up, and the graph shows the bin's total across them. Wider bins fill faster and show less detail.
+7. **Layer**  
    Output the probe samples and is drawn on.
-5. **Measurement**  
+8. **Measurement**  
    Recorded quantity. The field offers its amplitude only; the intensity layer its value, or the value integrated over the run.
-6. **Kind**  
+9. **Kind**  
    A single point, or a line from A to B.
-7. **A x**  
+10. **A x**  
    X of the probe pixel, or of the start of the line, in canvas pixels.
-8. **A y**  
+11. **A y**  
    Y of the probe pixel, or of the start of the line, in canvas pixels.
-9. **B x**  
+12. **B x**  
    X of the end of the line in canvas pixels; line probes only.
-10. **B y**  
+13. **B y**  
    Y of the end of the line in canvas pixels; line probes only.
-11. **Box size**  
+14. **Box size**  
    Nominal size of the graph box drawn over the output; a box larger than the canvas is shrunk to fit it, aspect kept.
-12. **Box x**  
+15. **Box x**  
    Left edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
-13. **Box y**  
+16. **Box y**  
    Top edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
-14. **Box width**  
+17. **Box width**  
    Width of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
-15. **Box height**  
+18. **Box height**  
    Height of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
-16. **Step axis**  
+19. **Step axis**  
    Sliding window of the last steps, or the whole run; point probes only.
-17. **Window**  
+20. **Window**  
    Width of the sliding step window, in steps.
-18. **Auto-scale steps**  
+21. **Auto-scale steps**  
    Let the step axis follow the samples recorded so far; point probes only.
-19. **Auto-scale values**  
+22. **Auto-scale values**  
    Fit the value axis to the data instead of the fixed minimum and maximum.
-20. **Value axis**  
+23. **Value axis**  
    A linear or a logarithmic value axis; intensity probes only, the field is always linear.
-21. **Decades**  
+24. **Decades**  
    Decades a logarithmic value axis spans below its top; smaller values, zero included, sit on the bottom line.
-22. **Value minimum**  
+25. **Value minimum**  
    Lower bound of the value axis when it is not auto-scaled.
-23. **Value maximum**  
+26. **Value maximum**  
+   Upper bound of the value axis when it is not auto-scaled.
+
+## Counting detector
+
+![properties-counting-detector](properties-counting-detector.svg)
+
+A counting detector: the detections of its line, step by step.
+
+1. **Name**  
+   Name shown in the project tree and in the graph title.
+2. **Active**  
+   Sample and draw this probe.
+3. **Start after step**  
+   Step at which recording starts; 0 records from the first step.
+4. **Detector**  
+   A standard probe, or a probabilistic detector: counting, the detections of the whole line step by step over time, as a photomultiplier's pulses; or imaging, the detections at every point of the line added up over the run, as a SPAD array builds an image. A detector is a line probe of the integrated intensity.
+5. **Detector sensitivity**  
+   Expected detections per unit of intensity per step at a point of the line: the detector's quantum efficiency and the scale from intensity to detections in one number. The detections are Poisson-distributed about intensity × sensitivity; 0 detects nothing.
+6. **Bin size**  
+   Pixels of the line per bin of an imaging detector's histogram, 1 to 20: the detections of a bin's pixels are added up, and the graph shows the bin's total across them. Wider bins fill faster and show less detail.
+7. **Layer**  
+   Output the probe samples and is drawn on.
+8. **Measurement**  
+   Recorded quantity. The field offers its amplitude only; the intensity layer its value, or the value integrated over the run.
+9. **Kind**  
+   A single point, or a line from A to B.
+10. **A x**  
+   X of the probe pixel, or of the start of the line, in canvas pixels.
+11. **A y**  
+   Y of the probe pixel, or of the start of the line, in canvas pixels.
+12. **B x**  
+   X of the end of the line in canvas pixels; line probes only.
+13. **B y**  
+   Y of the end of the line in canvas pixels; line probes only.
+14. **Box size**  
+   Nominal size of the graph box drawn over the output; a box larger than the canvas is shrunk to fit it, aspect kept.
+15. **Box x**  
+   Left edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
+16. **Box y**  
+   Top edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
+17. **Box width**  
+   Width of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
+18. **Box height**  
+   Height of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
+19. **Step axis**  
+   Sliding window of the last steps, or the whole run; point probes only.
+20. **Window**  
+   Width of the sliding step window, in steps.
+21. **Auto-scale steps**  
+   Let the step axis follow the samples recorded so far; point probes only.
+22. **Auto-scale values**  
+   Fit the value axis to the data instead of the fixed minimum and maximum.
+23. **Value axis**  
+   A linear or a logarithmic value axis; intensity probes only, the field is always linear.
+24. **Decades**  
+   Decades a logarithmic value axis spans below its top; smaller values, zero included, sit on the bottom line.
+25. **Value minimum**  
+   Lower bound of the value axis when it is not auto-scaled.
+26. **Value maximum**  
+   Upper bound of the value axis when it is not auto-scaled.
+
+## Imaging detector
+
+![properties-imaging-detector](properties-imaging-detector.svg)
+
+An imaging detector: the detections along its line, added up.
+
+1. **Name**  
+   Name shown in the project tree and in the graph title.
+2. **Active**  
+   Sample and draw this probe.
+3. **Start after step**  
+   Step at which recording starts; 0 records from the first step.
+4. **Detector**  
+   A standard probe, or a probabilistic detector: counting, the detections of the whole line step by step over time, as a photomultiplier's pulses; or imaging, the detections at every point of the line added up over the run, as a SPAD array builds an image. A detector is a line probe of the integrated intensity.
+5. **Detector sensitivity**  
+   Expected detections per unit of intensity per step at a point of the line: the detector's quantum efficiency and the scale from intensity to detections in one number. The detections are Poisson-distributed about intensity × sensitivity; 0 detects nothing.
+6. **Bin size**  
+   Pixels of the line per bin of an imaging detector's histogram, 1 to 20: the detections of a bin's pixels are added up, and the graph shows the bin's total across them. Wider bins fill faster and show less detail.
+7. **Layer**  
+   Output the probe samples and is drawn on.
+8. **Measurement**  
+   Recorded quantity. The field offers its amplitude only; the intensity layer its value, or the value integrated over the run.
+9. **Kind**  
+   A single point, or a line from A to B.
+10. **A x**  
+   X of the probe pixel, or of the start of the line, in canvas pixels.
+11. **A y**  
+   Y of the probe pixel, or of the start of the line, in canvas pixels.
+12. **B x**  
+   X of the end of the line in canvas pixels; line probes only.
+13. **B y**  
+   Y of the end of the line in canvas pixels; line probes only.
+14. **Box size**  
+   Nominal size of the graph box drawn over the output; a box larger than the canvas is shrunk to fit it, aspect kept.
+15. **Box x**  
+   Left edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
+16. **Box y**  
+   Top edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
+17. **Box width**  
+   Width of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
+18. **Box height**  
+   Height of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
+19. **Step axis**  
+   Sliding window of the last steps, or the whole run; point probes only.
+20. **Window**  
+   Width of the sliding step window, in steps.
+21. **Auto-scale steps**  
+   Let the step axis follow the samples recorded so far; point probes only.
+22. **Auto-scale values**  
+   Fit the value axis to the data instead of the fixed minimum and maximum.
+23. **Value axis**  
+   A linear or a logarithmic value axis; intensity probes only, the field is always linear.
+24. **Decades**  
+   Decades a logarithmic value axis spans below its top; smaller values, zero included, sit on the bottom line.
+25. **Value minimum**  
+   Lower bound of the value axis when it is not auto-scaled.
+26. **Value maximum**  
    Upper bound of the value axis when it is not auto-scaled.
 
 ## Colour scheme

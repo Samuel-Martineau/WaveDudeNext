@@ -127,8 +127,8 @@ public abstract class PartShape
 		return part switch
 		{
 			LensPart lens => new LensShape(lens),
-			DiffusorPart diffusor => new DiffusorShape(diffusor),
-			FacettedGratingPart facetted => new DiffusorShape(facetted),
+			DiffuserPart diffuser => new DiffuserShape(diffuser),
+			FacettedGratingPart facetted => new DiffuserShape(facetted),
 			InterferenceFilterPart filter => new FilterPlateShape(filter),
 			MetaSurfacePart lens => new FilterPlateShape(lens),
 			SimpleGratingPart grating => new GratingShape(grating),
@@ -887,14 +887,14 @@ public abstract class PartShape
 	}
 
 	/// <summary>
-	/// A diffusor (<see cref="DiffusorPart"/>): the polygon of its rough front face, a pixel per vertex, and its three
+	/// A diffuser (<see cref="DiffuserPart"/>): the polygon of its rough front face, a pixel per vertex, and its three
 	/// straight edges, with the depth the exact signed distance to that polygon, as the vertex shape's is, found without
 	/// the vertex shape's pass over every edge: the front face is a graph over y', so only the segments whose span in y'
 	/// lies nearer than the best distance so far can beat it, a handful about the point (a 1000 px face would otherwise
 	/// cost a thousand segment distances a sample). The front segments are the front, the plate's flat back the back, the
 	/// two short ends the sides, whatever the ripple's slope.
 	/// </summary>
-	private sealed class DiffusorShape : PartShape
+	private sealed class DiffuserShape : PartShape
 	{
 		private readonly double[] _front;
 		private readonly double _halfLength;
@@ -902,12 +902,12 @@ public abstract class PartShape
 		private readonly double _index;
 		private readonly double _extent;
 
-		public DiffusorShape(DiffusorPart diffusor) : this(diffusor, diffusor, diffusor.FrontCoated, diffusor.BackCoated, diffusor.SidesCoated)
+		public DiffuserShape(DiffuserPart diffuser) : this(diffuser, diffuser, diffuser.FrontCoated, diffuser.BackCoated, diffuser.SidesCoated)
 		{
 		}
 
 		/// <summary>A facetted grating (2026-11-08): the same plate with a periodic front, its band on the back alone (the user's rule).</summary>
-		public DiffusorShape(FacettedGratingPart grating) : this(grating, grating, false, grating.BackCoated, false)
+		public DiffuserShape(FacettedGratingPart grating) : this(grating, grating, false, grating.BackCoated, false)
 		{
 		}
 
@@ -916,7 +916,7 @@ public abstract class PartShape
 		/// <param name="front">Whether the front face carries the band.</param>
 		/// <param name="back">Whether the back carries the band.</param>
 		/// <param name="sides">Whether the two ends carry the band.</param>
-		private DiffusorShape(ShapePart part, IProfiledPlate plate, bool front, bool back, bool sides) : base(part, front, back, sides)
+		private DiffuserShape(ShapePart part, IProfiledPlate plate, bool front, bool back, bool sides) : base(part, front, back, sides)
 		{
 			_front = plate.FrontFace();
 			_halfLength = Math.Max(1, plate.Length) / 2.0;

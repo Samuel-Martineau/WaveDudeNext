@@ -64,9 +64,13 @@ public static class Shot
 	[DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out RECT rect, int size);
 	[DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
 	[DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+	[DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT p);
+	[DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
 	[StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 	[StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
 	public static RECT WindowRect(IntPtr hwnd) { RECT r; GetWindowRect(hwnd, out r); return r; }
+	// the process whose window is the top one at a screen point, 0 for none
+	public static uint ProcessAt(POINT p) { IntPtr hwnd = WindowFromPoint(p); if (hwnd == IntPtr.Zero) return 0; uint id; GetWindowThreadProcessId(hwnd, out id); return id; }
 	// screen position of the last Window() capture's top-left pixel
 	public static int LastLeft, LastTop;
 
@@ -136,7 +140,7 @@ $Headings = @{
 	"properties-lens" = "Lens"; "properties-fresnel-lens" = "Fresnel lens"; "properties-polygon" = "Polygon"; "properties-rectangle" = "Rectangle"; "properties-ellipse" = "Ellipse"
 	"properties-triangle" = "Triangle"; "properties-outline" = "Outline"; "properties-fibre" = "Fibre"; "properties-bragg-reflector" = "Bragg reflector"
 	"properties-grin-lens" = "GRIN lens"; "properties-xor-gate" = "XOR gate"; "properties-and-gate" = "AND gate"; "properties-or-gate" = "OR gate"
-	"properties-zone-plate" = "Zone plate"; "properties-diffusor" = "Diffusor"; "properties-interference-filter" = "Interference filter"; "properties-simple-grating" = "Simple 2D grating"; "properties-facetted-grating" = "Facetted grating"; "properties-meta-lens" = "Meta lens"; "properties-meta-prism" = "Meta prism"; "properties-meta-axicon" = "Meta axicon"; "properties-probe" = "Probe"; "properties-line-probe" = "Line probe"; "properties-counting-detector" = "Counting detector"; "properties-imaging-detector" = "Imaging detector"; "menu-add-probe" = "The Add probe menu"; "menu-add-probe-probabilistic" = "Add probe > Probabilistic"; "properties-colour-scheme" = "Colour scheme"
+	"properties-zone-plate" = "Zone plate"; "properties-diffuser" = "Diffuser"; "properties-interference-filter" = "Interference filter"; "properties-simple-grating" = "Simple 2D grating"; "properties-facetted-grating" = "Facetted grating"; "properties-meta-lens" = "Meta lens"; "properties-meta-prism" = "Meta prism"; "properties-meta-axicon" = "Meta axicon"; "properties-probe" = "Probe"; "properties-line-probe" = "Line probe"; "properties-counting-detector" = "Counting detector"; "properties-imaging-detector" = "Imaging detector"; "menu-add-probe" = "The Add probe menu"; "menu-add-probe-probabilistic" = "Add probe > Probabilistic"; "properties-colour-scheme" = "Colour scheme"
 	"properties-part-common" = "Settings every part shares"; "properties-part-material" = "Glass and mirror settings"
 }
 $script:legend = New-Object System.Text.StringBuilder
@@ -262,12 +266,16 @@ function Crop-Figure([string]$name, [string]$title, $capture, [double]$l, [doubl
 # and the box's hover border made the main window's picture differ from the run before). A pointer over the app window
 # is parked just outside the window, where it highlights nothing, before a capture, and put back at the end unless
 # the user has moved it meanwhile. The only mouse action in the harnesses: it clicks nothing and activates nothing.
+# Only a pointer that lies on a window of the app itself is moved (2026-11-09, the user's report: the pointer was taken
+# from under his hand again and again while he worked in a window lying over the app's; the test had been the app
+# window's rectangle alone, and a pointer on a window that covers the app's hovers over nothing of the app).
 $script:parkedFrom = $null; $script:parkedAt = $null
 function Park-Pointer() {
 	$r = [Shot]::WindowRect($script:hwnd)
 	$p = New-Object Shot+POINT
 	$null = [Shot]::GetCursorPos([ref]$p)
 	if ($p.X -lt $r.Left -or $p.X -ge $r.Right -or $p.Y -lt $r.Top -or $p.Y -ge $r.Bottom) { return }
+	if ([Shot]::ProcessAt($p) -ne $script:p.Id) { return }
 	$screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
 	foreach ($spot in @(@(($r.Right + 8), $p.Y), @(($r.Left - 8), $p.Y), @($p.X, ($r.Bottom + 8)), @($p.X, ($r.Top - 8)))) {
 		if ($spot[0] -lt $screen.Left -or $spot[0] -ge $screen.Right -or $spot[1] -lt $screen.Top -or $spot[1] -ge $screen.Bottom) { continue }
@@ -371,6 +379,8 @@ function Save-Figure($fig) {
 	[IO.File]::WriteAllText((Join-Path $Out ($fig.Name + ".svg")), $svg.ToString())
 	$fig.Bitmap.Dispose()
 	$script:figureCount++
+	# an active window's frame is drawn in the accent colour, one pixel column of every crop at the window's edge
+	if ((Foreground) -eq "APP") { Problem ("figure {0} was taken with the app window active: its frame shows the accent colour" -f $fig.Name) }
 	Write-Output ("figure {0}: {1}x{2}, {3} badges" -f $fig.Name, $W, $H, $n)
 }
 
@@ -526,10 +536,25 @@ New-Item -ItemType Directory -Force $Out | Out-Null
 if ($PngFolder -ne "") { New-Item -ItemType Directory -Force $PngFolder | Out-Null }
 $null = $script:legend.AppendLine("# Figures").AppendLine().AppendLine("Generated by ``_tools/ui_check/Screenshots.ps1``; under each figure, what its numbered badges mark, each with the control's tooltip where it has one.").AppendLine()
 
+# Starts the app for a session with its window inactive, as every figure shows it (2026-11-09: the second start of a
+# run came up active, the harness's known flake, and the frame of an active window is drawn in the accent colour, so
+# 33 forms differed from the committed figures in their leftmost pixel column, an orange line): a start that keeps
+# the foreground is closed and made again, three times at most.
+function Start-Inactive([string]$project) {
+	for ($try = 1; ; $try++) {
+		Start-App $Exe $project $TextSwitch
+		if ((Foreground) -ne "APP") { return }
+		Stop-App
+		if ($try -ge 3) { throw "the app window comes up active at every start; the figures would show the active window's frame" }
+		Write-Output ("note: the app window came up active (start {0}); starting it again" -f $try)
+		Start-Sleep -Milliseconds 1500
+	}
+}
+
 try {
 	# ----- session 1: the example project ---------------------------------------------------------------------
 	Set-FigureSettings 475 563
-	Start-App $Exe $Example $TextSwitch
+	Start-Inactive $Example
 	try {
 		# waves in the pictures: a scratch frame at the wanted position (PageUp moves ten frames)
 		FocusOn "PreviewTimeline"
@@ -742,7 +767,7 @@ try {
 	# ----- session 2: one object of every kind, a short tree, the properties pane at full height ------------------
 	Restore-Settings
 	Set-FigureSettings 140 1172 1400
-	Start-App $Exe (Join-Path $PSScriptRoot "figures.wdproj") $TextSwitch
+	Start-Inactive (Join-Path $PSScriptRoot "figures.wdproj")
 	try {
 		$tree = (ByType $script:win "Tree")[0]
 		$ids = @(ByType $tree "TreeItem" | ForEach-Object { $_.Current.AutomationId })
@@ -769,7 +794,7 @@ try {
 			@("Tree:AND*", "properties-and-gate", (En-String "Kind.AndGatePart"), @()),
 			@("Tree:OR *", "properties-or-gate", (En-String "Kind.OrGatePart"), @()),
 			@("Tree:Zone*", "properties-zone-plate", (En-String "Kind.ZonePlatePart"), @()),
-			@("Tree:Diffusor*", "properties-diffusor", (En-String "Kind.DiffusorPart"), @()),
+			@("Tree:Diffuser*", "properties-diffuser", (En-String "Kind.DiffuserPart"), @()),
 			@("Tree:Interference*", "properties-interference-filter", (En-String "Kind.InterferenceFilterPart"), @(@("key:TipRemoveLayer", "Per layer: grip, number, thickness, index, up, down, remove"), @("PartAddLayer", "Add a layer"), @("PartRemoveAllLayers", "Remove all layers"))),
 			@("Tree:Grating*", "properties-simple-grating", (En-String "Kind.SimpleGratingPart"), @()),
 			@("Tree:Facetted*", "properties-facetted-grating", (En-String "Kind.FacettedGratingPart"), @()),

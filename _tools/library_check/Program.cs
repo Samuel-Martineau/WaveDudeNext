@@ -289,7 +289,7 @@ internal static class Program
 		CheckXorGate();
 		CheckGatePortFollower();
 		CheckZonePlate();
-		CheckDiffusor();
+		CheckDiffuser();
 		CheckInterferenceFilter();
 		CheckSimpleGrating();
 		CheckFresnelLens();
@@ -513,7 +513,7 @@ internal static class Program
 		}
 		string xml = SaveToText(project);
 		string newLine = Environment.NewLine;
-		Check(xml.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>" + newLine + "<!DOCTYPE Project [" + newLine + "\t<!") && xml.Contains(newLine + "]>" + newLine + "<Project Version=\"3\""),
+		Check(xml.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>" + newLine + "<!DOCTYPE Project [" + newLine + "\t<!") && xml.Contains(newLine + "]>" + newLine + "<Project Version=\"4\""),
 			"the file holds the declaration, the DTD and then the root");
 		List<string> errors = ValidateAgainstDtd(xml);
 		Check(errors.Count == 0, "a project with every kind of object validates against its DTD" + (errors.Count == 0 ? "" : ": " + errors[0]));
@@ -1245,9 +1245,9 @@ internal static class Program
 			"the rim loses half per step at its outer ring, an eighth halfway in (the square of the depth), the canvas nothing, and the rim repeats the canvas's corner cell");
 		SceneData plain = SceneData.Empty(W, H, 8);
 		Check(plain.Rim == 0 && plain.Width == W && !plain.OpenEdges && plain.D[0] == 0f && plain.D[8 * W + 8] == 1f, "a positive damping edge stays inside the canvas, reflective by default");
-		// the default (2026-10-22, the user's choice): open with a 32 px rim outside, format version 3; older files keep what they meant
+		// the default (2026-10-22, the user's choice): open with a 32 px rim outside, format version 3 then, 4 since 2026-11-09; older files keep what they meant
 		var fresh = new Project();
-		Check(fresh.Scene.DampingEdge == -32 && fresh.Scene.Edges == EdgeMode.Open && fresh.Version == 3 && fresh.Scene.IsDefault, "a new project is open with a 32 px rim outside, format version 3, its scene element left out of the file");
+		Check(fresh.Scene.DampingEdge == -32 && fresh.Scene.Edges == EdgeMode.Open && fresh.Version == 4 && fresh.Scene.IsDefault, "a new project is open with a 32 px rim outside, format version 4, its scene element left out of the file");
 		static Project LoadXml(string xml)
 		{
 			using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml));
@@ -1264,7 +1264,29 @@ internal static class Program
 			saved.Save(stream);
 			savedXml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
 		}
-		Check(savedXml.Contains("Version=\"3\"") && savedXml.Contains("DampingEdge=\"0\""), "saved again it is version 3 and says DampingEdge=\"0\" explicitly");
+		Check(savedXml.Contains("Version=\"4\"") && savedXml.Contains("DampingEdge=\"0\""), "saved again it is version 4 and says DampingEdge=\"0\" explicitly");
+		// version 4 (2026-11-09): "Outline in the export" is on by default and a new zone plate is 32 px thick without a
+		// rise (Jeroen's choices of 2026-11-08); a file up to version 3 that leaves those attributes out meant off, 64 and
+		// 32, and keeps them
+		Project older = LoadXml("<Project Version=\"3\"><ZonePlate Name=\"Z\" /></Project>");
+		Check(older.Display is { Field.OverlayInExport: false, Intensity.OverlayInExport: false } && older.Parts[0] is ZonePlatePart { Thickness: 64, Coating: 32 },
+			"a version-3 file without the attributes keeps the outline out of its exports and its zone plate 64 px thick with a rise of 32");
+		Project explicitOlder = LoadXml("<Project Version=\"3\"><Display><Field OverlayInExport=\"true\" /></Display><ZonePlate Name=\"Z\" Thickness=\"32\" Coating=\"0\" /></Project>");
+		Check(explicitOlder.Display is { Field.OverlayInExport: true, Intensity.OverlayInExport: false } && explicitOlder.Parts[0] is ZonePlatePart { Thickness: 32, Coating: 0 },
+			"what a version-3 file says about them stays: the outline on for the one layer that names it, the plate 32 px thick without a rise");
+		Project current = LoadXml("<Project Version=\"4\"><ZonePlate Name=\"Z\" /></Project>");
+		Check(current.Display is { Field.OverlayInExport: true, Intensity.OverlayInExport: true } && current.Parts[0] is ZonePlatePart { Thickness: 32, Coating: 0 },
+			"a version-4 file without the attributes has the defaults of its version: the outline in the export, the plate 32 px thick without a rise");
+		string olderXml = SaveToText(older);
+		Project again = LoadText(olderXml);
+		Check(olderXml.Contains("Version=\"4\"") && olderXml.Split("OverlayInExport=\"false\"").Length == 3 && olderXml.Contains("Thickness=\"64\"") && olderXml.Contains("Coating=\"32\"")
+			&& again.Display is { Field.OverlayInExport: false, Intensity.OverlayInExport: false } && again.Parts[0] is ZonePlatePart { Thickness: 64, Coating: 32 },
+			"saved again the version-3 file is version 4 and says all four explicitly, and reads back the same");
+		// the root element alone: the document type definition before it names every attribute
+		string currentXml = SaveToText(current);
+		currentXml = currentXml[currentXml.IndexOf("]>", StringComparison.Ordinal)..];
+		Check(!currentXml.Contains("OverlayInExport") && !currentXml.Contains("Thickness=") && !currentXml.Contains("Coating="),
+			"a version-4 project at its defaults writes none of them");
 		// what comes back: a Gaussian pulse from the centre, its peak amplitude on the way out against the largest
 		// amplitude found in the canvas once it has had time to leave (steps 300 to 700)
 		// both stencils: the 4th-order one runs at the true Laplacian's speed, and its outermost canvas cells, which fall
@@ -2867,9 +2889,9 @@ internal static class Program
 			plate.X = 330; plate.Y = 160; plate.Angle = angle; plate.Diameter = 120; plate.Thickness = 20; plate.Coating = 6; plate.Mount = true; plate.MountWidth = 20;
 			var gate = project.AddPart<XorGatePart>();
 			gate.X = 450; gate.Y = 160; gate.Angle = angle;
-			var diffusor = project.AddPart<DiffusorPart>();
-			diffusor.X = 250; diffusor.Y = 320; diffusor.Angle = angle; diffusor.Length = 16; diffusor.Width = 90;
-			diffusor.Coating = 4; diffusor.CoatingProfile = CoatingProfile.Graded; diffusor.BackCoated = false; diffusor.Absorption = 60; diffusor.AbsorptionRamp = 5;
+			var diffuser = project.AddPart<DiffuserPart>();
+			diffuser.X = 250; diffuser.Y = 320; diffuser.Angle = angle; diffuser.Length = 16; diffuser.Width = 90;
+			diffuser.Coating = 4; diffuser.CoatingProfile = CoatingProfile.Graded; diffuser.BackCoated = false; diffuser.Absorption = 60; diffuser.AbsorptionRamp = 5;
 			// an interference filter on glass with fractional layers, its back coated and absorbing, and one on a mirror plate
 			var filter = project.AddPart<InterferenceFilterPart>();
 			filter.X = 470; filter.Y = 90; filter.Angle = angle; filter.Length = 20; filter.Width = 70;
@@ -3729,75 +3751,75 @@ internal static class Program
 	private static int BlueAt(ScenePixels pixels, int x, int y) => pixels.Bgra[y * pixels.StrideBytes + x * 4];
 
 	/// <summary>
-	/// The diffusor (2026-11-07): its spectrum, the profile kept until a roughness value changes, the phases from the
+	/// The diffuser (2026-11-07): its spectrum, the profile kept until a roughness value changes, the phases from the
 	/// project's seed and the name, a flat one painted as the rectangle it is, the rough front and flat back, the band on
 	/// the front alone, the shape's pruned distance against the polygon's, and the file element.
 	/// </summary>
-	private static void CheckDiffusor()
+	private static void CheckDiffuser()
 	{
-		Console.WriteLine("--- diffusor");
+		Console.WriteLine("--- diffuser");
 		var project = new Project { Seed = 4242 };
 		project.Scene.Width = 200;
 		project.Scene.Height = 160;
-		var diffusor = project.AddPart<DiffusorPart>();
-		Check(diffusor.Name == "Diffusor 1" && diffusor.ProjectSeed == 4242 && diffusor.Length == 50 && diffusor.Width == 500 && diffusor.Coating == 0
-			&& diffusor is { CenterWavelength: 16.0, Amplitude: 1.0, Sigma: 6.0, FrontCoated: false, BackCoated: true, SidesCoated: false } && diffusor.ComponentCount == 11
-			&& new DiffusorPart() is { FrontCoated: true, BackCoated: true, SidesCoated: true },
-			"a new diffusor: 'Diffusor 1', the project's seed, 50 × 500 px, λ 16, amplitude 1, sigma 6 (11 ripples), no coating, the back alone to be coated; a loaded one keeps the file's faces");
+		var diffuser = project.AddPart<DiffuserPart>();
+		Check(diffuser.Name == "Diffuser 1" && diffuser.ProjectSeed == 4242 && diffuser.Length == 50 && diffuser.Width == 500 && diffuser.Coating == 0
+			&& diffuser is { CenterWavelength: 16.0, Amplitude: 1.0, Sigma: 6.0, FrontCoated: false, BackCoated: true, SidesCoated: false } && diffuser.ComponentCount == 11
+			&& new DiffuserPart() is { FrontCoated: true, BackCoated: true, SidesCoated: true },
+			"a new diffuser: 'Diffuser 1', the project's seed, 50 × 500 px, λ 16, amplitude 1, sigma 6 (11 ripples), no coating, the back alone to be coated; a loaded one keeps the file's faces");
 		// the checks below were written for these values
-		diffusor.Length = 20; diffusor.Width = 200; diffusor.Amplitude = 3; diffusor.Sigma = 4; diffusor.FrontCoated = true; diffusor.SidesCoated = true;
-		(double Wavelength, double Amplitude, int Index)[] components = diffusor.Components();
+		diffuser.Length = 20; diffuser.Width = 200; diffuser.Amplitude = 3; diffuser.Sigma = 4; diffuser.FrontCoated = true; diffuser.SidesCoated = true;
+		(double Wavelength, double Amplitude, int Index)[] components = diffuser.Components();
 		Check(components.Length == 13 && components[6] == (16.0, 3.0, 0) && Math.Abs(components[0].Wavelength - 4.0) < 1e-12 && Math.Abs(components[0].Amplitude - 3.0 * Math.Exp(-4.5)) < 1e-12
 			&& Math.Abs(components[12].Wavelength - 28.0) < 1e-12 && components.All(c => c.Amplitude <= 3.0),
 			$"the default spectrum: 13 wavelengths a half sigma apart from {components[0].Wavelength} to {components[12].Wavelength} px, the centre at the full amplitude, the ends at e^-4.5 of it");
-		diffusor.CenterWavelength = 4;
-		Check(diffusor.Components().Length == 8 && diffusor.Components().All(c => c.Wavelength >= DiffusorPart.MinWavelength), $"wavelengths below two pixels are left out (centre 4, sigma 4: {diffusor.Components().Length} of 13 remain, from 2 to 16 px)");
-		diffusor.CenterWavelength = 16;
-		diffusor.Sigma = 0;
-		Check(diffusor.Components().Length == 1 && diffusor.ComponentCount == 1, "sigma 0: the centre wavelength alone");
-		double[] single = diffusor.Profile;
+		diffuser.CenterWavelength = 4;
+		Check(diffuser.Components().Length == 8 && diffuser.Components().All(c => c.Wavelength >= DiffuserPart.MinWavelength), $"wavelengths below two pixels are left out (centre 4, sigma 4: {diffuser.Components().Length} of 13 remain, from 2 to 16 px)");
+		diffuser.CenterWavelength = 16;
+		diffuser.Sigma = 0;
+		Check(diffuser.Components().Length == 1 && diffuser.ComponentCount == 1, "sigma 0: the centre wavelength alone");
+		double[] single = diffuser.Profile;
 		bool periodic = Enumerable.Range(0, single.Length - 16).All(i => Math.Abs(single[i + 16] - single[i]) < 1e-9);
-		Check(single.Length == 201 && periodic && Math.Abs(diffusor.ProfileHeight - 6.0) < 0.05, $"a single ripple of 16 px: {single.Length} samples across 200 px, periodic in 16, {diffusor.ProfileHeight:0.00} px from crest to trough");
-		diffusor.Sigma = 4;
+		Check(single.Length == 201 && periodic && Math.Abs(diffuser.ProfileHeight - 6.0) < 0.05, $"a single ripple of 16 px: {single.Length} samples across 200 px, periodic in 16, {diffuser.ProfileHeight:0.00} px from crest to trough");
+		diffuser.Sigma = 4;
 
 		// the profile is kept until a value it depends on changes
-		double[] profile = diffusor.Profile;
-		diffusor.RefractiveIndex = 1.7;
-		diffusor.Length = 30;
-		diffusor.X += 5;
-		Check(ReferenceEquals(diffusor.Profile, profile), "the profile is kept across edits of the index, the length and the position");
-		diffusor.Amplitude = 2;
-		Check(!ReferenceEquals(diffusor.Profile, profile) && Math.Abs(diffusor.ProfileHeight - 2.0 / 3.0 * (profile.Max() - profile.Min())) < 1e-9, "a new amplitude makes a new profile, two thirds the height");
-		profile = diffusor.Profile;
-		var twin = new DiffusorPart { Name = diffusor.Name, ProjectSeed = 4242, Width = 200, Amplitude = 2, Sigma = 4 };
+		double[] profile = diffuser.Profile;
+		diffuser.RefractiveIndex = 1.7;
+		diffuser.Length = 30;
+		diffuser.X += 5;
+		Check(ReferenceEquals(diffuser.Profile, profile), "the profile is kept across edits of the index, the length and the position");
+		diffuser.Amplitude = 2;
+		Check(!ReferenceEquals(diffuser.Profile, profile) && Math.Abs(diffuser.ProfileHeight - 2.0 / 3.0 * (profile.Max() - profile.Min())) < 1e-9, "a new amplitude makes a new profile, two thirds the height");
+		profile = diffuser.Profile;
+		var twin = new DiffuserPart { Name = diffuser.Name, ProjectSeed = 4242, Width = 200, Amplitude = 2, Sigma = 4 };
 		Check(twin.Profile.SequenceEqual(profile), "the same name and seed give the same profile");
 		project.Seed = 4243;
-		Check(diffusor.ProjectSeed == 4243 && !diffusor.Profile.SequenceEqual(profile), "the project's seed reaches the diffusor, and a new seed makes another profile");
-		diffusor.Name = "Rough";
-		Check(!diffusor.Profile.SequenceEqual(twin.Profile), "the phases come from the name too");
-		diffusor.Width = 220;
-		Check(diffusor.Profile.Length == 221, "a wider plate gets a longer profile");
-		diffusor.Width = 200;
+		Check(diffuser.ProjectSeed == 4243 && !diffuser.Profile.SequenceEqual(profile), "the project's seed reaches the diffuser, and a new seed makes another profile");
+		diffuser.Name = "Rough";
+		Check(!diffuser.Profile.SequenceEqual(twin.Profile), "the phases come from the name too");
+		diffuser.Width = 220;
+		Check(diffuser.Profile.Length == 221, "a wider plate gets a longer profile");
+		diffuser.Width = 200;
 
-		// a flat diffusor paints as the rectangle it is, at every angle
-		diffusor.Amplitude = 0;
-		diffusor.X = 100;
-		diffusor.Y = 80;
-		diffusor.Angle = 23;
-		diffusor.Coating = 5;
-		diffusor.BackCoated = false;
-		diffusor.Absorption = 40;
+		// a flat diffuser paints as the rectangle it is, at every angle
+		diffuser.Amplitude = 0;
+		diffuser.X = 100;
+		diffuser.Y = 80;
+		diffuser.Angle = 23;
+		diffuser.Coating = 5;
+		diffuser.BackCoated = false;
+		diffuser.Absorption = 40;
 		var rectangle = new RectanglePart { Name = "r", X = 100, Y = 80, Angle = 23, Length = 30, Width = 200, RefractiveIndex = 1.7, Coating = 5, BackCoated = false, Absorption = 40 };
-		ScenePixels flat = PartPainter.Paint(null, 200, 160, 1.0, [diffusor])!;
+		ScenePixels flat = PartPainter.Paint(null, 200, 160, 1.0, [diffuser])!;
 		ScenePixels asRectangle = PartPainter.Paint(null, 200, 160, 1.0, [rectangle])!;
-		Check(flat.Bgra.AsSpan().SequenceEqual(asRectangle.Bgra), "with no amplitude the diffusor paints byte for byte as the rectangle of its size, coating and absorption included");
+		Check(flat.Bgra.AsSpan().SequenceEqual(asRectangle.Bgra), "with no amplitude the diffuser paints byte for byte as the rectangle of its size, coating and absorption included");
 
 		// the rough front and the flat back, the band on the front alone
-		diffusor.Amplitude = 3;
-		diffusor.Angle = 0;
-		diffusor.Absorption = 0;
-		ScenePixels painted = PartPainter.Paint(null, 200, 160, 1.0, [diffusor])!;
-		double[] front = diffusor.FrontFace();
+		diffuser.Amplitude = 3;
+		diffuser.Angle = 0;
+		diffuser.Absorption = 0;
+		ScenePixels painted = PartPainter.Paint(null, 200, 160, 1.0, [diffuser])!;
+		double[] front = diffuser.FrontFace();
 		int backColumn = 100 + 15 - 1;
 		bool backFlat = Enumerable.Range(0, 160).All(y => RedAt(painted, backColumn, y) == 170 && RedAt(painted, backColumn + 1, y) == 100);
 		int frontColumn = 100 - 15;
@@ -3818,7 +3840,7 @@ internal static class Program
 		{
 			foreach (bool frontOnly in new[] { true, false })
 			{
-				var turned = (DiffusorPart)diffusor.Clone();
+				var turned = (DiffuserPart)diffuser.Clone();
 				turned.Angle = angle; turned.Amplitude = 3; turned.Coating = 4; turned.CoatingProfile = CoatingProfile.Layer;
 				turned.FrontCoated = frontOnly; turned.BackCoated = !frontOnly; turned.SidesCoated = false;
 				ScenePixels turnedPixels = PartPainter.Paint(null, 200, 160, 1.0, [turned])!;
@@ -3840,15 +3862,15 @@ internal static class Program
 		Check(coupled, $"the front coating lies on the rough face, the back coating on the flat one, at any angle (band pixels rough/flat: {string.Join(", ", sides)})");
 
 		// the shape's pruned nearest-edge search against the plain polygon distance, over a grid of points
-		PartShape shape = PartShape.For(diffusor)!;
-		(double X, double Y)[] vertices = diffusor.Vertices();
+		PartShape shape = PartShape.For(diffuser)!;
+		(double X, double Y)[] vertices = diffuser.Vertices();
 		int disagreements = 0;
 		double worst = 0.0;
 		for (double y = 0.5; y < 160; y += 1.0)
 		{
 			for (double x = 0.5; x < 200; x += 1.0)
 			{
-				(double px, double py) = diffusor.ToFrame(x, y);
+				(double px, double py) = diffuser.ToFrame(x, y);
 				double expected = PolygonSignedDistance(vertices, px, py);
 				double got = shape.DepthAt(x, y);
 				if (Math.Abs(expected - got) > 1e-9)
@@ -3872,9 +3894,9 @@ internal static class Program
 		{
 			back = Project.Load(stream);
 		}
-		Check(xml.Contains("<Diffusor Name=\"Rough\" X=\"100\" Y=\"80\" Coating=\"5\" BackCoated=\"false\" RefractiveIndex=\"1.7\" Length=\"30\" Width=\"200\" Amplitude=\"3\" Sigma=\"4\" />") && !xml.Contains("ProjectSeed")
-			&& back.Parts[0] is DiffusorPart loaded && loaded.ProjectSeed == 4243 && loaded.Profile.SequenceEqual(diffusor.Profile),
-			"the diffusor element is sparse, without the seed, and a loaded diffusor has the seed and the same profile");
+		Check(xml.Contains("<Diffuser Name=\"Rough\" X=\"100\" Y=\"80\" Coating=\"5\" BackCoated=\"false\" RefractiveIndex=\"1.7\" Length=\"30\" Width=\"200\" Amplitude=\"3\" Sigma=\"4\" />") && !xml.Contains("ProjectSeed")
+			&& back.Parts[0] is DiffuserPart loaded && loaded.ProjectSeed == 4243 && loaded.Profile.SequenceEqual(diffuser.Profile),
+			"the diffuser element is sparse, without the seed, and a loaded diffuser has the seed and the same profile");
 	}
 
 	private static void CheckInterferenceFilter()

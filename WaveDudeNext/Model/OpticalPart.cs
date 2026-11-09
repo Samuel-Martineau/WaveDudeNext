@@ -27,7 +27,7 @@ namespace WaveDudeNext.Model;
 
 /// <summary>
 /// An optical part placed on the canvas: a lens or mirror, a shape (polygon, rectangle, ellipse, triangle, outline), a
-/// diffusor, an interference filter, a simple grating, a facetted grating, a meta lens, a Fresnel lens, a fibre, a Bragg reflector, a GRIN lens, a logic gate or a zone plate (Jeroen Vleggaar's proposal, decided 2026-10-18;
+/// diffuser, an interference filter, a simple grating, a facetted grating, a meta lens, a Fresnel lens, a fibre, a Bragg reflector, a GRIN lens, a logic gate or a zone plate (Jeroen Vleggaar's proposal, decided 2026-10-18;
 /// OpticalParts.md is the reference). Parts are painted into the scene pixels before a run
 /// (<see cref="Parts.PartPainter"/>), so the engines, the outline and the export see them as part of the scene: the
 /// index into red, an absorber's damping into blue; green is never touched. Positions and lengths are canvas pixels; the
@@ -1613,7 +1613,7 @@ public sealed class OutlinePart : ShapePart
 }
 
 /// <summary>
-/// A diffusor (the user's request, 2026-11-07): a rectangular plate of <see cref="Length"/> along the axis and
+/// A diffuser (the user's request, 2026-11-07): a rectangular plate of <see cref="Length"/> along the axis and
 /// <see cref="Width"/> across whose front face (−x', toward a source on the left) is rough and whose back is flat; the
 /// material, the coating and the absorption of a <see cref="ShapePart"/>. The roughness is a sum of sinusoids across the
 /// face: one at the <see cref="CenterWavelength"/> with the <see cref="Amplitude"/>, and about it wavelengths spread by
@@ -1622,7 +1622,7 @@ public sealed class OutlinePart : ShapePart
 /// is), so a file reproduces its surface. The profile is computed once and kept until a value it depends on changes
 /// (<see cref="Profile"/>). Coatings on the front follow the rough face; the sides are the two short ends.
 /// </summary>
-public sealed class DiffusorPart : ShapePart, ISeeded, IProfiledPlate
+public sealed class DiffuserPart : ShapePart, ISeeded, IProfiledPlate
 {
 	/// <summary>Default <see cref="Length"/> in pixels.</summary>
 	public const int DefaultLength = 50;
@@ -1657,8 +1657,8 @@ public sealed class DiffusorPart : ShapePart, ISeeded, IProfiledPlate
 	private double[]? _profile;
 	private (int Width, double Wavelength, double Amplitude, double Sigma, string Name, int Seed) _profileKey;
 
-	/// <summary>A diffusor at the defaults; the readouts follow a rename too, as the phases come from the name (the setter is the base class's).</summary>
-	public DiffusorPart()
+	/// <summary>A diffuser at the defaults; the readouts follow a rename too, as the phases come from the name (the setter is the base class's).</summary>
+	public DiffuserPart()
 	{
 		PropertyChanged += (_, e) =>
 		{
@@ -1670,11 +1670,11 @@ public sealed class DiffusorPart : ShapePart, ISeeded, IProfiledPlate
 	}
 
 	/// <inheritdoc/>
-	public override string NameStem => "Diffusor";
+	public override string NameStem => "Diffuser";
 
 	/// <summary>
-	/// A new diffusor coats its flat back alone (2026-11-07, the user's defaults): the faces' defaults are the
-	/// <see cref="CoatedPart"/>'s, every face, so a loaded diffusor keeps what its file says and a new one gets these.
+	/// A new diffuser coats its flat back alone (2026-11-07, the user's defaults): the faces' defaults are the
+	/// <see cref="CoatedPart"/>'s, every face, so a loaded diffuser keeps what its file says and a new one gets these.
 	/// </summary>
 	public override void PrepareNew()
 	{
@@ -1940,12 +1940,12 @@ public sealed class DiffusorPart : ShapePart, ISeeded, IProfiledPlate
 	}
 
 	/// <inheritdoc/>
-	public override OpticalPart Clone() => ShallowClone<DiffusorPart>();
+	public override OpticalPart Clone() => ShallowClone<DiffuserPart>();
 }
 
 /// <summary>
-/// A plate whose front face (−x') is a profile over y', one sample per pixel across the width (a <see cref="DiffusorPart"/>'s
-/// roughness, a <see cref="FacettedGratingPart"/>'s facets): what the shared shape (<c>DiffusorShape</c>) paints.
+/// A plate whose front face (−x') is a profile over y', one sample per pixel across the width (a <see cref="DiffuserPart"/>'s
+/// roughness, a <see cref="FacettedGratingPart"/>'s facets): what the shared shape (<c>DiffuserShape</c>) paints.
 /// </summary>
 public interface IProfiledPlate
 {
@@ -1974,7 +1974,7 @@ public enum FacetPattern
 /// A facetted grating (2026-11-08, the user's request, in the Diffraction gratings submenu): a plate of
 /// <see cref="Length"/> along the axis and <see cref="Width"/> across, the material of a <see cref="ShapePart"/>, whose
 /// front face (−x') carries a periodic relief, <see cref="Pattern"/> repeated every <see cref="Pitch"/> pixels across
-/// the face with <see cref="Amplitude"/> pixels either side of the mean; the back is flat. A diffusor with one
+/// the face with <see cref="Amplitude"/> pixels either side of the mean; the back is flat. A diffuser with one
 /// wavelength, as the user put it, and painted by the same shape: the face is a sample per pixel, so a square wave's
 /// and a sawtooth's steps stand between two pixels. The AR coating lies on the back alone (the user's rule; only
 /// <see cref="CoatedPart.BackCoated"/> counts, the form hides the other two boxes).
@@ -2036,10 +2036,10 @@ public sealed class FacettedGratingPart : ShapePart, IProfiledPlate
 		set => SetProperty(ref _pattern, value);
 	}
 
-	/// <summary>The period of the facets across the face in pixels, 2 to <see cref="DiffusorPart.MaxPixels"/>.</summary>
+	/// <summary>The period of the facets across the face in pixels, 2 to <see cref="DiffuserPart.MaxPixels"/>.</summary>
 	[XmlAttribute]
 	[DefaultValue(DefaultPitch)]
-	[Range(MinPitch, DiffusorPart.MaxPixels)]
+	[Range(MinPitch, DiffuserPart.MaxPixels)]
 	[Category("Facets")]
 	[Description("The period of the facets across the face in pixels: the grating's pitch, which with the wavelength sets the diffraction angles. Two pixels at least.")]
 	public double Pitch
@@ -2048,10 +2048,10 @@ public sealed class FacettedGratingPart : ShapePart, IProfiledPlate
 		set => SetProperty(ref _pitch, value);
 	}
 
-	/// <summary>The relief's height either side of the mean face in pixels, 0 to <see cref="DiffusorPart.MaxPixels"/>; the facets span twice this.</summary>
+	/// <summary>The relief's height either side of the mean face in pixels, 0 to <see cref="DiffuserPart.MaxPixels"/>; the facets span twice this.</summary>
 	[XmlAttribute]
 	[DefaultValue(DefaultAmplitude)]
-	[Range(0.0, DiffusorPart.MaxPixels)]
+	[Range(0.0, DiffuserPart.MaxPixels)]
 	[Category("Facets")]
 	[Description("The relief's height either side of the mean face in pixels: the facets run from this far out to this far in, twice it from crest to trough. 0 makes the face flat.")]
 	public double Amplitude
@@ -2064,8 +2064,8 @@ public sealed class FacettedGratingPart : ShapePart, IProfiledPlate
 	public double[] Profile()
 	{
 		int width = Math.Max(2, Width);
-		double pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, MinPitch, DiffusorPart.MaxPixels) : DefaultPitch;
-		double amplitude = double.IsFinite(Amplitude) ? Math.Clamp(Amplitude, 0.0, DiffusorPart.MaxPixels) : 0.0;
+		double pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, MinPitch, DiffuserPart.MaxPixels) : DefaultPitch;
+		double amplitude = double.IsFinite(Amplitude) ? Math.Clamp(Amplitude, 0.0, DiffuserPart.MaxPixels) : 0.0;
 		FacetPattern pattern = Enum.IsDefined(Pattern) ? Pattern : FacetPattern.Sawtooth;
 		var profile = new double[width + 1];
 		double half = width / 2.0;
@@ -2122,8 +2122,8 @@ public sealed class FacettedGratingPart : ShapePart, IProfiledPlate
 		Length = Math.Max(1, Length);
 		Width = Math.Max(2, Width);
 		Pattern = Enum.IsDefined(Pattern) ? Pattern : FacetPattern.Sawtooth;
-		Pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, MinPitch, DiffusorPart.MaxPixels) : DefaultPitch;
-		Amplitude = double.IsFinite(Amplitude) ? Math.Clamp(Amplitude, 0.0, DiffusorPart.MaxPixels) : DefaultAmplitude;
+		Pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, MinPitch, DiffuserPart.MaxPixels) : DefaultPitch;
+		Amplitude = double.IsFinite(Amplitude) ? Math.Clamp(Amplitude, 0.0, DiffuserPart.MaxPixels) : DefaultAmplitude;
 	}
 
 	/// <inheritdoc/>
@@ -2232,10 +2232,10 @@ public abstract class MetaSurfacePart : ShapePart, IFrequencyDesigned
 		}
 	}
 
-	/// <summary>The cell's width across the face in pixels, 1 to <see cref="DiffusorPart.MaxPixels"/>: one ridge per cell; well below the wavelength, so the wave sees a mean index.</summary>
+	/// <summary>The cell's width across the face in pixels, 1 to <see cref="DiffuserPart.MaxPixels"/>: one ridge per cell; well below the wavelength, so the wave sees a mean index.</summary>
 	[XmlAttribute]
 	[DefaultValue(DefaultPitch)]
-	[Range(1.0, DiffusorPart.MaxPixels)]
+	[Range(1.0, DiffuserPart.MaxPixels)]
 	[Category("Pattern")]
 	[Description("The width of a cell of the pattern across the face in pixels, one ridge per cell. Well below the wavelength, so the wave sees each cell as a mean index rather than diffracting at it.")]
 	public double Pitch
@@ -2250,10 +2250,10 @@ public abstract class MetaSurfacePart : ShapePart, IFrequencyDesigned
 		}
 	}
 
-	/// <summary>The ridges' height in front of the plate in pixels, 1 to <see cref="DiffusorPart.MaxPixels"/>; a full turn of phase needs λ / (n − 1).</summary>
+	/// <summary>The ridges' height in front of the plate in pixels, 1 to <see cref="DiffuserPart.MaxPixels"/>; a full turn of phase needs λ / (n − 1).</summary>
 	[XmlAttribute]
 	[DefaultValue(DefaultHeight)]
-	[Range(1.0, DiffusorPart.MaxPixels)]
+	[Range(1.0, DiffuserPart.MaxPixels)]
 	[Category("Pattern")]
 	[Description("The height of the ridges in front of the plate in pixels. A full turn of phase takes a height of the wavelength over the pattern index less one; a lower pattern cannot delay enough and its fill saturates.")]
 	public double Height
@@ -2312,10 +2312,10 @@ public abstract class MetaSurfacePart : ShapePart, IFrequencyDesigned
 	[Browsable(false)]
 	public double GuardedPitch => double.IsFinite(Pitch) ? Math.Clamp(Pitch, 1.0, Math.Max(2, Width)) : DefaultPitch;
 
-	/// <summary>The height as the pattern uses it: finite, 1 to <see cref="DiffusorPart.MaxPixels"/>.</summary>
+	/// <summary>The height as the pattern uses it: finite, 1 to <see cref="DiffuserPart.MaxPixels"/>.</summary>
 	[XmlIgnore]
 	[Browsable(false)]
-	public double GuardedHeight => double.IsFinite(Height) ? Math.Clamp(Height, 1.0, DiffusorPart.MaxPixels) : DefaultHeight;
+	public double GuardedHeight => double.IsFinite(Height) ? Math.Clamp(Height, 1.0, DiffuserPart.MaxPixels) : DefaultHeight;
 
 	/// <summary>The pattern index as the pattern uses it: finite, within the index range.</summary>
 	[XmlIgnore]
@@ -2392,7 +2392,7 @@ public abstract class MetaSurfacePart : ShapePart, IFrequencyDesigned
 		Length = Math.Max(1, Length);
 		Width = Math.Max(2, Width);
 		DesignFrequency = double.IsFinite(DesignFrequency) ? Math.Round(Math.Clamp(DesignFrequency, LogicGatePart.MinFrequency, Source.MaxLevel), 2) : DefaultFrequency;
-		Pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, 1.0, DiffusorPart.MaxPixels) : DefaultPitch;
+		Pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, 1.0, DiffuserPart.MaxPixels) : DefaultPitch;
 		Height = GuardedHeight;
 		PatternIndex = NormalizeIndex(PatternIndex);
 	}
@@ -4326,10 +4326,14 @@ public sealed class ZonePlatePart : OpticalPart, IFrequencyDesigned
 {
 	/// <summary>Default <see cref="Diameter"/> in pixels.</summary>
 	public const int DefaultDiameter = 800;
-	/// <summary>Default <see cref="Thickness"/> in pixels: a wavelength at the default frequency (the user's choice, 2026-11-08; 64 before, two wavelengths with the rise on both faces, see <see cref="BlockAbsorption"/>).</summary>
+	/// <summary>Default <see cref="Thickness"/> in pixels: a wavelength at the default frequency (Jeroen's choice, 2026-11-08; <see cref="Version3Thickness"/> before).</summary>
 	public const int DefaultThickness = 32;
-	/// <summary>Default <see cref="Coating"/> in pixels: no rise (the user's choice, 2026-11-08; a wavelength, 32, before, see <see cref="BlockAbsorption"/>).</summary>
+	/// <summary>Default <see cref="Coating"/> in pixels: no rise (Jeroen's choice, 2026-11-08; <see cref="Version3Coating"/> before).</summary>
 	public const int DefaultCoating = 0;
+	/// <summary>The <see cref="Thickness"/> a project file up to version 3 means when it leaves the attribute out, the default until 2026-11-08: two wavelengths at the default frequency, room for the rise on both faces (see <see cref="BlockAbsorption"/>).</summary>
+	public const int Version3Thickness = 64;
+	/// <summary>The <see cref="Coating"/> a project file up to version 3 means when it leaves the attribute out, the default until 2026-11-08: a wavelength at the default frequency (see <see cref="BlockAbsorption"/>).</summary>
+	public const int Version3Coating = 32;
 	/// <summary>Default <see cref="DesignFrequency"/>: level 50, a wavelength of 32 px at the default solver settings, as the logic gates.</summary>
 	public const double DefaultFrequency = 50.0;
 	/// <summary>Default <see cref="FocalLength"/> in pixels.</summary>
@@ -4348,6 +4352,8 @@ public sealed class ZonePlatePart : OpticalPart, IFrequencyDesigned
 	private int _diameter = DefaultDiameter;
 	private int _thickness = DefaultThickness;
 	private int _coating = DefaultCoating;
+	private bool _thicknessRead;
+	private bool _coatingRead;
 	private double _designFrequency = DefaultFrequency;
 	private double _frequencyScale = Simulation.DefaultSourceFrequencyScale;
 	private int _focalLength = DefaultFocalLength;
@@ -4418,8 +4424,26 @@ public sealed class ZonePlatePart : OpticalPart, IFrequencyDesigned
 	public int Thickness
 	{
 		get => _thickness;
-		set => SetProperty(ref _thickness, value);
+		set
+		{
+			_thicknessRead = true;
+			SetProperty(ref _thickness, value);
+		}
 	}
+
+	/// <summary>
+	/// Whether <see cref="Thickness"/> and <see cref="Coating"/> have been set since construction: right after a file is
+	/// read, whether the file carried the attribute. A file up to version 3 left them out for 64 and 32, their defaults
+	/// then, which <see cref="Project.Load(System.IO.Stream)"/> restores (2026-11-09, when the defaults became 32 and 0).
+	/// </summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	internal bool ThicknessRead => _thicknessRead;
+
+	/// <inheritdoc cref="ThicknessRead"/>
+	[XmlIgnore]
+	[Browsable(false)]
+	internal bool CoatingRead => _coatingRead;
 
 	/// <summary>Depth in pixels over which a block's absorption rises from nothing at the faces the wave meets and leaves to its full strength; at most half the thickness takes effect.</summary>
 	[XmlAttribute]
@@ -4431,7 +4455,11 @@ public sealed class ZonePlatePart : OpticalPart, IFrequencyDesigned
 	public int Coating
 	{
 		get => _coating;
-		set => SetProperty(ref _coating, value);
+		set
+		{
+			_coatingRead = true;
+			SetProperty(ref _coating, value);
+		}
 	}
 
 	/// <summary>The source frequency the plate is designed for, as a source level (the scale of <see cref="Source.Frequency"/>).</summary>

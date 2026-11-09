@@ -18,7 +18,7 @@
 namespace WaveDudeNext.Model;
 
 /// <summary>
-/// A part with a random decision in it (a diffusor's roughness): it draws from <see cref="Project.Seed"/>, which the
+/// A part with a random decision in it (a diffuser's roughness): it draws from <see cref="Project.Seed"/>, which the
 /// project hands it as <see cref="ProjectSeed"/> when the part is added, loaded, pasted or the seed changes, so the same
 /// project file gives the same surface, as it gives the same emitters. Not stored with the part. UI thread, like the model.
 /// </summary>

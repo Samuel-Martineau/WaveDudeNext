@@ -577,11 +577,15 @@ public sealed class SceneOverlay : Panel
 	}
 
 	/// <summary>
-	/// Gives the sources' band a fresh bitmap cache, so its next render rasterises for certain (2026-11-08, the user's
-	/// report: after a drag of a composite source its emitter dots stayed where they were until another edit redrew the
-	/// overlay; the log showed the model moved and the scratch frame followed, and twenty keyboard moves with and without
-	/// a rebuild could not repeat it, so the one thing the dots have that nothing else in the overlay has, the cache, is
-	/// renewed at every source edit; the rasterising cost the same before, a new cache object is all it adds).
+	/// Gives the sources' band a fresh bitmap cache, so its next render rasterises for certain (2026-11-08, Jeroen's
+	/// report from his machine: after a drag of a composite source its emitter dots stayed where they were until another
+	/// edit redrew the overlay; the log showed the model moved and the scratch frame followed, and twenty keyboard moves
+	/// with and without a rebuild could not repeat it, so the one thing the dots have that nothing else in the overlay
+	/// has, the cache, is renewed at every source edit; the rasterising cost the same before, a new cache object is all
+	/// it adds). A precaution, its cause unknown: on the workstation (2026-11-09) eighteen mouse drags of Example 3's
+	/// source, sent through WPF's own input pipeline inside the app, paced and in bursts, on both pictures, rendered by
+	/// the card and in software, left the dots in place every time on a build without this renewal (the window as the
+	/// desktop composed it, against the same after a cache replaced by hand: no pixel differed).
 	/// </summary>
 	private void RefreshSourcesCache()
 	{
@@ -716,7 +720,7 @@ public sealed class SceneOverlay : Panel
 
 	/// <summary>
 	/// Where a part's size grip sits in the part frame: the corner of a rectangle or an ellipse's box, lens (thickness, diameter), GRIN lens,
-	/// Bragg stack, zone plate, diffusor or interference filter (the plate's back corner), the first vertex of a polygon, the second end of a triangle's base; null for a kind without one.
+	/// Bragg stack, zone plate, diffuser or interference filter (the plate's back corner), the first vertex of a polygon, the second end of a triangle's base; null for a kind without one.
 	/// </summary>
 	private static (double X, double Y)? GripOf(OpticalPart part) => part switch
 	{
@@ -728,7 +732,7 @@ public sealed class SceneOverlay : Panel
 		GrinLensPart grin => (grin.Length / 2.0, grin.Diameter / 2.0),
 		BraggReflectorPart bragg => (bragg.Length / 2.0, bragg.Width / 2.0),
 		ZonePlatePart plate => (plate.Thickness / 2.0, plate.Diameter / 2.0),
-		DiffusorPart diffusor => (diffusor.Length / 2.0, diffusor.Width / 2.0),
+		DiffuserPart diffuser => (diffuser.Length / 2.0, diffuser.Width / 2.0),
 		InterferenceFilterPart filter => (filter.Length / 2.0, filter.Width / 2.0),
 		FacettedGratingPart facetted => (facetted.Length / 2.0, facetted.Width / 2.0),
 		MetaSurfacePart meta => (meta.Length / 2.0, meta.Width / 2.0),
@@ -775,9 +779,9 @@ public sealed class SceneOverlay : Panel
 				plate.Thickness = Math.Max(1, along);
 				plate.Diameter = Math.Max(2, across);
 				break;
-			case DiffusorPart diffusor:
-				diffusor.Length = Math.Max(1, along);
-				diffusor.Width = Math.Max(2, across);
+			case DiffuserPart diffuser:
+				diffuser.Length = Math.Max(1, along);
+				diffuser.Width = Math.Max(2, across);
 				break;
 			case InterferenceFilterPart filter:
 				// the plate's back corner: the plate's length and the width, the stack keeping its layers

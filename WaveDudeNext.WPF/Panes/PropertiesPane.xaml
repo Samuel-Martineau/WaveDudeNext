@@ -56,8 +56,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<DataTemplate DataType="{x:Type model:RectanglePart}">
 			<views:RectanglePartView />
 		</DataTemplate>
-		<DataTemplate DataType="{x:Type model:DiffusorPart}">
-			<views:DiffusorPartView />
+		<DataTemplate DataType="{x:Type model:DiffuserPart}">
+			<views:DiffuserPartView />
 		</DataTemplate>
 		<DataTemplate DataType="{x:Type model:InterferenceFilterPart}">
 			<views:InterferenceFilterPartView />
