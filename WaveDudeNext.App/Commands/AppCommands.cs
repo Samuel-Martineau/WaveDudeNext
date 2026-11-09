@@ -328,6 +328,89 @@ public sealed class AppCommands : INotifyPropertyChanged
 
 	private ICommand _delete = RelayCommand.Disabled;
 
+	// ---- the window's own (2026-11-09: the file menu, Play, Help; the port's window had wired these to its menu items in code)
+
+	/// <summary>File > New: a new, empty project (after the save question).</summary>
+	public ICommand New
+	{
+		get => _new;
+		set => Set(ref _new, value);
+	}
+
+	private ICommand _new = RelayCommand.Disabled;
+
+	/// <summary>File > Open: the open dialog for a project, a Wave Dude 2D configuration or a colour scheme.</summary>
+	public ICommand Open
+	{
+		get => _open;
+		set => Set(ref _open, value);
+	}
+
+	private ICommand _open = RelayCommand.Disabled;
+
+	/// <summary>File > Save: writes the project to its file, or asks where.</summary>
+	public ICommand Save
+	{
+		get => _save;
+		set => Set(ref _save, value);
+	}
+
+	private ICommand _save = RelayCommand.Disabled;
+
+	/// <summary>File > Save As: asks where, then writes.</summary>
+	public ICommand SaveAs
+	{
+		get => _saveAs;
+		set => Set(ref _saveAs, value);
+	}
+
+	private ICommand _saveAs = RelayCommand.Disabled;
+
+	/// <summary>File > Close: a new, empty project in place of the one open (after the save question).</summary>
+	public ICommand CloseProject
+	{
+		get => _closeProject;
+		set => Set(ref _closeProject, value);
+	}
+
+	private ICommand _closeProject = RelayCommand.Disabled;
+
+	/// <summary>File > Exit: closes the window.</summary>
+	public ICommand Exit
+	{
+		get => _exit;
+		set => Set(ref _exit, value);
+	}
+
+	private ICommand _exit = RelayCommand.Disabled;
+
+	/// <summary>Simulation > Play (F7): the preview's own play or pause, from anywhere.</summary>
+	public ICommand PlayPause
+	{
+		get => _playPause;
+		set => Set(ref _playPause, value);
+	}
+
+	private ICommand _playPause = RelayCommand.Disabled;
+
+	/// <summary>Help > About.</summary>
+	public ICommand About
+	{
+		get => _about;
+		set => Set(ref _about, value);
+	}
+
+	private ICommand _about = RelayCommand.Disabled;
+
+	/// <summary>Help > Manual (F1).</summary>
+	public ICommand Manual
+	{
+		get => _manual;
+		set => Set(ref _manual, value);
+	}
+
+	private ICommand _manual = RelayCommand.Disabled;
+
 	/// <summary>Every command, for <see cref="Requery"/>.</summary>
 	public IEnumerable<ICommand> All
 	{
@@ -364,6 +447,15 @@ public sealed class AppCommands : INotifyPropertyChanged
 			yield return Undo;
 			yield return Redo;
 			yield return Delete;
+			yield return New;
+			yield return Open;
+			yield return Save;
+			yield return SaveAs;
+			yield return CloseProject;
+			yield return Exit;
+			yield return PlayPause;
+			yield return About;
+			yield return Manual;
 		}
 	}
 

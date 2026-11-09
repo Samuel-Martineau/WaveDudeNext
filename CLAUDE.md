@@ -1152,6 +1152,40 @@ UI Automation found no menu items in the Avalonia window (Avalonia's peers diffe
 a harness is open (the port's tests use `Avalonia.Headless`). Next: the models wired as the WPF window wires them and the
 panes bound to them, the menus bound to `AppCommands` in the markup, the dialogs behind the five interfaces plus an
 Avalonia `EditBoundaries`; then the new part forms and the detectors' rows; then the tests.
+**The second step, the window on the models** (2026-11-09, the same evening): `MainWindow.axaml.cs` constructs and wires
+the models as the WPF window does (the same constructor, the same hub `MainWindow.Live.cs`, `OnProjectReplaced`,
+`OnDocumentOpened`, `DiscardRun`), on the Avalonia implementations of the five interfaces under `Platform/`:
+`SkiaImageDecoder`, `SkiaFrameDecorators`, **`AvaloniaMemoryWarning`** and **`AvaloniaExportDialogs`** (the port's
+`MemoryWarningWindow` and the storage provider's Save dialog with the string table's filters; both answer later, which
+the dialog step made possible; the Save dialog does not say which filter was chosen, so the format is read from the
+path's extension), **`AvaloniaClipboard`** (reads asynchronously and answers "nothing known" until the read has landed,
+as the interface foresees; Windows' clipboard sequence number as the change count) and **`EditBoundaries`** (pointer
+pressed on the tunnelling pass, released, focus lost, Enter in a single-line text box, a drop, all heard at the window
+with the handled events too; a command before and after through `Command(action)`, since Avalonia has no routed commands
+to hear). The window is its own data context (`x:DataType`): the panes bind `Document.Project`, `Selection.Current`
+(two-way) and `Items`, `RunHost.Run` and its flags, `Live.ScratchFrame`, `SceneComposer.Pixels`, `Busy.IsComputingFrame`,
+`Preview.Position` and `IsPlaying` (two-way), `IsPlaybackHeld`, `ColorsVersion`, the settings' orientation through
+`EnumByNameConverter` and dither bits; the title and the run's status are multi-bindings through `TitleConverter` and
+`RunStatusConverter` with the language as an input, as in WPF. **The menus bind `Commands.X` in the markup with their
+`HotKey`s**; `AppCommands` gained the window's own (New, Open, Save, SaveAs, CloseProject, Exit, PlayPause, About,
+Manual), each wired in `MainWindow.Commands.cs` as a line into a model, with the WPF window's CanExecute rules; every
+command is an edit boundary before and after. A `HotKey` on an entry inside the menu bar registers nothing before its
+menu has opened once (the port's author had found the same), so `RegisterHotKeys` walks the menu and puts every gesture
+the markup names on the window's `KeyBindings`; a text box's own Ctrl+C/V/X/A and Delete stay its own, since a handled
+key never reaches the window's bindings. The menus whose entries come from data (recent files, examples, panes, theme,
+zoom, language, the preview quality, the RAM cache) are still filled in code from the port, their check marks pushed
+(`_checkedMenus`); ItemsSource bindings are a later cleanup, as are the Pause/Resume and Play/Pause headers that follow
+the state. **The preview pane places its own timeline bar and scene overlays** (the port's window had put them into the
+pane's hosts from outside), gained `IsPlaybackHeld` with the WPF pane's `UpdateClock` and `ColorsVersion`, and its
+`MemoryWarningChoice` record went for the UI library's. The status bar's message comes from the log target as in the
+port (`MainWindow.Status.cs`). Proven by a keyboard probe on `tiny.wdproj` by argument (13 of 13): the title, the open
+and the first scratch frame in the log, nine tree rows, "0 / 99", F5's run completed and followed to 99, Space playing
+and pausing, a nudge staling the run and asking for its frame, the re-run when the handle is left, the nudge one undo
+step; the capture showed both pictures with the source's marker and label, the form of Source 1, the red edge line and
+the run's status. Not yet: `RevealRequest` on the tree and the properties pane (a new item's row and caret),
+`ShownFrame` for the brightness fit of the shown 16-bit frame (the fit computes the frame instead), the new part forms
+and the detectors' rows, the export's busy text and taskbar, the tests. UI Automation gives the Avalonia tree's rows no
+names.
 
 ## People, name, license
 

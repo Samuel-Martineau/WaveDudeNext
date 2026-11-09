@@ -23,14 +23,9 @@ using NLog;
 using WaveDudeNext.App.Theming;
 using WaveDudeNext.Engine;
 using WaveDudeNext.Runs;
+using WaveDudeNext.UI;
 
 namespace WaveDudeNext.App.Dialogs;
-
-/// <summary>What the memory warning was answered with.</summary>
-/// <param name="Quality">The preview quality to run at: the current one with each ticked lever a notch lower, the current one itself when nothing was ticked.</param>
-/// <param name="CacheAuto">"RAM cache size to Auto" was ticked: the caller sets the share to automatic.</param>
-/// <param name="Mute">"Do not warn me again" was ticked: the caller clears the setting.</param>
-public sealed record MemoryWarningChoice(PreviewQuality Quality, bool CacheAuto, bool Mute);
 
 /// <summary>The four levers of the memory warning as ticks or as availability, in their order on screen.</summary>
 /// <param name="Cache">The RAM cache size to Auto.</param>

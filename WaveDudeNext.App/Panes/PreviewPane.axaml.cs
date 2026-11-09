@@ -30,6 +30,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
@@ -134,6 +135,14 @@ public partial class PreviewPane : UserControl
 	/// <summary>Identifies the <see cref="IsPlaying"/> property.</summary>
 	public static readonly StyledProperty<bool> IsPlayingProperty =
 		AvaloniaProperty.Register<PreviewPane, bool>(nameof(IsPlaying));
+
+	/// <summary>Identifies the <see cref="IsPlaybackHeld"/> property.</summary>
+	public static readonly StyledProperty<bool> IsPlaybackHeldProperty =
+		AvaloniaProperty.Register<PreviewPane, bool>(nameof(IsPlaybackHeld));
+
+	/// <summary>Identifies the <see cref="ColorsVersion"/> property.</summary>
+	public static readonly StyledProperty<int> ColorsVersionProperty =
+		AvaloniaProperty.Register<PreviewPane, int>(nameof(ColorsVersion));
 
 	/// <summary>Identifies the <see cref="IsLive"/> property.</summary>
 	public static readonly StyledProperty<bool> IsLiveProperty =
@@ -342,6 +351,74 @@ public partial class PreviewPane : UserControl
 		UpdateEdgeLine();
 		UpdateSource();
 		UpdateReadout();
+		PlaceTimelineAndOverlays();
+	}
+
+	/// <summary>The WPF pane's shading of the computed frames once the project was edited: grey instead of the accent.</summary>
+	private static readonly IBrush StaleAvailableBrush = new SolidColorBrush(Color.FromArgb(0x50, 0x80, 0x80, 0x80));
+	private TimelineBar? _timeline;
+
+	/// <summary>
+	/// The timeline bar under the pictures and one scene overlay over each picture, bound to this pane's properties as the
+	/// WPF pane declares them in its markup (2026-11-09; the port's window had placed them from outside).
+	/// </summary>
+	private void PlaceTimelineAndOverlays()
+	{
+		var timeline = new TimelineBar { Margin = new Thickness(4, 2) };
+		timeline.Bind(TimelineBar.MaximumProperty, OwnBinding(nameof(PlannedLastFrame)));
+		timeline.Bind(TimelineBar.AvailableProperty, OwnBinding(nameof(Available)));
+		timeline.Bind(TimelineBar.ValueProperty, OwnBinding(nameof(Position), BindingMode.TwoWay));
+		timeline.Bind(TimelineBar.RangeStartProperty, OwnBinding(nameof(InPoint)));
+		timeline.Bind(TimelineBar.RangeEndProperty, OwnBinding(nameof(OutPoint)));
+		timeline.SetRangeStartCommand = SetRangeStartCommand;
+		timeline.SetRangeEndCommand = SetRangeEndCommand;
+		timeline[!BackgroundProperty] = new DynamicResourceExtension("ScrollBarBackground");
+		timeline[!ForegroundProperty] = new DynamicResourceExtension("WindowForeground");
+		timeline[!TimelineBar.TickBrushProperty] = new DynamicResourceExtension("ControlBorder");
+		timeline[!TimelineBar.LabelBrushProperty] = new DynamicResourceExtension("GrayText");
+		timeline[!TimelineBar.AccentBrushProperty] = new DynamicResourceExtension("Accent");
+		timeline[!ToolTip.TipProperty] = new DynamicResourceExtension("TipPreviewTimeline");
+		timeline[!AutomationProperties.NameProperty] = new DynamicResourceExtension("TipPreviewTimeline");
+		AutomationProperties.SetAutomationId(timeline, "PreviewTimeline");
+		_timeline = timeline;
+		ShadeAvailable(IsStale);
+		TimelineHost.Content = timeline;
+		foreach (ProbeLayer layer in new[] { ProbeLayer.Field, ProbeLayer.Intensity })
+		{
+			var overlay = new SceneOverlay { Layer = layer };
+			overlay.Bind(SceneOverlay.CommandsProperty, OwnBinding(nameof(Commands)));
+			overlay.Bind(SceneOverlay.ProjectProperty, OwnBinding(nameof(Project)));
+			overlay.Bind(SceneOverlay.CanvasWidthProperty, OwnBinding(nameof(CanvasWidth)));
+			overlay.Bind(SceneOverlay.CanvasHeightProperty, OwnBinding(nameof(CanvasHeight)));
+			overlay.Bind(SceneOverlay.SelectedItemProperty, OwnBinding(nameof(SelectedItem), BindingMode.TwoWay));
+			overlay.Bind(SceneOverlay.SelectedItemsProperty, OwnBinding(nameof(SelectedItems)));
+			overlay.Bind(SceneOverlay.HandlesInPreviewProperty, OwnBinding("Project.Display.HandlesInPreview"));
+			overlay.Bind(SceneOverlay.LabelsInPreviewProperty, OwnBinding("Project.Display.LabelsInPreview"));
+			overlay[!SceneOverlay.LineBrushProperty] = new DynamicResourceExtension("PictureHandle");
+			overlay[!SceneOverlay.LabelBrushProperty] = new DynamicResourceExtension("PictureHandle");
+			overlay[!SceneOverlay.AccentBrushProperty] = new DynamicResourceExtension("PictureSelection");
+			OverlayHostOf(layer).Children.Add(overlay);
+		}
+	}
+
+	/// <summary>A binding to one of this pane's properties, one way unless asked otherwise.</summary>
+	private Binding OwnBinding(string path, BindingMode mode = BindingMode.OneWay) => new(path) { Source = this, Mode = mode };
+
+	/// <summary>The computed frames' shade on the bar: the theme's fill, or grey once the project was edited since the run.</summary>
+	private void ShadeAvailable(bool stale)
+	{
+		if (_timeline == null)
+		{
+			return;
+		}
+		if (stale)
+		{
+			_timeline.AvailableBrush = StaleAvailableBrush;
+		}
+		else
+		{
+			_timeline[!TimelineBar.AvailableBrushProperty] = new DynamicResourceExtension("DropPreviewFill");
+		}
 	}
 
 	// ---------------------------------------------------------------- the picture cells
@@ -580,6 +657,23 @@ public partial class PreviewPane : UserControl
 		set => SetValue(IsPlayingProperty, value);
 	}
 
+	/// <summary>
+	/// Whether the frame clock waits though playback is on (bound to the application's <c>PreviewState.IsPlaybackHeld</c>):
+	/// the run Play asked for is still being decided, the memory warning open, as in the WPF pane since 2026-11-09.
+	/// </summary>
+	public bool IsPlaybackHeld
+	{
+		get => GetValue(IsPlaybackHeldProperty);
+		set => SetValue(IsPlaybackHeldProperty, value);
+	}
+
+	/// <summary>Counts the application's colour changes (<c>PreviewState.ColorsVersion</c>): the palettes are rebuilt from the project's schemes when it changes.</summary>
+	public int ColorsVersion
+	{
+		get => GetValue(ColorsVersionProperty);
+		set => SetValue(ColorsVersionProperty, value);
+	}
+
 	/// <summary>Whether <see cref="Position"/> follows the newest frame of a run in progress. Only while a run is active; scrubbing, stepping, playing or the run's end turns it off.</summary>
 	public bool IsLive
 	{
@@ -776,6 +870,18 @@ public partial class PreviewPane : UserControl
 		else if (change.Property == IsPlayingProperty)
 		{
 			OnIsPlayingChanged(change.GetNewValue<bool>());
+		}
+		else if (change.Property == IsPlaybackHeldProperty)
+		{
+			UpdateClock();
+		}
+		else if (change.Property == IsStaleProperty)
+		{
+			ShadeAvailable(change.GetNewValue<bool>());
+		}
+		else if (change.Property == ColorsVersionProperty)
+		{
+			RefreshColors();
 		}
 		else if (change.Property == IsLiveProperty)
 		{
@@ -1402,23 +1508,17 @@ public partial class PreviewPane : UserControl
 			{
 				Position = InPoint; // play the range again from its start
 			}
-			// playing means showing the simulation: the window starts a run when there is none or it is stale. Asked before
-			// the clock starts: a run that does not fit asks in a modal window, and a refused run turns playback off again,
-			// which lands here with false before the command returns, so the clock stays off then
+			// playing means showing the simulation: the application starts a run when there is none or it is stale. While
+			// the run is being decided (the memory warning open) playback is held (IsPlaybackHeld), which keeps the clock
+			// off under the question, whether the command returns with the answer or before it; a refused run turns
+			// playback off again, and the hold's release starts the clock otherwise
 			Commands.EnsureRun.Execute(null);
 			if (!IsPlaying)
 			{
 				return;
 			}
-			_carry = 0.0;
-			_clock.Restart();
-			_ticker.Change(0, TickMilliseconds);
 		}
-		else
-		{
-			_ticker.Change(Timeout.Infinite, Timeout.Infinite);
-			_clock.Stop();
-		}
+		UpdateClock();
 		RequeryTransport();
 		MoveFocusToCounterpart(playing, playFocused, pauseFocused);
 	}
@@ -1472,6 +1572,27 @@ public partial class PreviewPane : UserControl
 
 	/// <summary>Whether a <see cref="HoldClock"/> handle is outstanding.</summary>
 	internal bool IsClockHeld => _clockHolds > 0;
+
+	/// <summary>The frame clock runs while playback is on and not held (<see cref="IsPlaybackHeld"/>): started from zero, or stopped, when that changes.</summary>
+	private void UpdateClock()
+	{
+		bool runs = IsPlaying && !IsPlaybackHeld;
+		if (runs == _clock.IsRunning)
+		{
+			return;
+		}
+		if (runs)
+		{
+			_carry = 0.0;
+			_clock.Restart();
+			_ticker.Change(0, TickMilliseconds);
+		}
+		else
+		{
+			_ticker.Change(Timeout.Infinite, Timeout.Infinite);
+			_clock.Stop();
+		}
+	}
 
 	private int _clockHolds;
 

@@ -190,9 +190,8 @@ public partial class App : Application
 				}
 				if (StartupFile != null)
 				{
-					// launched with a project file (the desktop entry's %f, "open with", the command line): opened once the
-					// window has the project models (the next step)
-					Logger.Info("Project file to open: {Path}", StartupFile);
+					// launched with a project file (the desktop entry's %f, "open with", the command line)
+					_ = window.OpenFileAsync(StartupFile);
 				}
 			};
 		}

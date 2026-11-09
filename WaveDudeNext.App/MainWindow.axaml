@@ -20,11 +20,16 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="using:WaveDudeNext.App.Converters"
         xmlns:docking="using:WaveDudeNext.App.Docking"
         xmlns:layout="using:WaveDudeNext.UI.Docking"
+        xmlns:localization="using:WaveDudeNext.App.Localization"
+        xmlns:local="using:WaveDudeNext.App"
         xmlns:panes="using:WaveDudeNext.App.Panes"
+        xmlns:model="using:WaveDudeNext.Model"
+        xmlns:ui="using:WaveDudeNext.UI"
         x:Class="WaveDudeNext.App.MainWindow"
-        Title="WaveDude Next"
+        x:DataType="local:MainWindow"
         Icon="/Assets/wavedudenext.ico"
         Width="1280" Height="800" MinWidth="800" MinHeight="500"
         WindowStartupLocation="CenterScreen"
@@ -33,43 +38,60 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
         FontSize="12"
         DragDrop.AllowDrop="True">
 	<!-- The window as the WPF one lays it out: the menu bar, the dock host with the Project, Properties and Messages panes
-	     around the Preview document, and the status bar. The menus are Mark's markup and carry their texts from the string
-	     table through DynamicResource, so a language switch applies at once; their commands come with the models (the
-	     next step), as do the panes' bindings. The items a harness reads carry the WPF head's automation ids. -->
+	     around the Preview document, and the status bar. The window is its own data context: the panes bind the models
+	     (Document, Selection, RunHost, Live, Preview, Busy, SceneComposer), the menus bind Commands, each a line into a
+	     model, with their hot keys; the menus whose entries come from data are filled in code. Texts come from the string
+	     table through DynamicResource, so a language switch applies at once. The items a harness reads carry the WPF head's
+	     automation ids. -->
+	<Window.Resources>
+		<converters:TitleConverter x:Key="TitleConverter" />
+		<converters:RunStatusConverter x:Key="RunStatus" />
+		<converters:EnumByNameConverter x:Key="EnumByName" />
+	</Window.Resources>
+	<Window.Title>
+		<MultiBinding Converter="{StaticResource TitleConverter}">
+			<Binding Source="{StaticResource Title}" />
+			<Binding Path="Document.Filename" />
+			<Binding Path="Document.IsDirty" />
+			<Binding Path="Document.SuggestedFileName" />
+			<!-- the language, so "Untitled" follows a switch -->
+			<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
+		</MultiBinding>
+	</Window.Title>
 	<DockPanel>
 		<Menu x:Name="menu" DockPanel.Dock="Top" Background="{DynamicResource MenuBackground}" Foreground="{DynamicResource MenuForeground}">
 			<MenuItem Header="{DynamicResource MenuFile}">
-				<MenuItem x:Name="mnuNew" Header="{DynamicResource MenuFileNew}" InputGesture="Ctrl+N" />
-				<MenuItem x:Name="mnuOpen" Header="{DynamicResource MenuFileOpen}" InputGesture="Ctrl+O" />
+				<MenuItem Header="{DynamicResource MenuFileNew}" Command="{Binding Commands.New}" HotKey="Ctrl+N" InputGesture="Ctrl+N" />
+				<MenuItem Header="{DynamicResource MenuFileOpen}" Command="{Binding Commands.Open}" HotKey="Ctrl+O" InputGesture="Ctrl+O" />
 				<MenuItem x:Name="mnuRecent" Header="{DynamicResource MenuFileRecent}" />
 				<MenuItem x:Name="mnuExamples" Header="{DynamicResource MenuFileExamples}" AutomationProperties.AutomationId="MenuExamples" />
 				<Separator />
-				<MenuItem x:Name="mnuSave" Header="{DynamicResource MenuFileSave}" InputGesture="Ctrl+S" />
-				<MenuItem x:Name="mnuSaveAs" Header="{DynamicResource MenuFileSaveAs}" InputGesture="Ctrl+Shift+S" />
+				<MenuItem Header="{DynamicResource MenuFileSave}" Command="{Binding Commands.Save}" HotKey="Ctrl+S" InputGesture="Ctrl+S" />
+				<MenuItem Header="{DynamicResource MenuFileSaveAs}" Command="{Binding Commands.SaveAs}" HotKey="Ctrl+Shift+S" InputGesture="Ctrl+Shift+S" />
 				<Separator />
-				<MenuItem x:Name="mnuExport" Header="{DynamicResource MenuFileExport}" AutomationProperties.AutomationId="MenuExport">
-					<MenuItem x:Name="mnuExportField" Header="{DynamicResource MenuFileExportField}" InputGesture="Ctrl+Shift+E" />
-					<MenuItem x:Name="mnuExportIntensity" Header="{DynamicResource MenuFileExportIntensity}" InputGesture="Ctrl+Shift+I" />
-					<MenuItem x:Name="mnuExportBoth" Header="{DynamicResource MenuFileExportBoth}" InputGesture="Ctrl+Shift+B" />
+				<MenuItem Header="{DynamicResource MenuFileExport}" AutomationProperties.AutomationId="MenuExport">
+					<MenuItem Header="{DynamicResource MenuFileExportField}" Command="{Binding Commands.ExportField}" HotKey="Ctrl+Shift+E" InputGesture="Ctrl+Shift+E" />
+					<MenuItem Header="{DynamicResource MenuFileExportIntensity}" Command="{Binding Commands.ExportIntensity}" HotKey="Ctrl+Shift+I" InputGesture="Ctrl+Shift+I" />
+					<MenuItem Header="{DynamicResource MenuFileExportBoth}" Command="{Binding Commands.ExportBoth}" HotKey="Ctrl+Shift+B" InputGesture="Ctrl+Shift+B" />
 					<Separator />
-					<MenuItem x:Name="mnuExportFieldFrame" Header="{DynamicResource MenuFileExportFieldFrame}" InputGesture="Ctrl+Shift+F" />
-					<MenuItem x:Name="mnuExportIntensityFrame" Header="{DynamicResource MenuFileExportIntensityFrame}" InputGesture="Ctrl+Shift+G" />
+					<MenuItem Header="{DynamicResource MenuFileExportFieldFrame}" Command="{Binding Commands.ExportFrame}" CommandParameter="{x:Static model:ProbeLayer.Field}" HotKey="Ctrl+Shift+F" InputGesture="Ctrl+Shift+F" />
+					<MenuItem Header="{DynamicResource MenuFileExportIntensityFrame}" Command="{Binding Commands.ExportFrame}" CommandParameter="{x:Static model:ProbeLayer.Intensity}" HotKey="Ctrl+Shift+G" InputGesture="Ctrl+Shift+G" />
 				</MenuItem>
-				<MenuItem x:Name="mnuExportLast" Header="{DynamicResource MenuFileExportLast}" InputGesture="Ctrl+E" AutomationProperties.AutomationId="MenuExportLast" />
+				<MenuItem Header="{DynamicResource MenuFileExportLast}" Command="{Binding Commands.ExportLast}" HotKey="Ctrl+E" InputGesture="Ctrl+E" AutomationProperties.AutomationId="MenuExportLast" />
 				<Separator />
-				<MenuItem x:Name="mnuClose" Header="{DynamicResource MenuFileClose}" />
-				<MenuItem x:Name="mnuExit" Header="{DynamicResource MenuFileExit}" InputGesture="Alt+F4" />
+				<MenuItem Header="{DynamicResource MenuFileClose}" Command="{Binding Commands.CloseProject}" />
+				<MenuItem Header="{DynamicResource MenuFileExit}" Command="{Binding Commands.Exit}" InputGesture="Alt+F4" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuEdit}">
-				<MenuItem x:Name="mnuUndo" Header="{DynamicResource MenuEditUndo}" InputGesture="Ctrl+Z" />
-				<MenuItem x:Name="mnuRedo" Header="{DynamicResource MenuEditRedo}" InputGesture="Ctrl+Y" />
+				<MenuItem Header="{DynamicResource MenuEditUndo}" Command="{Binding Commands.Undo}" HotKey="Ctrl+Z" InputGesture="Ctrl+Z" />
+				<MenuItem Header="{DynamicResource MenuEditRedo}" Command="{Binding Commands.Redo}" HotKey="Ctrl+Y" InputGesture="Ctrl+Y" />
 				<Separator />
-				<MenuItem x:Name="mnuCut" Header="{DynamicResource MenuEditCut}" InputGesture="Ctrl+X" />
-				<MenuItem x:Name="mnuCopy" Header="{DynamicResource MenuEditCopy}" InputGesture="Ctrl+C" />
-				<MenuItem x:Name="mnuPaste" Header="{DynamicResource MenuEditPaste}" InputGesture="Ctrl+V" />
-				<MenuItem x:Name="mnuDelete" Header="{DynamicResource MenuEditDelete}" InputGesture="Delete" />
+				<MenuItem Header="{DynamicResource MenuEditCut}" Command="{Binding Commands.Cut}" HotKey="Ctrl+X" InputGesture="Ctrl+X" />
+				<MenuItem Header="{DynamicResource MenuEditCopy}" Command="{Binding Commands.Copy}" HotKey="Ctrl+C" InputGesture="Ctrl+C" />
+				<MenuItem Header="{DynamicResource MenuEditPaste}" Command="{Binding Commands.Paste}" HotKey="Ctrl+V" InputGesture="Ctrl+V" />
+				<MenuItem Header="{DynamicResource MenuEditDelete}" Command="{Binding Commands.Delete}" InputGesture="Delete" />
 				<Separator />
-				<MenuItem x:Name="mnuSelectAll" Header="{DynamicResource MenuProjectSelectAll}" InputGesture="Ctrl+A" />
+				<MenuItem Header="{DynamicResource MenuProjectSelectAll}" Command="{Binding Commands.SelectAll}" HotKey="Ctrl+A" InputGesture="Ctrl+A" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuView}">
 				<MenuItem x:Name="mnuPanes" Header="{DynamicResource MenuViewPanes}" />
@@ -83,10 +105,10 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<MenuItem x:Name="mnuDither" Header="{DynamicResource MenuViewDither}" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuSimulation}">
-				<MenuItem x:Name="mnuRun" Header="{DynamicResource MenuSimulationRun}" InputGesture="F5" />
-				<MenuItem x:Name="mnuTogglePause" Header="{DynamicResource MenuSimulationPause}" InputGesture="F6" />
-				<MenuItem x:Name="mnuStop" Header="{DynamicResource MenuSimulationStop}" InputGesture="Shift+F5" />
-				<MenuItem x:Name="mnuPlayPause" Header="{DynamicResource MenuSimulationPlay}" InputGesture="F7" />
+				<MenuItem Header="{DynamicResource MenuSimulationRun}" Command="{Binding Commands.Run}" HotKey="F5" InputGesture="F5" />
+				<MenuItem Header="{DynamicResource MenuSimulationPause}" Command="{Binding Commands.TogglePause}" HotKey="F6" InputGesture="F6" />
+				<MenuItem Header="{DynamicResource MenuSimulationStop}" Command="{Binding Commands.Stop}" HotKey="Shift+F5" InputGesture="Shift+F5" />
+				<MenuItem Header="{DynamicResource MenuSimulationPlay}" Command="{Binding Commands.PlayPause}" HotKey="F7" InputGesture="F7" />
 				<Separator />
 				<MenuItem x:Name="mnuUseGpu" Header="{DynamicResource MenuSimulationUseGpu}" ToggleType="CheckBox" />
 				<MenuItem x:Name="mnuAutoRerun" Header="{DynamicResource MenuSimulationAutoRerun}" ToggleType="CheckBox" />
@@ -94,19 +116,27 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<MenuItem x:Name="mnuFrameMemory" Header="{DynamicResource MenuSimulationFrameMemory}" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuHelp}">
-				<MenuItem x:Name="mnuAbout" Header="{DynamicResource MenuHelpAbout}" />
-				<MenuItem x:Name="mnuManual" Header="{DynamicResource MenuHelpManual}" InputGesture="F1" />
+				<MenuItem Header="{DynamicResource MenuHelpAbout}" Command="{Binding Commands.About}" />
+				<MenuItem Header="{DynamicResource MenuHelpManual}" Command="{Binding Commands.Manual}" HotKey="F1" InputGesture="F1" />
 			</MenuItem>
 		</Menu>
 
-		<!-- the status bar: the last log line (double-click opens the Messages pane), the run's state, the export's progress -->
+		<!-- the status bar: the last log line (double-click opens the Messages pane), the run's state on the right -->
 		<Border x:Name="statusBar" DockPanel.Dock="Bottom" Background="{DynamicResource StatusBarBackground}" MinHeight="22" Padding="4,0,16,0">
 			<DockPanel>
-				<StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-					<TextBlock x:Name="txtExport" AutomationProperties.AutomationId="StatusExport" Foreground="{DynamicResource StatusBarForeground}" VerticalAlignment="Center" Margin="4,2" />
-					<ProgressBar x:Name="exportProgress" Width="120" Height="12" IsVisible="False" />
-					<TextBlock x:Name="txtRun" AutomationProperties.AutomationId="StatusRun" Foreground="{DynamicResource StatusBarForeground}" VerticalAlignment="Center" Margin="4,2" />
-				</StackPanel>
+				<TextBlock DockPanel.Dock="Right" AutomationProperties.AutomationId="StatusRun" Foreground="{DynamicResource StatusBarForeground}" VerticalAlignment="Center" Margin="4,2">
+					<TextBlock.Text>
+						<MultiBinding Converter="{StaticResource RunStatus}">
+							<Binding Path="RunHost.Run.State" />
+							<Binding Path="RunHost.Run.StepsDone" />
+							<Binding Path="RunHost.Run.TotalSteps" />
+							<Binding Path="RunHost.Run.EngineDescription" />
+							<Binding Path="RunHost.IsRunStale" />
+							<!-- the language, so the words follow a switch -->
+							<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
+						</MultiBinding>
+					</TextBlock.Text>
+				</TextBlock>
 				<TextBlock x:Name="txtStatus" AutomationProperties.AutomationId="StatusMessage" Text="{DynamicResource Ready}" Foreground="{DynamicResource StatusBarForeground}" VerticalAlignment="Center" Margin="4,2" TextTrimming="CharacterEllipsis" />
 			</DockPanel>
 		</Border>
@@ -138,18 +168,27 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 			</docking:DockHost.DefaultLayout>
 			<docking:DockHost.Items>
 				<docking:DockItem Id="project" Title="{StaticResource PaneProject}" DefaultSide="Left">
-					<panes:ProjectTree x:Name="projectTree" />
+					<panes:ProjectTree x:Name="projectTree" Project="{Binding Document.Project}" SelectedItem="{Binding Selection.Current, Mode=TwoWay}"
+					                   SelectedItems="{Binding Selection.Items}" Commands="{Binding Commands}" />
 				</docking:DockItem>
 				<docking:DockItem Id="properties" Title="{StaticResource PaneProperties}" DefaultSide="Right">
-					<panes:PropertiesPane x:Name="propertiesPane" />
+					<panes:PropertiesPane x:Name="propertiesPane" SelectedObject="{Binding Selection.Current}" Project="{Binding Document.Project}"
+					                      Commands="{Binding Commands}" SceneImageFileMissing="{Binding SceneImage.IsFileMissing}" />
 				</docking:DockItem>
 				<docking:DockItem Id="messages" Title="{StaticResource PaneMessages}" DefaultSide="Bottom">
-					<panes:MessagesPane x:Name="messagesPane" />
+					<panes:MessagesPane x:Name="messagesPane" TargetName="messages" />
 				</docking:DockItem>
 			</docking:DockHost.Items>
 			<docking:DockHost.DocumentContent>
 				<Border BorderThickness="1" BorderBrush="{DynamicResource ToolWindowBorder}">
-					<panes:PreviewPane x:Name="previewPane" />
+					<panes:PreviewPane x:Name="previewPane" Project="{Binding Document.Project}" Run="{Binding RunHost.Run}" Commands="{Binding Commands}"
+					                   SelectedItem="{Binding Selection.Current, Mode=TwoWay}" SelectedItems="{Binding Selection.Items}"
+					                   IsStale="{Binding RunHost.IsRunStale}" IsProbesStale="{Binding RunHost.IsProbesStale}" ScratchFrame="{Binding Live.ScratchFrame}"
+					                   ScenePixels="{Binding SceneComposer.Pixels}" IsComputing="{Binding Busy.IsComputingFrame}"
+					                   Position="{Binding Preview.Position, Mode=TwoWay}" IsPlaying="{Binding Preview.IsPlaying, Mode=TwoWay}" IsPlaybackHeld="{Binding Preview.IsPlaybackHeld}"
+					                   ColorsVersion="{Binding Preview.ColorsVersion}"
+					                   Orientation="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewOrientation, Mode=TwoWay, Converter={StaticResource EnumByName}}"
+					                   DitherBits="{Binding Source={x:Static ui:Settings.Default}, Path=PreviewDitherBits}" />
 				</Border>
 			</docking:DockHost.DocumentContent>
 		</docking:DockHost>
