@@ -34,6 +34,9 @@ namespace WaveDudeNext.Probes;
 /// <param name="BY">Y of point B in canvas pixels (line probes).</param>
 /// <param name="StartAfter">Step from which an integrated probe records; 0 records from the first step.</param>
 /// <param name="Origin">The model probe the spec was taken from, as an identity only: the preview finds a probe's trace through it and never reads its values, which may have changed since. Null for a spec not taken from the model.</param>
+/// <param name="Detector">Standard, or a probabilistic detector (2026-11-07): the engine then integrates the intensity along the line and <see cref="ProbeCollector"/> turns it into detections.</param>
+/// <param name="Sensitivity">A detector's expected detections per unit of intensity per step at a point of the line.</param>
+/// <param name="BinSize">An imaging detector's bin in pixels along the line (2026-11-08).</param>
 public sealed record ProbeSpec(
 	string Name,
 	ProbeKind Kind,
@@ -43,9 +46,12 @@ public sealed record ProbeSpec(
 	int BX,
 	int BY,
 	int StartAfter,
-	Probe? Origin = null)
+	Probe? Origin = null,
+	ProbeDetector Detector = ProbeDetector.Standard,
+	double Sensitivity = Probe.DefaultSensitivity,
+	int BinSize = Probe.DefaultBinSize)
 {
 	/// <summary>The spec of a model probe, remembering the probe as its <see cref="Origin"/>.</summary>
 	public static ProbeSpec From(Probe probe) =>
-		new(probe.Name, probe.Kind, probe.Measurement, probe.AX, probe.AY, probe.BX, probe.BY, probe.StartAfter, probe);
+		new(probe.Name, probe.Kind, probe.Measurement, probe.AX, probe.AY, probe.BX, probe.BY, probe.StartAfter, probe, probe.Detector, probe.Sensitivity, probe.BinSize);
 }

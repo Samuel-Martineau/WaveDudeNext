@@ -59,20 +59,27 @@ public sealed class ProjectItems(ProjectDocument document, Selection selection)
 	/// <summary>Appends a new optical part of <paramref name="kind"/>, an <see cref="OpticalPart"/> subclass, at (<paramref name="x"/>, <paramref name="y"/>) in canvas pixels, selected, the caret in its name.</summary>
 	public OpticalPart AddPart(Type kind, int x, int y) => Added(Project.AddPart(kind, x, y));
 
-	/// <summary>Appends a new probe at (<paramref name="x"/>, <paramref name="y"/>) in canvas pixels, selected, the caret in its name.</summary>
-	public Probe AddProbe(int x, int y) => Added(Project.AddProbe(x, y));
+	/// <summary>
+	/// Appends a new probe at (<paramref name="x"/>, <paramref name="y"/>) in canvas pixels, selected, the caret in its
+	/// name: a standard probe, or a probabilistic detector of <paramref name="detector"/>'s kind (2026-11-07, Jeroen's
+	/// addition), which the menu of probe kinds names.
+	/// </summary>
+	public Probe AddProbe(int x, int y, ProbeDetector detector = ProbeDetector.Standard) => Added(Project.AddProbe(x, y, detector));
 
 	/// <summary>Appends a new colour scheme of the project's own, selected, the caret in its name.</summary>
 	public ColorScheme AddColorScheme() => Added(Project.AddColorScheme());
 
+	/// <summary>Whether an item of <paramref name="list"/> needs its kind chosen before it is added: the parts and, since the detectors of 2026-11-07, the probes, each with a menu of kinds.</summary>
+	public bool HasKinds(object? list) => ReferenceEquals(list, Project.Parts) || ReferenceEquals(list, Project.Probes);
+
 	/// <summary>
-	/// Appends a new item to <paramref name="list"/>, one of the project's lists (a folder's plus): a source or a probe
-	/// at (<paramref name="x"/>, <paramref name="y"/>) in canvas pixels, or a colour scheme. Null for the parts, whose
-	/// kind must be chosen first (<see cref="AddPart"/>), and for anything that is no list of the project.
+	/// Appends a new item to <paramref name="list"/>, one of the project's lists (a folder's plus): a source at
+	/// (<paramref name="x"/>, <paramref name="y"/>) in canvas pixels, or a colour scheme. Null for the parts and the
+	/// probes, whose kind must be chosen first (<see cref="HasKinds"/>, <see cref="AddPart"/>, <see cref="AddProbe"/>),
+	/// and for anything that is no list of the project.
 	/// </summary>
 	public object? AddTo(object? list, int x, int y) =>
 		ReferenceEquals(list, Project.Sources) ? AddSource(x, y)
-		: ReferenceEquals(list, Project.Probes) ? AddProbe(x, y)
 		: ReferenceEquals(list, Project.ColorSchemes) ? AddColorScheme()
 		: null;
 

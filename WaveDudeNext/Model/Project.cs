@@ -97,7 +97,22 @@ public sealed class Project : ObservableObject
 	public int Seed
 	{
 		get => _seed;
-		set => SetProperty(ref _seed, value);
+		set
+		{
+			if (SetProperty(ref _seed, value))
+			{
+				SeedParts();
+			}
+		}
+	}
+
+	/// <summary>Hands <see cref="Seed"/> to every part with a random decision in it (<see cref="ISeeded"/>, a diffusor's roughness).</summary>
+	private void SeedParts()
+	{
+		foreach (ISeeded part in Parts.OfType<ISeeded>())
+		{
+			part.ProjectSeed = Seed;
+		}
 	}
 
 	/// <summary>Free-text notes about the project; omitted from the file when empty.</summary>
@@ -172,6 +187,14 @@ public sealed class Project : ObservableObject
 	[XmlElement("AndGate", typeof(AndGatePart))]
 	[XmlElement("OrGate", typeof(OrGatePart))]
 	[XmlElement("ZonePlate", typeof(ZonePlatePart))]
+	[XmlElement("Diffusor", typeof(DiffusorPart))]
+	[XmlElement("InterferenceFilter", typeof(InterferenceFilterPart))]
+	[XmlElement("SimpleGrating", typeof(SimpleGratingPart))]
+	[XmlElement("FacettedGrating", typeof(FacettedGratingPart))]
+	[XmlElement("MetaLens", typeof(MetaLensPart))]
+	[XmlElement("MetaPrism", typeof(MetaPrismPart))]
+	[XmlElement("MetaAxicon", typeof(MetaAxiconPart))]
+	[XmlElement("FresnelLens", typeof(FresnelLensPart))]
 	[Browsable(false)]
 	public ObservableCollection<OpticalPart> Parts
 	{
@@ -373,6 +396,10 @@ public sealed class Project : ObservableObject
 		part.Name = NumberedName(part.NameStem, Parts.Select(p => p.Name));
 		part.X = x;
 		part.Y = y;
+		if (part is ISeeded seeded)
+		{
+			seeded.ProjectSeed = Seed;
+		}
 		Parts.Add(part);
 		return part;
 	}
@@ -383,13 +410,19 @@ public sealed class Project : ObservableObject
 	/// <summary>Appends a new probe named "Probe n" with the first free n, and returns it.</summary>
 	public Probe AddProbe() => AddProbe(Scene.Width / 2, Scene.Height / 2);
 
+	/// <summary>Appends a new standard probe at (<paramref name="x"/>, <paramref name="y"/>) as <see cref="AddProbe(int, int, ProbeDetector)"/> does.</summary>
+	public Probe AddProbe(int x, int y) => AddProbe(x, y, ProbeDetector.Standard);
+
 	/// <summary>
-	/// Appends a new probe named "Probe n" with its point at canvas pixel (<paramref name="x"/>, <paramref name="y"/>) and the
-	/// end of its line, should it become one, 100 pixels to the right (see <see cref="AddSource(int, int)"/>), and returns it.
+	/// Appends a new probe with its point at canvas pixel (<paramref name="x"/>, <paramref name="y"/>) and the end of its
+	/// line, should it be or become one, 100 pixels to the right (see <see cref="AddSource(int, int)"/>), and returns it: a
+	/// standard probe named "Probe n", or a probabilistic detector named "Detector n" (2026-11-07), a line of the
+	/// integrated intensity, with the first free n.
 	/// </summary>
-	public Probe AddProbe(int x, int y)
+	public Probe AddProbe(int x, int y, ProbeDetector detector)
 	{
-		var probe = new Probe { Name = NumberedName("Probe", Probes.Select(p => p.Name)), AX = x, AY = y, BX = x + 100, BY = y };
+		string stem = detector == ProbeDetector.Standard ? "Probe" : "Detector";
+		var probe = new Probe { Name = NumberedName(stem, Probes.Select(p => p.Name)), AX = x, AY = y, BX = x + 100, BY = y, Detector = detector };
 		Probes.Add(probe);
 		return probe;
 	}
@@ -575,7 +608,7 @@ public sealed class Project : ObservableObject
 		return Load(stream);
 	}
 
-	/// <summary>Clamps every setting into its valid range and regenerates the source emitters.</summary>
+	/// <summary>Clamps every setting into its valid range, regenerates the source emitters and hands the seed to the parts that draw from it.</summary>
 	public void Normalize()
 	{
 		Scene.Normalize();
@@ -589,6 +622,10 @@ public sealed class Project : ObservableObject
 		foreach (OpticalPart part in Parts)
 		{
 			part.Normalize();
+			if (part is ISeeded seeded)
+			{
+				seeded.ProjectSeed = Seed;
+			}
 		}
 		foreach (Probe probe in Probes)
 		{

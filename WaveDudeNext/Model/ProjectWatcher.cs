@@ -53,7 +53,7 @@ public sealed record ProjectChange(object Item, string? Property, PropertyValueC
 	public bool AffectsSimulation => Item switch
 	{
 		Scene when Property == nameof(Scene.ImagePath) => false,
-		Scene or Simulation or Source or SourceArray or OpticalPart or PartPoint or FiberNode => true,
+		Scene or Simulation or Source or SourceArray or OpticalPart or PartPoint or FiberNode or FilterLayer => true,
 		Project => Property is nameof(Project.Seed) or nameof(Project.Scene) or nameof(Project.Simulation) or nameof(Project.Sources) or nameof(Project.Parts),
 		ObservableCollection<ColorScheme> or ObservableCollection<Probe> => false,
 		INotifyCollectionChanged => true,
@@ -117,7 +117,8 @@ public sealed class ProjectWatcher : IDisposable
 	private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
 	{
 		if (sender is Source && e.PropertyName == nameof(Source.Array) || sender is Display && e.PropertyName is nameof(Display.Field) or nameof(Display.Intensity) or nameof(Display.Video)
-			|| sender is OutlinePart && e.PropertyName == nameof(OutlinePart.Points) || sender is FiberPart && e.PropertyName == nameof(FiberPart.Nodes))
+			|| sender is OutlinePart && e.PropertyName == nameof(OutlinePart.Points) || sender is FiberPart && e.PropertyName == nameof(FiberPart.Nodes)
+			|| sender is InterferenceFilterPart && e.PropertyName == nameof(InterferenceFilterPart.Layers))
 		{
 			Resubscribe();
 		}
@@ -171,6 +172,13 @@ public sealed class ProjectWatcher : IDisposable
 					foreach (FiberNode node in fiber.Nodes)
 					{
 						Subscribe(node);
+					}
+					break;
+				case InterferenceFilterPart filter:
+					SubscribeCollection(filter.Layers);
+					foreach (FilterLayer layer in filter.Layers)
+					{
+						Subscribe(layer);
 					}
 					break;
 			}

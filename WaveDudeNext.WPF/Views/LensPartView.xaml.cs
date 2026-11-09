@@ -15,6 +15,7 @@
 // version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 // <https://www.gnu.org/licenses/>.
 
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using WaveDudeNext.Model;
@@ -22,12 +23,23 @@ using WaveDudeNext.WPF.Commands;
 
 namespace WaveDudeNext.WPF.Views;
 
-/// <summary>Editor for a <see cref="LensPart"/>: a lens or a curved or flat mirror.</summary>
+/// <summary>Editor for a <see cref="LensPart"/>: a lens or a curved or flat mirror; with <see cref="ZonesShown"/>, a <see cref="FresnelLensPart"/>'s too, with its zones row.</summary>
 public partial class LensPartView : UserControl
 {
+	/// <summary>Identifies the <see cref="ZonesShown"/> property.</summary>
+	public static readonly DependencyProperty ZonesShownProperty = DependencyProperty.Register(
+		nameof(ZonesShown), typeof(bool), typeof(LensPartView), new PropertyMetadata(false));
+
 	public LensPartView()
 	{
 		InitializeComponent();
+	}
+
+	/// <summary>Whether the Zones row is shown and bound: the Fresnel lens's template sets it (2026-11-07); a plain lens has no such property and the row is left out, not bound.</summary>
+	public bool ZonesShown
+	{
+		get => (bool)GetValue(ZonesShownProperty);
+		set => SetValue(ZonesShownProperty, value);
 	}
 
 	/// <summary>

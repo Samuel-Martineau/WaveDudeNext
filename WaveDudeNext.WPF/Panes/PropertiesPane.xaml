@@ -46,11 +46,36 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<DataTemplate DataType="{x:Type model:LensPart}">
 			<views:LensPartView />
 		</DataTemplate>
+		<!-- the lens's form with its zones row (a more derived type's template wins over the base's) -->
+		<DataTemplate DataType="{x:Type model:FresnelLensPart}">
+			<views:LensPartView ZonesShown="True" />
+		</DataTemplate>
 		<DataTemplate DataType="{x:Type model:PolygonPart}">
 			<views:PolygonPartView />
 		</DataTemplate>
 		<DataTemplate DataType="{x:Type model:RectanglePart}">
 			<views:RectanglePartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:DiffusorPart}">
+			<views:DiffusorPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:InterferenceFilterPart}">
+			<views:InterferenceFilterPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:SimpleGratingPart}">
+			<views:SimpleGratingPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:FacettedGratingPart}">
+			<views:FacettedGratingPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:MetaLensPart}">
+			<views:MetaLensPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:MetaPrismPart}">
+			<views:MetaPrismPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:MetaAxiconPart}">
+			<views:MetaAxiconPartView />
 		</DataTemplate>
 		<DataTemplate DataType="{x:Type model:EllipsePart}">
 			<views:EllipsePartView />

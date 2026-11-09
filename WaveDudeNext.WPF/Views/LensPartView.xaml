@@ -56,6 +56,48 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				</DataTrigger>
 			</Style.Triggers>
 		</Style>
+		<!-- the Fresnel lens's zones row (2026-11-07): one row of the form laid out to its label column, given its content and
+		     template only when the form says so, so a plain lens, which has no Zones, binds nothing. Inside the template the
+		     string keys are referenced directly (2026-10-22) -->
+		<DataTemplate x:Key="ZonesRow">
+			<Grid>
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="{Binding LabelWidth, RelativeSource={RelativeSource AncestorType={x:Type controls:FormPanel}}}" />
+					<ColumnDefinition Width="8" />
+					<ColumnDefinition Width="*" />
+				</Grid.ColumnDefinitions>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="4" />
+					<RowDefinition Height="Auto" />
+				</Grid.RowDefinitions>
+				<TextBlock Style="{StaticResource FormLabel}" Text="{DynamicResource Label.FresnelLensPart.Zones}" />
+				<controls:NumberBox Grid.Column="2" Text="{Binding Zones}" Minimum="1" Maximum="100" ToolTip="{DynamicResource Hint.FresnelLensPart.Zones}" AutomationProperties.AutomationId="PartZones" />
+				<TextBlock Grid.Row="2" Style="{StaticResource FormLabel}" Text="{DynamicResource Label.FresnelLensPart.Division}" />
+				<ComboBox Grid.Row="2" Grid.Column="2" Style="{StaticResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ZoneDivision}" SelectedItem="{Binding Division}"
+				          ToolTip="{DynamicResource Hint.FresnelLensPart.Division}" AutomationProperties.AutomationId="PartZoneDivision" />
+			</Grid>
+		</DataTemplate>
+		<!-- the Concave box is the lens's alone: a Fresnel lens's surfaces are hollowed by a negative radius (2026-11-07, the user's choice) -->
+		<Style x:Key="ConcaveBox" TargetType="{x:Type CheckBox}" BasedOn="{StaticResource {x:Type CheckBox}}">
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding ZonesShown, RelativeSource={RelativeSource AncestorType={x:Type views:LensPartView}}}" Value="True">
+					<Setter Property="Visibility" Value="Collapsed" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+		<Style x:Key="ZonesRowHost" TargetType="{x:Type ContentControl}">
+			<Setter Property="Visibility" Value="Collapsed" />
+			<Setter Property="Focusable" Value="False" />
+			<Setter Property="IsTabStop" Value="False" />
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding ZonesShown, RelativeSource={RelativeSource AncestorType={x:Type views:LensPartView}}}" Value="True">
+					<Setter Property="Visibility" Value="Visible" />
+					<Setter Property="Content" Value="{Binding}" />
+					<Setter Property="ContentTemplate" Value="{StaticResource ZonesRow}" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
 	</UserControl.Resources>
 
 	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -104,7 +146,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<controls:NumberBox Text="{Binding Diameter}" Minimum="2" Increment="10" ToolTip="{meta:Hint model:LensPart.Diameter}" AutomationProperties.AutomationId="PartDiameter" />
 
 				<!-- the lens's state in one box: on for a diverging lens; ticking it flips both radii -->
-				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:LensPart.IsConcave}"
+				<CheckBox controls:FormPanel.FullWidth="True" Style="{StaticResource ConcaveBox}" Content="{meta:Label model:LensPart.IsConcave}"
 				          IsChecked="{Binding IsConcave}" ToolTip="{meta:Hint model:LensPart.IsConcave}" AutomationProperties.AutomationId="PartConcave" />
 
 				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:LensPart.R1}" />
@@ -116,7 +158,9 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:LensPart.Thickness}" />
 				<controls:NumberBox Text="{Binding Thickness}" Minimum="1" ToolTip="{meta:Hint model:LensPart.Thickness}" AutomationProperties.AutomationId="PartThickness" />
 
-				<!-- read-only: what the radii leave at the rim; 0 when the surfaces meet there -->
+				<ContentControl controls:FormPanel.FullWidth="True" Style="{StaticResource ZonesRowHost}" />
+
+				<!-- read-only: what the radii leave at the rim; 0 when the surfaces meet there (with zones, the outer zone's sags) -->
 				<TextBlock Style="{StaticResource FormLabel}" Text="{DynamicResource LabelEdgeThickness}" />
 				<TextBlock Style="{StaticResource FormReadout}" ToolTip="{DynamicResource TipEdgeThickness}" AutomationProperties.AutomationId="PartEdgeThickness">
 					<TextBlock.Text>
@@ -125,6 +169,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 							<Binding Path="Thickness" />
 							<Binding Path="R1" />
 							<Binding Path="R2" />
+							<Binding Path="ZoneCount" />
+							<Binding Path="ZoneDivision" />
 						</MultiBinding>
 					</TextBlock.Text>
 				</TextBlock>

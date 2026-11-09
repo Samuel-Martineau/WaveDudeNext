@@ -34,8 +34,8 @@ namespace WaveDudeNext.WPF;
 /// <summary>
 /// Handlers of <see cref="Commands.ProjectCommands"/>: structural edits of the open project, carried out by the
 /// <see cref="ProjectItems"/> model. A command parameter names the node to act on; without one the selection is used.
-/// What stays here is what needs the window: where on the shown canvas a new item lands, the menu of part kinds, a
-/// text box's own Delete, and the dialogs of the scene image's commands, which the <see cref="SceneImageFile"/> model
+/// What stays here is what needs the window: where on the shown canvas a new item lands, the menus of part and probe
+/// kinds, a text box's own Delete, and the dialogs of the scene image's commands, which the <see cref="SceneImageFile"/> model
 /// carries out.
 /// </summary>
 public partial class MainWindow
@@ -78,12 +78,12 @@ public partial class MainWindow
 		}
 		else
 		{
-			OpenPartMenu(e.OriginalSource);
+			OpenKindMenu(e.OriginalSource);
 		}
 	}
 
-	/// <summary>Opens the menu of part kinds attached to <paramref name="element"/> (its context menu), placed under it.</summary>
-	private static void OpenPartMenu(object? element)
+	/// <summary>Opens the menu of kinds attached to <paramref name="element"/> (its context menu: the part kinds, or the probe kinds), placed under it.</summary>
+	private static void OpenKindMenu(object? element)
 	{
 		if (element is FrameworkElement { ContextMenu: { } menu } anchor)
 		{
@@ -93,7 +93,22 @@ public partial class MainWindow
 		}
 	}
 
-	private void OnAddProbe(object sender, ExecutedRoutedEventArgs e) => _items.AddProbe(CanvasCentre.X, CanvasCentre.Y);
+	/// <summary>
+	/// Add probe: with a <see cref="ProbeDetector"/> as parameter (the menu entries) the probe is appended, a standard one
+	/// or a probabilistic detector (2026-11-07, Jeroen's addition); without one (the "+ Probe" button, the Probes
+	/// folder's plus) the invoking element's context menu, the menu of kinds, opens under it as the parts' does.
+	/// </summary>
+	private void OnAddProbe(object sender, ExecutedRoutedEventArgs e)
+	{
+		if (e.Parameter is ProbeDetector detector)
+		{
+			_items.AddProbe(CanvasCentre.X, CanvasCentre.Y, detector);
+		}
+		else
+		{
+			OpenKindMenu(e.OriginalSource);
+		}
+	}
 
 	/// <summary>A folder's plus: the command's parameter is the folder's node, whose list takes the new item.</summary>
 	private void CanAdd(object sender, CanExecuteRoutedEventArgs e) =>
@@ -105,10 +120,10 @@ public partial class MainWindow
 		{
 			return;
 		}
-		if (ReferenceEquals(folder.Items, Project.Parts))
+		if (_items.HasKinds(folder.Items))
 		{
-			// a part's kind is chosen first: the menu of kinds under the button
-			OpenPartMenu(e.OriginalSource);
+			// a part's or a probe's kind is chosen first: the menu of kinds under the button
+			OpenKindMenu(e.OriginalSource);
 		}
 		else
 		{

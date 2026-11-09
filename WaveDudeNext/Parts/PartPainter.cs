@@ -124,32 +124,35 @@ public static class PartPainter
 		return new ScenePixels(width, height, stride, bgra);
 	}
 
-	/// <summary>Paints one part into the red channel of <paramref name="bgra"/> (rows <paramref name="stride"/> bytes apart), and its absorption into the blue channel.</summary>
+	/// <summary>Paints one part into the red channel of <paramref name="bgra"/> (rows <paramref name="stride"/> bytes apart), and its absorption into the blue channel; a part of several pieces (an interference filter's stack and plate, <see cref="PartShape.PiecesOf"/>) piece by piece, in their order.</summary>
 	public static void Paint(byte[] bgra, int width, int height, int stride, OpticalPart part)
 	{
-		PartShape? shape = PartShape.For(part);
-		if (shape == null)
+		IReadOnlyList<PartShape> pieces = PartShape.PiecesOf(part);
+		if (pieces.Count == 0)
 		{
 			Logger.Debug("Part '{Name}' ({Type}) has no shape to paint (too few points)", part.Name, part.GetType().Name);
 			return;
 		}
-		(int x0, int y0, int x1, int y1) = shape.Bounds(width, height);
-		if (x0 > x1 || y0 > y1)
+		foreach (PartShape shape in pieces)
 		{
-			Logger.Debug("Part '{Name}' ({Type}) lies outside the canvas", part.Name, part.GetType().Name);
-			return;
+			(int x0, int y0, int x1, int y1) = shape.Bounds(width, height);
+			if (x0 > x1 || y0 > y1)
+			{
+				Logger.Debug("Part '{Name}' ({Type}) lies outside the canvas", part.Name, part.GetType().Name);
+				continue;
+			}
+			long started = Stopwatch.GetTimestamp();
+			if (shape.Absorption > 0)
+			{
+				PaintAbsorption(bgra, stride, shape, x0, y0, x1, y1);
+			}
+			if (shape.PaintsIndex)
+			{
+				PaintIndex(bgra, stride, shape, x0, y0, x1, y1);
+			}
+			// what a report needs: which part took how long (2026-11-03, when the app's compositions ran 4-10 times slower than the painter alone)
+			Logger.Debug("Painted part '{Name}' ({Type}) at ({X}, {Y}), {Angle}°, rows {Y0}..{Y1} in {Ms:0.0} ms", part.Name, part.GetType().Name, part.X, part.Y, part.Angle, y0, y1, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 		}
-		long started = Stopwatch.GetTimestamp();
-		if (shape.Absorption > 0)
-		{
-			PaintAbsorption(bgra, stride, shape, x0, y0, x1, y1);
-		}
-		if (shape.PaintsIndex)
-		{
-			PaintIndex(bgra, stride, shape, x0, y0, x1, y1);
-		}
-		// what a report needs: which part took how long (2026-11-03, when the app's compositions ran 4-10 times slower than the painter alone)
-		Logger.Debug("Painted part '{Name}' ({Type}) at ({X}, {Y}), {Angle}°, rows {Y0}..{Y1} in {Ms:0.0} ms", part.Name, part.GetType().Name, part.X, part.Y, part.Angle, y0, y1, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 	}
 
 	/// <summary>Paints the part's refractive index (red; 0 for a mirror) over the pixel rectangle, supersampling the pixels an edge crosses.</summary>

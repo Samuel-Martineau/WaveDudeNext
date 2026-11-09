@@ -47,6 +47,51 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				</DataTrigger>
 			</Style.Triggers>
 		</Style>
+		<!-- the coating rows the kind's form can hide altogether: the simple grating's dots take no band (2026-11-07) -->
+		<Style x:Key="CoatingLabel" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource FormLabel}">
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding CoatingShown, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" Value="False">
+					<Setter Property="Visibility" Value="Collapsed" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+		<Style x:Key="GlassOnlyCoating" TargetType="{x:Type controls:NumberBox}" BasedOn="{StaticResource GlassOnly}">
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding CoatingShown, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" Value="False">
+					<Setter Property="Visibility" Value="Collapsed" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+		<Style x:Key="GlassOnlyCoatingCombo" TargetType="{x:Type ComboBox}" BasedOn="{StaticResource GlassOnlyCombo}">
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding CoatingShown, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" Value="False">
+					<Setter Property="Visibility" Value="Collapsed" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+		<Style x:Key="GlassOnlyBackCheck" TargetType="{x:Type CheckBox}" BasedOn="{StaticResource GlassOnlyCheck}">
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding CoatingShown, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" Value="False">
+					<Setter Property="Visibility" Value="Collapsed" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+		<!-- a face box the kind's form can hide: the interference filter's plate is coated on its back alone -->
+		<Style x:Key="GlassOnlyFaceCheck" TargetType="{x:Type CheckBox}" BasedOn="{StaticResource GlassOnlyBackCheck}">
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding BackOnly, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" Value="True">
+					<Setter Property="Visibility" Value="Collapsed" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+		<!-- the sides box alone: a meta lens coats its pattern's tops and its back (2026-11-08) -->
+		<Style x:Key="GlassOnlySidesCheck" TargetType="{x:Type CheckBox}" BasedOn="{StaticResource GlassOnlyFaceCheck}">
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding SidesHidden, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" Value="True">
+					<Setter Property="Visibility" Value="Collapsed" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
 	</UserControl.Resources>
 
 	<!-- the material of a shape part (polygon, rectangle, triangle, outline): mirror or glass, the index, the coating, the absorption -->
@@ -60,20 +105,20 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 			<controls:NumberBox Style="{StaticResource GlassOnly}" Text="{Binding RefractiveIndex}" Minimum="1" Maximum="2.55" Increment="0.01"
 			                    ToolTip="{meta:Hint model:ShapePart.RefractiveIndex}" AutomationProperties.AutomationId="PartIndex" />
 
-			<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:ShapePart.Coating}" />
-			<controls:NumberBox Style="{StaticResource GlassOnly}" Text="{Binding Coating}" Minimum="0" Maximum="50"
+			<TextBlock Style="{StaticResource CoatingLabel}" Text="{meta:Label model:ShapePart.Coating}" />
+			<controls:NumberBox Style="{StaticResource GlassOnlyCoating}" Text="{Binding Coating}" Minimum="0" Maximum="50"
 			                    ToolTip="{meta:Hint model:ShapePart.Coating}" AutomationProperties.AutomationId="PartCoating" />
 
-			<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:CoatedPart.CoatingProfile}" />
-			<ComboBox Style="{StaticResource GlassOnlyCombo}" ItemsSource="{meta:EnumValues model:CoatingProfile}" SelectedItem="{Binding CoatingProfile}"
+			<TextBlock Style="{StaticResource CoatingLabel}" Text="{meta:Label model:CoatedPart.CoatingProfile}" />
+			<ComboBox Style="{StaticResource GlassOnlyCoatingCombo}" ItemsSource="{meta:EnumValues model:CoatingProfile}" SelectedItem="{Binding CoatingProfile}"
 			          ToolTip="{meta:Hint model:CoatedPart.CoatingProfile}" AutomationProperties.AutomationId="PartCoatingProfile" />
 
 			<!-- the faces by their outward normal: front toward a source on the left, back away from it, the rest sides (2026-10-29) -->
-			<CheckBox controls:FormPanel.FullWidth="True" Style="{StaticResource GlassOnlyCheck}" Content="{meta:Label model:CoatedPart.FrontCoated}"
+			<CheckBox controls:FormPanel.FullWidth="True" Style="{StaticResource GlassOnlyFaceCheck}" Content="{meta:Label model:CoatedPart.FrontCoated}"
 			          IsChecked="{Binding FrontCoated}" ToolTip="{meta:Hint model:CoatedPart.FrontCoated}" AutomationProperties.AutomationId="PartFrontCoated" />
-			<CheckBox controls:FormPanel.FullWidth="True" Style="{StaticResource GlassOnlyCheck}" Content="{meta:Label model:CoatedPart.BackCoated}"
+			<CheckBox controls:FormPanel.FullWidth="True" Style="{StaticResource GlassOnlyBackCheck}" Content="{meta:Label model:CoatedPart.BackCoated}"
 			          IsChecked="{Binding BackCoated}" ToolTip="{meta:Hint model:CoatedPart.BackCoated}" AutomationProperties.AutomationId="PartBackCoated" />
-			<CheckBox controls:FormPanel.FullWidth="True" Style="{StaticResource GlassOnlyCheck}" Content="{meta:Label model:CoatedPart.SidesCoated}"
+			<CheckBox controls:FormPanel.FullWidth="True" Style="{StaticResource GlassOnlySidesCheck}" Content="{meta:Label model:CoatedPart.SidesCoated}"
 			          IsChecked="{Binding SidesCoated}" ToolTip="{meta:Hint model:CoatedPart.SidesCoated}" AutomationProperties.AutomationId="PartSidesCoated" />
 
 			<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:ShapePart.Absorption}" />

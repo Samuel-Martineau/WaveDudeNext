@@ -56,6 +56,18 @@ public abstract class PartShape
 		}
 	}
 
+	/// <summary>A shape of <paramref name="part"/> whose faces carry the band as given here rather than as the part's flags say (an interference filter's plate: the back alone).</summary>
+	/// <param name="part">The part; its position, angle and coating profile are read once.</param>
+	/// <param name="front">Whether the front faces carry the band.</param>
+	/// <param name="back">Whether the back faces carry the band.</param>
+	/// <param name="sides">Whether the other faces carry the band.</param>
+	protected PartShape(CoatedPart part, bool front, bool back, bool sides) : this(part)
+	{
+		_frontCoated = front;
+		_backCoated = back;
+		_sidesCoated = sides;
+	}
+
 	private readonly CoatingProfile _profile;
 	private readonly bool _frontCoated;
 	private readonly bool _backCoated;
@@ -115,6 +127,11 @@ public abstract class PartShape
 		return part switch
 		{
 			LensPart lens => new LensShape(lens),
+			DiffusorPart diffusor => new DiffusorShape(diffusor),
+			FacettedGratingPart facetted => new DiffusorShape(facetted),
+			InterferenceFilterPart filter => new FilterPlateShape(filter),
+			MetaSurfacePart lens => new FilterPlateShape(lens),
+			SimpleGratingPart grating => new GratingShape(grating),
 			ShapePart shape => shape.Vertices().Length < 3 ? null : new VertexShape(shape),
 			FiberPart fiber => FiberPart.Flatten(fiber.Nodes) is { Length: >= 2 } path ? new FiberShape(fiber, path) : null,
 			BraggReflectorPart bragg => new BraggShape(bragg),
@@ -123,6 +140,39 @@ public abstract class PartShape
 			ZonePlatePart plate => double.IsFinite(plate.Wavelength) && plate.Wavelength > 0.0 ? new ZonePlateShape(plate) : null,
 			_ => null,
 		};
+	}
+
+	/// <summary>
+	/// The shapes the painter paints for <paramref name="part"/>, in order: <see cref="For"/>'s one shape for every kind
+	/// but the interference filter, which is two, its layer stack and its plate (2026-11-07): a reflector's plate is a
+	/// mirror by the pixel-centre test while its layers are supersampled glass, which one shape cannot be. A glass plate
+	/// is painted first and the stack over it, so the stack's edge pixels average with the plate's index; a mirror plate
+	/// last, so its pixels stay red 0. Empty when the part has nothing to paint.
+	/// </summary>
+	public static IReadOnlyList<PartShape> PiecesOf(OpticalPart part)
+	{
+		if (part is InterferenceFilterPart filter)
+		{
+			var plate = new FilterPlateShape(filter);
+			if (!filter.Layers.Any(layer => layer.GuardedThickness > 0.0))
+			{
+				return [plate];
+			}
+			var stack = new FilterStackShape(filter);
+			return plate.IsMirror ? [stack, plate] : [plate, stack];
+		}
+		if (part is MetaSurfacePart lens)
+		{
+			// the plate and its pattern (2026-11-08), as the filter's plate and stack
+			var plate = new FilterPlateShape(lens);
+			var pattern = new MetaPatternShape(lens);
+			if (pattern.IsEmpty)
+			{
+				return [plate];
+			}
+			return plate.IsMirror ? [pattern, plate] : [plate, pattern];
+		}
+		return For(part) is { } shape ? [shape] : [];
 	}
 
 	/// <summary>Whether the part is a mirror: painted as red 0 by the pixel-centre test, no index, no coating.</summary>
@@ -355,13 +405,18 @@ public abstract class PartShape
 		private readonly double _r2;
 		private readonly double _index;
 		private readonly double _extent;
+		private readonly int _zones;
+		private readonly ZoneDivision _division;
 
 		public LensShape(LensPart lens) : base(lens)
 		{
 			_half = Math.Max(1, lens.Diameter) / 2.0;
 			_vertex1 = -Math.Max(1, lens.Thickness) / 2.0;
 			_vertex2 = -_vertex1;
-			(_r1, _r2) = LensPart.FitRadii(lens.Diameter, lens.Thickness, lens.R1, lens.R2);
+			// a Fresnel lens's zones (1 for the plain lens) and their division: the fit and the reach reckon with the deepest zone's sag
+			_zones = Math.Max(1, lens.ZoneCount);
+			_division = lens.ZoneDivision;
+			(_r1, _r2) = LensPart.FitRadii(lens.Diameter, lens.Thickness, lens.R1, lens.R2, _zones, _division);
 			_index = GuardIndex(lens.RefractiveIndex);
 			IsMirror = lens.Mirror;
 			Coating = lens.Mirror ? 0 : GuardCoating(lens.Coating);
@@ -379,20 +434,63 @@ public abstract class PartShape
 		protected override double Extent => _extent;
 		protected override double BodyIndex(double x, double y) => _index;
 
-		/// <summary>How far a surface of radius <paramref name="radius"/> bows out beyond its vertex at the lens edge.</summary>
-		private double Sag(double radius) => LensPart.Sag(radius, _half);
+		/// <summary>How far a surface of radius <paramref name="radius"/> bows out beyond its own start at the lens edge: the outer zone's sag.</summary>
+		private double Sag(double radius) => LensPart.ZoneSag(radius, _half, _zones, _division);
 
 		/// <summary>The least of: inside the first surface, inside the second, within the half-diameter.</summary>
 		protected override double Depth(double x, double y) =>
-			Math.Min(Math.Min(SurfaceDepth(x, y, _vertex1, _r1, -1), SurfaceDepth(x, y, _vertex2, _r2, +1)), _half - Math.Abs(y));
+			Math.Min(Math.Min(ZonedDepth(x, y, _vertex1, _r1, -1), ZonedDepth(x, y, _vertex2, _r2, +1)), _half - Math.Abs(y));
 
-		/// <summary>The nearest of the three: the first surface is the front, the second the back, the rim the sides.</summary>
+		/// <summary>The nearest of the three: the first surface (its steps included) is the front, the second the back, the rim the sides.</summary>
 		protected override Face FaceAt(double x, double y)
 		{
-			double first = SurfaceDepth(x, y, _vertex1, _r1, -1);
-			double second = SurfaceDepth(x, y, _vertex2, _r2, +1);
+			double first = ZonedDepth(x, y, _vertex1, _r1, -1);
+			double second = ZonedDepth(x, y, _vertex2, _r2, +1);
 			double rim = _half - Math.Abs(y);
 			return first <= second && first <= rim ? Face.Front : second <= rim ? Face.Back : Face.Sides;
+		}
+
+		/// <summary>
+		/// <see cref="SurfaceDepth"/> for a surface cut into zones (a Fresnel lens, 2026-11-07): the point's zone by |y'|
+		/// (<see cref="LensPart.ZoneIndex"/>, the boundaries by the division, equal in width or in depth), the arc of that
+		/// zone the surface's circle moved along the axis so it starts at the vertex plane at the zone's inner edge (by the
+		/// sag there), and the step across the axis that bounds the zone's glass: at its inner edge for a convex surface,
+		/// where the arc recedes outward and the next zone restarts ahead of it, at its outer edge for a concave one, where
+		/// the arc advances and the zone's glass ends; the step's distance along y', or to its inner corner past the step's
+		/// reach into the lens. The sign is exact everywhere, the distance inside the glass; the plain lens (one zone)
+		/// takes the unmoved circle.
+		/// </summary>
+		private double ZonedDepth(double x, double y, double vertex, double radius, int side)
+		{
+			if (_zones == 1 || radius == 0.0)
+			{
+				return SurfaceDepth(x, y, vertex, radius, side);
+			}
+			double across = Math.Abs(y);
+			int zone = LensPart.ZoneIndex(radius, _half, _zones, _division, across);
+			double inner = LensPart.ZoneBound(radius, _half, _zones, _division, zone);
+			double shift = LensPart.SurfaceSag(radius, inner);
+			double depth = SurfaceDepth(x, y, vertex - shift, radius, side);
+			// the point's place along the axis from the vertex plane, positive into the lens
+			double into = (x - vertex) * -side;
+			if (radius * side < 0.0)
+			{
+				if (zone >= 1)
+				{
+					// convex: the step at the inner edge reaches into the lens by the previous zone's sag
+					double reach = (shift - LensPart.SurfaceSag(radius, LensPart.ZoneBound(radius, _half, _zones, _division, zone - 1))) * -side;
+					double along = across - inner;
+					double past = into - reach;
+					depth = Math.Min(depth, past <= 0.0 ? along : Math.Sqrt(along * along + past * past));
+				}
+			}
+			else if (zone <= _zones - 2)
+			{
+				// concave: the step at the outer edge stands out of the vertex plane by this zone's sag, its inner corner on the plane
+				double along = LensPart.ZoneBound(radius, _half, _zones, _division, zone + 1) - across;
+				depth = Math.Min(depth, into <= 0.0 ? along : Math.Sqrt(along * along + into * into));
+			}
+			return depth;
 		}
 
 		/// <summary>
@@ -489,6 +587,423 @@ public abstract class PartShape
 		public override bool DepthIsDistance => true;
 		protected override double Depth(double x, double y) => PolygonDepth(_vertices, x, y);
 		protected override double BodyIndex(double x, double y) => _index;
+	}
+
+	/// <summary>
+	/// An interference filter's carrier plate (<see cref="InterferenceFilterPart"/>): the rectangle of its length and
+	/// width about the part's centre, glass or a mirror, with its absorption, the AR band on its back face alone (the face
+	/// away from the layers; the part's front and side flags are not used).
+	/// </summary>
+	private sealed class FilterPlateShape : PartShape
+	{
+		private readonly double _halfLength;
+		private readonly double _halfWidth;
+		private readonly double _index;
+
+		public FilterPlateShape(InterferenceFilterPart filter) : this(filter, filter.Length, filter.Width)
+		{
+		}
+
+		/// <summary>A meta lens's carrier plate (2026-11-08): the same plate, the pattern standing on its front.</summary>
+		public FilterPlateShape(MetaSurfacePart lens) : this(lens, lens.Length, lens.Width)
+		{
+		}
+
+		/// <param name="part">The part: its position, angle, material and back coating.</param>
+		/// <param name="length">The plate's extent along the axis in pixels.</param>
+		/// <param name="width">The plate's extent across the axis in pixels.</param>
+		private FilterPlateShape(ShapePart part, int length, int width) : base(part, false, part.BackCoated, false)
+		{
+			_halfLength = Math.Max(1, length) / 2.0;
+			_halfWidth = Math.Max(1, width) / 2.0;
+			_index = GuardIndex(part.RefractiveIndex);
+			IsMirror = part.Mirror;
+			Coating = part.Mirror ? 0 : GuardCoating(part.Coating);
+			Absorption = part.Mirror ? 0 : GuardAbsorption(part.Absorption);
+			AbsorptionRamp = GuardAbsorptionRamp(part.AbsorptionRamp);
+		}
+
+		public override bool IsMirror { get; }
+		protected override int Coating { get; }
+		public override int Absorption { get; }
+		public override int AbsorptionRamp { get; }
+		protected override double Extent => Math.Sqrt(_halfLength * _halfLength + _halfWidth * _halfWidth);
+		/// <summary>A rectangle's depth: a distance.</summary>
+		public override bool DepthIsDistance => true;
+		protected override double Depth(double x, double y) => RectangleDepth(_halfLength, _halfWidth, x, y);
+		protected override double BodyIndex(double x, double y) => _index;
+
+		/// <summary>The face of the nearest edge: the back (+x'), the front (−x', under the layers) or a side.</summary>
+		protected override Face FaceAt(double x, double y)
+		{
+			double back = _halfLength - x;
+			double front = _halfLength + x;
+			double side = _halfWidth - Math.Abs(y);
+			return back <= front && back <= side ? Face.Back : front <= side ? Face.Front : Face.Sides;
+		}
+	}
+
+	/// <summary>
+	/// A simple 2D grating (<see cref="SimpleGratingPart"/>): the lattice of round dots, each a disc of the dot radius about
+	/// its centre, one material (a mirror, or glass with an index and absorption), no band. The depth is the radius less
+	/// the distance to the nearest dot centre, which the axis-aligned lattice gives by rounding along each axis, clamped to
+	/// the lattice: the exact signed distance to the union of the discs, so the runs settle and the painter samples only
+	/// the pixels at a dot's rim. The dots neither touch nor overlap, the diameter being at most half a spacing.
+	/// </summary>
+	private sealed class GratingShape : PartShape
+	{
+		private readonly int _columns;
+		private readonly int _rows;
+		private readonly double _columnSpacing;
+		private readonly double _rowSpacing;
+		private readonly double _radius;
+		private readonly double _index;
+
+		public GratingShape(SimpleGratingPart grating) : base(grating)
+		{
+			_columns = Math.Max(1, grating.Columns);
+			_rows = Math.Max(1, grating.Rows);
+			_columnSpacing = SimpleGratingPart.Spacing(grating.ColumnSpacing);
+			_rowSpacing = SimpleGratingPart.Spacing(grating.RowSpacing);
+			_radius = grating.GuardedDiameter / 2.0;
+			_index = GuardIndex(grating.RefractiveIndex);
+			IsMirror = grating.Mirror;
+			Absorption = grating.Mirror ? 0 : GuardAbsorption(grating.Absorption);
+			AbsorptionRamp = GuardAbsorptionRamp(grating.AbsorptionRamp);
+		}
+
+		public override bool IsMirror { get; }
+		protected override int Coating => 0;
+		public override int Absorption { get; }
+		public override int AbsorptionRamp { get; }
+		/// <summary>The distance to a union of discs: a distance.</summary>
+		public override bool DepthIsDistance => true;
+		protected override double Extent
+		{
+			get
+			{
+				double l = (_columns - 1) / 2.0 * _columnSpacing + _radius;
+				double w = (_rows - 1) / 2.0 * _rowSpacing + _radius;
+				return Math.Sqrt(l * l + w * w);
+			}
+		}
+
+		/// <summary>The radius less the distance to the nearest dot centre, found along each axis by rounding to the lattice and clamping to its ends.</summary>
+		protected override double Depth(double x, double y)
+		{
+			double dx = x - Nearest(x, _columns, _columnSpacing);
+			double dy = y - Nearest(y, _rows, _rowSpacing);
+			return _radius - Math.Sqrt(dx * dx + dy * dy);
+		}
+
+		/// <summary>The lattice coordinate nearest to <paramref name="v"/> among <paramref name="count"/> positions <paramref name="spacing"/> apart, centred on 0.</summary>
+		private static double Nearest(double v, int count, double spacing)
+		{
+			double half = (count - 1) / 2.0;
+			double i = Math.Clamp(Math.Round(v / spacing + half), 0.0, count - 1);
+			return (i - half) * spacing;
+		}
+
+		protected override double BodyIndex(double x, double y) => _index;
+	}
+
+	/// <summary>
+	/// A meta lens's pattern (<see cref="MetaSurfacePart"/>, 2026-11-08): one ridge per cell across the face, standing in front
+	/// of the plate from x' = −length / 2 − height to the plate's front, centred in its cell and as wide as the cell's
+	/// fill factor times the pitch; the pattern index, no absorption, the band on the ridges' tops alone (the front; a
+	/// ridge's sides and its foot on the plate are bare). The depth is the signed distance to the union of the ridges,
+	/// the greatest of the nearby ridges' rectangle distances (the ridges never overlap, each inside its cell), so it is a
+	/// distance and the runs settle. Empty when no cell is filled.
+	/// </summary>
+	private sealed class MetaPatternShape : PartShape
+	{
+		private readonly double[] _fills;
+		private readonly double _pitch;
+		private readonly double _halfWidth;
+		private readonly double _outer;
+		private readonly double _inner;
+		private readonly double _index;
+		private readonly double _firstCentre;
+
+		public MetaPatternShape(MetaSurfacePart lens) : base(lens, lens.FrontCoated, false, false)
+		{
+			_fills = lens.FillFactors();
+			_pitch = lens.GuardedPitch;
+			_halfWidth = Math.Max(2, lens.Width) / 2.0;
+			_inner = -Math.Max(1, lens.Length) / 2.0;
+			_outer = _inner - lens.GuardedHeight;
+			_index = GuardIndex(lens.PatternIndex);
+			_firstCentre = lens.CellCentre(0);
+			Coating = lens.Mirror ? 0 : GuardCoating(lens.Coating);
+		}
+
+		/// <summary>Whether no cell holds a ridge wider than a hundredth of a pixel.</summary>
+		public bool IsEmpty => _fills.All(fill => fill * _pitch < 0.01);
+
+		public override bool IsMirror => false;
+		protected override int Coating { get; }
+		/// <summary>A union of rectangles that never overlap: a distance.</summary>
+		public override bool DepthIsDistance => true;
+		protected override double Extent
+		{
+			get
+			{
+				double reach = Math.Max(Math.Abs(_outer), Math.Abs(_inner));
+				return Math.Sqrt(reach * reach + _halfWidth * _halfWidth);
+			}
+		}
+
+		/// <summary>The signed distance to the ridge of cell <paramref name="cell"/>, −∞ for an empty one.</summary>
+		private double RidgeDepth(int cell, double x, double y)
+		{
+			if (cell < 0 || cell >= _fills.Length)
+			{
+				return double.NegativeInfinity;
+			}
+			double halfRidge = _fills[cell] * _pitch / 2.0;
+			if (halfRidge < 0.005)
+			{
+				return double.NegativeInfinity;
+			}
+			double centreX = (_outer + _inner) / 2.0;
+			double centreY = _firstCentre + cell * _pitch;
+			return RectangleDepth((_inner - _outer) / 2.0, halfRidge, x - centreX, y - centreY);
+		}
+
+		/// <summary>The nearest ridges: the cell under y' and its two neighbours (farther cells lie beyond them).</summary>
+		protected override double Depth(double x, double y)
+		{
+			int cell = (int)Math.Round((y - _firstCentre) / _pitch);
+			double depth = double.NegativeInfinity;
+			for (int k = cell - 1; k <= cell + 1; k++)
+			{
+				depth = Math.Max(depth, RidgeDepth(k, x, y));
+			}
+			if (double.IsNegativeInfinity(depth))
+			{
+				// no ridge nearby: outside by at least the distance to the pattern's box
+				depth = -Math.Max(Math.Max(_outer - x, x - _inner), Math.Abs(y) - _halfWidth);
+				depth = Math.Min(depth, -1.0);
+			}
+			return depth;
+		}
+
+		protected override double BodyIndex(double x, double y) => _index;
+
+		/// <summary>The top of the ridge (−x') is the front, its foot on the plate the back, its flanks the sides.</summary>
+		protected override Face FaceAt(double x, double y)
+		{
+			int cell = Math.Clamp((int)Math.Round((y - _firstCentre) / _pitch), 0, _fills.Length - 1);
+			double centreY = _firstCentre + cell * _pitch;
+			double halfRidge = _fills[cell] * _pitch / 2.0;
+			double top = x - _outer;
+			double foot = _inner - x;
+			double flank = halfRidge - Math.Abs(y - centreY);
+			return top <= foot && top <= flank ? Face.Front : foot <= flank ? Face.Back : Face.Sides;
+		}
+	}
+
+	/// <summary>
+	/// An interference filter's layer stack: the layers side by side along x', the outermost first, from the stack's outer
+	/// face at −length / 2 − stack to the plate's front at −length / 2, the plate's width across; each layer its own
+	/// index, no band, no absorption. The layer boundaries are inner edges, so the pixels near them are supersampled and a
+	/// fractional boundary becomes a mixed index; the depth and the boundary distance are distances.
+	/// </summary>
+	private sealed class FilterStackShape : PartShape
+	{
+		/// <summary>The x' of each boundary, the outer face first and the plate's front last.</summary>
+		private readonly double[] _bounds;
+		private readonly double[] _indices;
+		private readonly double _outer;
+		private readonly double _inner;
+		private readonly double _halfWidth;
+
+		public FilterStackShape(InterferenceFilterPart filter) : base(filter)
+		{
+			FilterLayer[] layers = [.. filter.Layers.Where(layer => layer.GuardedThickness > 0.0)];
+			_inner = -Math.Max(1, filter.Length) / 2.0;
+			_outer = _inner - layers.Sum(layer => layer.GuardedThickness);
+			_halfWidth = Math.Max(1, filter.Width) / 2.0;
+			_bounds = new double[layers.Length + 1];
+			_indices = new double[layers.Length];
+			double x = _outer;
+			for (int i = 0; i < layers.Length; i++)
+			{
+				_bounds[i] = x;
+				_indices[i] = GuardIndex(layers[i].RefractiveIndex);
+				x += layers[i].GuardedThickness;
+			}
+			_bounds[layers.Length] = _inner;
+		}
+
+		public override bool IsMirror => false;
+		protected override int Coating => 0;
+		public override bool HasInnerEdges => _indices.Length > 1;
+		/// <summary>A rectangle's depth and the distance to the nearest layer boundary: distances.</summary>
+		public override bool DepthIsDistance => true;
+		protected override double Extent
+		{
+			get
+			{
+				double reach = Math.Max(Math.Abs(_outer), Math.Abs(_inner));
+				return Math.Sqrt(reach * reach + _halfWidth * _halfWidth);
+			}
+		}
+
+		protected override double Depth(double x, double y) => Math.Min(Math.Min(x - _outer, _inner - x), _halfWidth - Math.Abs(y));
+
+		/// <summary>The distance along x' to the nearest boundary between two layers (the outer face and the plate's front are the outline).</summary>
+		protected override double InnerEdgeDistance(double x, double y)
+		{
+			double nearest = double.PositiveInfinity;
+			for (int i = 1; i < _bounds.Length - 1; i++)
+			{
+				nearest = Math.Min(nearest, Math.Abs(x - _bounds[i]));
+			}
+			return nearest;
+		}
+
+		/// <summary>The index of the layer the point lies in.</summary>
+		protected override double BodyIndex(double x, double y)
+		{
+			int i = Array.BinarySearch(_bounds, x);
+			i = i >= 0 ? i : ~i - 1;
+			return _indices[Math.Clamp(i, 0, _indices.Length - 1)];
+		}
+	}
+
+	/// <summary>Signed distance inside the rectangle of half-extents <paramref name="halfLength"/> × <paramref name="halfWidth"/> about the origin: the exact distance to its outline, negative outside.</summary>
+	private static double RectangleDepth(double halfLength, double halfWidth, double x, double y)
+	{
+		double dx = Math.Abs(x) - halfLength;
+		double dy = Math.Abs(y) - halfWidth;
+		if (dx <= 0.0 && dy <= 0.0)
+		{
+			return -Math.Max(dx, dy);
+		}
+		double ox = Math.Max(dx, 0.0);
+		double oy = Math.Max(dy, 0.0);
+		return -Math.Sqrt(ox * ox + oy * oy);
+	}
+
+	/// <summary>
+	/// A diffusor (<see cref="DiffusorPart"/>): the polygon of its rough front face, a pixel per vertex, and its three
+	/// straight edges, with the depth the exact signed distance to that polygon, as the vertex shape's is, found without
+	/// the vertex shape's pass over every edge: the front face is a graph over y', so only the segments whose span in y'
+	/// lies nearer than the best distance so far can beat it, a handful about the point (a 1000 px face would otherwise
+	/// cost a thousand segment distances a sample). The front segments are the front, the plate's flat back the back, the
+	/// two short ends the sides, whatever the ripple's slope.
+	/// </summary>
+	private sealed class DiffusorShape : PartShape
+	{
+		private readonly double[] _front;
+		private readonly double _halfLength;
+		private readonly double _halfWidth;
+		private readonly double _index;
+		private readonly double _extent;
+
+		public DiffusorShape(DiffusorPart diffusor) : this(diffusor, diffusor, diffusor.FrontCoated, diffusor.BackCoated, diffusor.SidesCoated)
+		{
+		}
+
+		/// <summary>A facetted grating (2026-11-08): the same plate with a periodic front, its band on the back alone (the user's rule).</summary>
+		public DiffusorShape(FacettedGratingPart grating) : this(grating, grating, false, grating.BackCoated, false)
+		{
+		}
+
+		/// <param name="part">The part: its position, angle, material and coating.</param>
+		/// <param name="plate">The same part as the plate whose front face it paints.</param>
+		/// <param name="front">Whether the front face carries the band.</param>
+		/// <param name="back">Whether the back carries the band.</param>
+		/// <param name="sides">Whether the two ends carry the band.</param>
+		private DiffusorShape(ShapePart part, IProfiledPlate plate, bool front, bool back, bool sides) : base(part, front, back, sides)
+		{
+			_front = plate.FrontFace();
+			_halfLength = Math.Max(1, plate.Length) / 2.0;
+			_halfWidth = Math.Max(2, plate.Width) / 2.0;
+			_index = GuardIndex(part.RefractiveIndex);
+			IsMirror = part.Mirror;
+			Coating = part.Mirror ? 0 : GuardCoating(part.Coating);
+			Absorption = part.Mirror ? 0 : GuardAbsorption(part.Absorption);
+			AbsorptionRamp = GuardAbsorptionRamp(part.AbsorptionRamp);
+			double reach = Math.Max(_halfLength, _front.Max(x => Math.Abs(x)));
+			_extent = Math.Sqrt(reach * reach + _halfWidth * _halfWidth);
+		}
+
+		public override bool IsMirror { get; }
+		protected override int Coating { get; }
+		public override int Absorption { get; }
+		public override int AbsorptionRamp { get; }
+		protected override double Extent => _extent;
+		/// <summary>The signed distance to the polygon: a distance.</summary>
+		public override bool DepthIsDistance => true;
+		protected override double BodyIndex(double x, double y) => _index;
+		protected override Face FaceAt(double x, double y) => Nearest(x, y).Face;
+
+		/// <summary>Inside when the point lies between the front face and the back within the width: the face is a graph over y', so the test needs no crossing count.</summary>
+		protected override double Depth(double x, double y)
+		{
+			double distance = Nearest(x, y).Distance;
+			bool inside = Math.Abs(y) < _halfWidth && x < _halfLength && x > FrontAt(y);
+			return inside ? distance : -distance;
+		}
+
+		/// <summary>The front face's x' at <paramref name="y"/>, the profile read between its pixels.</summary>
+		private double FrontAt(double y)
+		{
+			double position = y + _halfWidth;
+			int i = Math.Clamp((int)Math.Floor(position), 0, _front.Length - 2);
+			return _front[i] + (position - i) * (_front[i + 1] - _front[i]);
+		}
+
+		/// <summary>The distance to the nearest edge and which face that edge is: the three straight edges, then the front's segments outward from the one under the point while their span in y' can still come nearer.</summary>
+		private (double Distance, Face Face) Nearest(double x, double y)
+		{
+			int last = _front.Length - 1;
+			double best = SegmentDistance(_halfLength, -_halfWidth, _halfLength, _halfWidth, x, y);
+			Face face = Face.Back;
+			double distance = SegmentDistance(_front[0], -_halfWidth, _halfLength, -_halfWidth, x, y);
+			if (distance < best)
+			{
+				best = distance;
+				face = Face.Sides;
+			}
+			distance = SegmentDistance(_front[last], _halfWidth, _halfLength, _halfWidth, x, y);
+			if (distance < best)
+			{
+				best = distance;
+				face = Face.Sides;
+			}
+			// segment k runs from y' = k − w/2 to k + 1 − w/2; a segment whose span lies farther from y than the best is no nearer
+			int start = Math.Clamp((int)Math.Floor(y + _halfWidth), 0, last - 1);
+			for (int k = start; k >= 0; k--)
+			{
+				if (y - (k + 1 - _halfWidth) >= best)
+				{
+					break;
+				}
+				distance = SegmentDistance(_front[k], k - _halfWidth, _front[k + 1], k + 1 - _halfWidth, x, y);
+				if (distance < best)
+				{
+					best = distance;
+					face = Face.Front;
+				}
+			}
+			for (int k = start + 1; k < last; k++)
+			{
+				if (k - _halfWidth - y >= best)
+				{
+					break;
+				}
+				distance = SegmentDistance(_front[k], k - _halfWidth, _front[k + 1], k + 1 - _halfWidth, x, y);
+				if (distance < best)
+				{
+					best = distance;
+					face = Face.Front;
+				}
+			}
+			return (best, face);
+		}
 	}
 
 	/// <summary>

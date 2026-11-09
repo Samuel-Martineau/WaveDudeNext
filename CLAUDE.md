@@ -314,6 +314,24 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   frames a second across a 3-second freeze). Measured on the way and settled: the app's input handling is not the cost,
   injected moves at ten thousand a second changed the frame times by nothing once the clock was posted. Live follows a running run until the user scrubs; it ends with a last follow to the
   final frame. A replaced project goes to frame 0; a discarded run keeps the position. In/out points are steps.
+- **Probabilistic detectors** (2026-11-07, the user's request; the user's choices: Poisson statistics, the counting
+  detector's steps drawn from its frame's rate, a Probabilistic submenu under "+ Probe", the imaging detector's picture
+  accumulated to the frame shown): `Probe.Detector` Standard, Counting or Imaging, with `Sensitivity` (expected
+  detections per unit of intensity per step at a point); a detector is a line probe of the integrated intensity (the
+  setter and `Normalize` force kind, layer and measurement; the form greys them). The engines do nothing new: the line
+  is integrated as an integrated line probe is, and `ProbeCollector` turns the totals into detections through
+  `PoissonProcess` (a unit-rate process walked along the cumulative expectation, seeded from the project's seed and the
+  probe's name: the count at a position is Poisson of it, counts never fall, and one asking at the end gives what
+  frame-by-frame asking gives, so the scratch frame and the run agree; above 100,000 expected events a call jumps by a
+  normal approximation). A counting detector's series: the frame's increase of the line's total, shared evenly over its
+  steps, each step the process's events in its share (the scratch runner collects profiles frame by frame when one
+  exists, `ProbeSampler.HasCounting`); an imaging detector's profile: each pixel's process up to its total. The graph,
+  the CSV and the layout choose series or profile by `Probe.ShowsProfile`, not the kind. `AddProbe(x, y, detector)`
+  names a detector "Detector n". The default sensitivity is 20 (2026-11-08, the user's report: 0.05, set from a plane
+  wave's 0.175 intensity a pixel, showed nothing, since a point source's wave at a hundred pixels is a few hundredths
+  of a percent of that; the user needed 10 to 50). An imaging detector has `BinSize` (1 to 20 px, default 4, the user's
+  request the same day): the bin's pixels' detections added up and shown at each of them, the last bin shorter. `library_check` proves the statistics (mean, dispersion), the monotone image, the
+  agreement of once and frame by frame, the seeds and the CSV.
 - **A new source, probe or part lands at the centre of the canvas the preview shows** (2026-10-26, Jeroen's report: one
   at the corner went unnoticed inside the rim); the model's parameterless adders take the scene's size, the window passes
   the shown canvas's centre, which an image scene sizes; a new probe's line end lies 100 px to the right.
@@ -511,7 +529,28 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
 - **Optical parts** (2026-10-18; **`OpticalParts.md` is the reference**: the kinds, the painting rules, the measurements
   and how to add a kind): subclasses of `OpticalPart` in `Project.Parts`, one class and one XML element per kind, the
   class being the kind (no enum, 2026-10-22): a lens or mirror, the shapes under `ShapePart` (polygon, rectangle, ellipse,
-  triangle, outline), a fibre on a Bézier path, a Bragg reflector, a GRIN lens, the XOR, AND and OR gates under
+  triangle, outline), a diffusor (`DiffusorPart`, a `ShapePart` whose front face is rough, 2026-11-07, the user's request:
+  a spread of ripples about a centre wavelength, the phases from the project's seed through `ISeeded`, which the project
+  hands such a part on add, load, paste and reseed; the profile kept until a roughness value changes; its shape's depth the
+  exact polygon distance by a pruned search; see `OpticalParts.md`), an interference filter (`InterferenceFilterPart`, 2026-11-07,
+  the user's request: a plate with a list of `FilterLayer`s on its front, outside it, the first outermost, painted as two
+  shapes through `PartShape.PiecesOf` so a mirror plate keeps glass layers; the form reorders by buttons and by a drag), a simple
+  2D grating (`SimpleGratingPart`, 2026-11-07, the user's request, in a "Diffraction gratings" submenu among the optics: a
+  lattice of round dots of the shapes' material, a mirror by default, the diameter at most half the smaller spacing, a
+  dependent bound), a facetted grating (`FacettedGratingPart`, 2026-11-08, the user's request, in that submenu: the
+  diffusor's plate with one wavelength, `Pattern` sawtooth, square wave or sinusoidal every `Pitch` with `Amplitude`,
+  the band on the back alone; both plates are `IProfiledPlate`s painted by `DiffusorShape`; its own check and figures
+  wait for the end, the user's wish), a meta lens (`MetaLensPart`, 2026-11-08, the user's request, in a "Meta surfaces"
+  submenu: the filter's plate with a ridge per sub-wavelength cell in front, the fill from the lens phase at the design
+  wavelength and focal length through the lamellar effective index, converging or diverging; two shapes through
+  `PiecesOf`, the band on the ridges' tops and the back; check and figures at the end too) and a meta prism
+  (`MetaPrismPart`, the same day: a linear delay, `Deflection` degrees counter-clockwise) and a meta axicon
+  (`MetaAxiconPart`: a delay in |y'|, `ConeAngle`, a line of focus of half the width over tan β); all three derive from
+  the abstract `MetaSurfacePart`, which holds the plate, the pattern, the design frequency and the fill from a
+  subclass's `Delay`; the shared strings are `MetaSurfacePart.*`), a Fresnel lens (`FresnelLensPart : LensPart`, 2026-11-07, the user's request: the lens, unsealed, with
+  its curved surfaces cut into `Zones` of equal width or equal depth (`ZoneDivision`, a lighthouse lens's elements), each
+  arc restarted at the vertex plane; the lens reckons with `ZoneCount` and `ZoneDivision` through the deepest zone's sag
+  for the fit, the edge, the handles; a 20 px plate 500 across with radii of ±1500 when new; no Concave box), a fibre on a Bézier path, a Bragg reflector, a GRIN lens, the XOR, AND and OR gates under
   `LogicGatePart` and a zone plate (both Jeroen's, 2026-10-21/22). Painted into the scene pixels, red the index (red 0 a
   mirror), blue for absorbers, green never; a part edit is a simulation edit. The menus of kinds share `PartMenuEntries`
   (`ProjectTree.xaml`), added by `ProjectTree.MenuEntries`, not as an `ItemsSource`. **Each kind has a description**
@@ -609,7 +648,13 @@ and moved every antialiased edge by a few levels; the user's rule: ClearType in 
 order, the line probes, then the sources (axes and dots, cached), then the parts, the marquee and the labels: the figures
 with and without the cache differ on the dot rows alone, at most 53 levels at an antialiased edge, and the frame is
 14–21 ms with 6–8 at the bitmap. The dots' halo pen is frozen, since an unfrozen pen is cloned by every draw call. The
-probe graph overlay stays uncached: its drawing changes with the frame by design. The measurement is the presenter's log
+probe graph overlay stays uncached: its drawing changes with the frame by design. **The sources' cache is renewed at
+every source edit** (`RefreshSourcesCache`, 2026-11-08, the user's report: after a mouse drag of Example 3's composite
+source its dots stayed put until another edit; the log showed the model moved and the scratch frame followed, twenty
+keyboard moves with and without a rebuild of the overlay could not repeat it, and a drag cannot be scripted under the
+no-clicks rule, so the one thing the dots have that nothing else has, the bitmap cache, gets a new object per edit;
+the user's choice over a mouse probe). **An item added from a menu of kinds gets the focus once the dispatcher is
+idle** (`MainWindow.Added`, the same day, found by that probe: the closing menu had taken the focus back to nothing). The measurement is the presenter's log
 line during playback after a completed run, with Loop on, F5 and Space posted; a stale Debug build had once "proven" the
 whole-overlay cache harmless, so the figure script's build is checked against the source now. **A child element drawn
 from its parent's ArrangeOverride must draw by its own size** (2026-11-04, the user's report: a resize left the dots, the
@@ -662,7 +707,7 @@ machine has), no Direct3D display path.
 
 ## Harnesses
 
-`library_check` (100+ checks: engines, store, renderer, half tables, screen path, schemes, probes, scratch, reduced preview, importer, export, parts, group move, open edges, work groups on a prime grid, ranges, XOR gate, zone plate, gate port follower, history, clipboard, the project file's DTD, the first start's tiers, the engine's page-locked snapshots, scene replacement, the memory warning's store bytes, the painter's runs and the glowing edges' lanes byte for byte against pixel by pixel).
+`library_check` (100+ checks: engines, store, renderer, half tables, screen path, schemes, probes, scratch, reduced preview, importer, export, parts, group move, open edges, work groups on a prime grid, ranges, XOR gate, zone plate, gate port follower, history, clipboard, the project file's DTD, the first start's tiers, the engine's page-locked snapshots, scene replacement, the memory warning's store bytes, the painter's runs and the glowing edges' lanes byte for byte against pixel by pixel, the diffusor, the interference filter, the simple and the facetted grating, the Fresnel lens, the meta surfaces' fills and the detectors' statistics).
 UI, all on `Common.ps1`, with their check counts: `PreviewCheck` 43, `RunCheck` 71, `LanguageCheck` 11,
 `ProbeGraphCheck` 39, `ImportCheck` 10, `ExportCheck` 44, `PreviewQualityCheck` 35, `SceneImageCheck` 8,
 `ColorPickerCheck` 13, `KeyboardCheck` 13, `AboutCheck` 18, `SelectionCheck` 10. Test projects `tiny*.wdproj` sit beside them. The

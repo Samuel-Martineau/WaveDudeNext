@@ -52,7 +52,7 @@ The Project pane with the example project.
 16. **Move up**: Moves the row up within its group (Alt+Up).
 17. **Move down**: Moves the row down (Alt+Down).
 18. **Remove**: Removes the object (Del).
-19. **Parts group**: The optical parts: lenses and mirrors, shapes, fibres, Bragg reflectors, GRIN lenses, zone plates and logic gates, all painted into the scene.
+19. **Parts group**: The optical parts: lenses and mirrors, shapes, fibres, Bragg reflectors, Fresnel lenses, GRIN lenses, zone plates, diffusors, interference filters, diffraction gratings and logic gates, all painted into the scene.
 20. **Probes group**: The probes, which measure the field or the intensity at a point or along a line and draw a graph over the pictures.
 21. **Colour schemes group**: The colour schemes kept in this project; the Display settings pick one for each picture. See [Colour schemes](#colour-schemes).
 
@@ -151,7 +151,7 @@ The File > Export submenu.
 4. **Export field frame...**: Writes the frame shown as one image of the field (Ctrl+Shift+F).
 5. **Export intensity frame...**: The same for the intensity (Ctrl+Shift+G).
 
-The file type in the Save dialog picks the format: an MP4 video (H.264), an MPEG-1 video, an uncompressed AVI, a QuickTime movie with the lossless Animation codec or the lossless PNG codec, a PNG or JPEG image sequence (one file per frame in a folder, numbered by the frame), or an OpenEXR sequence with the raw data: one 16-bit float channel per file, no colours, the intensity either as I or as √I, for NumPy, MATLAB, Octave or a viewer such as DJV. A frame export offers PNG, JPEG and the two OpenEXR kinds. JPEG is written with full colour resolution (4:4:4), so the fringes of a wave stay sharp.
+The file type in the Save dialog picks the format: an MP4 video (H.264), an MPEG-1 video, an uncompressed AVI, a QuickTime movie with the lossless Animation codec or the lossless PNG codec, a PNG or JPEG image sequence (one file per frame in a folder, numbered by the frame), or an OpenEXR sequence with the raw data: one 16-bit float channel per file, no colours, the intensity either as I or as âˆšI, for NumPy, MATLAB, Octave or a viewer such as DJV. A frame export offers PNG, JPEG and the two OpenEXR kinds. JPEG is written with full colour resolution (4:4:4), so the fringes of a wave stay sharp.
 
 What the pictures contain is set in the Display settings: the colour scheme, brightness and black level of each layer, the outline of the scene image, the probes' graphs and markers, the source markers, the frame rate and the quality of a video; see [Display](#display). An export always uses the full quality: when the preview was computed at a reduced resolution, with skipped frames or with 8-bit samples (View menu), the run is made again at full quality first. The dialog starts in the project's folder under the project's name, and after the first export where the last one went.
 
@@ -211,7 +211,7 @@ The View menu. Its settings belong to the program, not to the project, and are k
 1. **Panes**: Shows or hides the Project, Properties, Preview and Messages panes. The Messages pane lists the program's log with a search box, a filter per level and Copy for a bug report.
 2. **Theme**: System, Light or Dark; System follows Windows.
 3. **UI zoom**: 0.5x to 3x: the size of the program's windows, menus and text, for a large or a very sharp screen; 1x is the screen's own scale. It applies at once and is kept. The preview pictures keep the screen's pixels at any zoom.
-4. **Language**: System, English, Deutsch, Français or Nederlands; the program switches at once.
+4. **Language**: System, English, Deutsch, FranÃ§ais or Nederlands; the program switches at once.
 5. **Preview resolution**: Full, Half or Quarter: the preview's run computes the canvas at a reduced size, faster and with less memory, for a weaker machine. An export always uses the full size.
 6. **Preview frames**: Full, every second or every fourth frame kept by the preview's run; the timeline does not change.
 7. **Preview samples**: 16-bit float keeps the full values, so the brightness can be changed after a run and every level of a gradient shows; 8-bit palette index stores each pixel as its colour at the brightness of the run's start, half the memory, and a brightness change then needs a new run, which starts by itself; the preview dithering is not available with 8-bit samples.
@@ -219,7 +219,7 @@ The View menu. Its settings belong to the program, not to the project, and are k
 
 On its first start the program chooses the preview resolution, the preview frames, the preview samples and the dithering for the machine it runs on, once, and the View menu shows the choice. A machine with 32 GB of memory or more starts with 16-bit samples, dithered to 16 bits. A machine with less than 16 GB, with a hard disk under the cache file, without an OpenCL graphics card or with four processor threads or fewer starts at half resolution with every second frame and 8-bit samples. Every other machine starts at full resolution with every frame and 8-bit samples. Each setting can be changed here at any time.
 
-The three choices differ in memory: a Full HD scene of 1920 × 1080 pixels run for 1500 frames, with the field and the intensity both kept, takes 11.6 GB with 16-bit samples at full resolution and every frame, 5.8 GB with 8-bit samples at full resolution and every frame, and 740 MB at half resolution with every second frame and 8-bit samples. The settings combine: half resolution divides a frame by four, quarter resolution by sixteen, every second or fourth frame divides their number the same way, and 8-bit samples halve each frame against 16-bit.
+The three choices differ in memory: a Full HD scene of 1920 Ã— 1080 pixels run for 1500 frames, with the field and the intensity both kept, takes 11.6 GB with 16-bit samples at full resolution and every frame, 5.8 GB with 8-bit samples at full resolution and every frame, and 740 MB at half resolution with every second frame and 8-bit samples. The settings combine: half resolution divides a frame by four, quarter resolution by sixteen, every second or fourth frame divides their number the same way, and 8-bit samples halve each frame against 16-bit.
 
 ### The Simulation menu
 
@@ -290,8 +290,8 @@ The Simulation form.
 2. **Visualize every**: A frame is kept, exported and the probes are sampled every this many steps.
 3. **4th-order Laplacian**: Uses the more accurate 4th-order stencil with sub-stepping instead of the 9-point stencil. Slower; it removes the dispersion of the 9-point stencil, where the speed depends on the wavelength.
 4. **Wave speed**: Nominal wave speed in pixels per step; only used to estimate wavelengths in the forms.
-5. **Intensity time decay**: How long the intensity remembers: it is averaged over this × 100 / lowest source level steps.
-6. **Source frequency scale**: Multiplier of the level-to-frequency mapping: ω = level / 255 × 0.5 × scale, in radians per step.
+5. **Intensity time decay**: How long the intensity remembers: it is averaged over this Ã— 100 / lowest source level steps.
+6. **Source frequency scale**: Multiplier of the level-to-frequency mapping: Ï‰ = level / 255 Ã— 0.5 Ã— scale, in radians per step.
 7. **Intensity scale**: Multiplier applied to the intensity values.
 
 ### Display
@@ -341,7 +341,7 @@ The form of a point source.
 5. **Frequency**: Frequency as a level up to 255, decimals allowed, the same scale as the green channel of image sources. Above 255 the grid cannot sample the wave.
 6. **Amplitude**: Amplitude in percent, 0 to 100, decimals allowed.
 7. **Phase**: Phase offset in degrees, -180 to 180.
-8. **Wavelength**: Estimated from the wave speed and the frequency (λ = c / f): emitters one wavelength apart radiate in phase along that direction. Holds for the 4th-order Laplacian; the 9-point stencil's speed varies with the frequency.
+8. **Wavelength**: Estimated from the wave speed and the frequency (Î» = c / f): emitters one wavelength apart radiate in phase along that direction. Holds for the 4th-order Laplacian; the 9-point stencil's speed varies with the frequency.
 9. **Mode**: Emit continuously or in bursts.
 10. **Pulse shape**: Envelope of each burst, Gaussian or a smoothed square; pulsed mode only.
 11. **Pulse width**: Length of each burst in cycles of the source frequency; pulsed mode only.
@@ -353,10 +353,10 @@ The form of a point source.
 17. **Horizontal spacing**: Distance between neighbouring columns in canvas pixels.
 18. **Vertical spacing**: Distance between neighbouring rows in canvas pixels.
 19. **Rotation**: Rotation of the grid about the source position in degrees, counter-clockwise on the screen; 0 keeps the rows horizontal. On the pictures, the lever of a selected composite source turns it.
-20. **Frequency**: Random offsets, added per emitter: each emitter's level is offset by up to ± this amount. 0 turns it off.
-21. **Phase**: Each emitter's phase is offset by up to ± this many degrees. 0 turns it off.
-22. **Off width**: Each gap between bursts is offset by up to ± this many cycles, re-drawn every period. 0 turns it off.
-23. **Position**: Each emitter is moved by up to ± this many pixels in X and in Y. 0 turns it off.
+20. **Frequency**: Random offsets, added per emitter: each emitter's level is offset by up to Â± this amount. 0 turns it off.
+21. **Phase**: Each emitter's phase is offset by up to Â± this many degrees. 0 turns it off.
+22. **Off width**: Each gap between bursts is offset by up to Â± this many cycles, re-drawn every period. 0 turns it off.
+23. **Position**: Each emitter is moved by up to Â± this many pixels in X and in Y. 0 turns it off.
 
 The random offsets are drawn from the project's random seed, so a run repeats exactly; New seed on the Project form draws others.
 
@@ -377,16 +377,32 @@ Optical parts are painted into the scene: a part of glass by its refractive inde
 The Add part menu of the project tree.
 
 1. **Lens/Mirror**: A lens or a mirror: a strip of the diameter between two spherical surfaces, each bulging outward, flat or hollow by the sign of its radius, the centre thickness apart. As a mirror it reflects everything; as a lens it refracts by its index, with an anti-reflection coating and absorption if wanted.
-2. **Fibre**: A fibre: a core of higher index inside a cladding, along a smooth path of Bézier segments through its nodes, with flat or round ends. A wave coupled into the core is guided along the path; the cladding can absorb stray light at its rim.
-3. **Bragg reflector**: A Bragg reflector: pairs of layers of two indices stacked along the axis. It reflects strongly around the wavelength the layer thicknesses are tuned to, a quarter wave each, and passes others.
-4. **GRIN lens**: A gradient-index lens: a rectangle whose index falls from the axis to the edge in a parabolic profile, so it focuses like a lens with flat faces.
-5. **Zone plate**: A zone plate: Fresnel zones cut for a design frequency and a focal length, every second zone an absorbing block, the central zone open or, inverted, a block. It focuses by diffraction; an optional mount stops light passing outside the diameter.
-6. **Polygon**: A regular polygon of glass or mirror, by its number of sides and the side length.
-7. **Rectangle**: A rectangle of glass or mirror, by length and width; linked, a square. A flat mirror is a long, narrow one.
-8. **Ellipse**: An ellipse of glass or mirror, by the length and width of its box; linked, a circle.
-9. **Triangle**: A triangle of glass or mirror: the base across the axis, the apex along it, the base angles set by a preset or by hand.
-10. **Outline**: A free outline of glass or mirror: a closed shape through the points you place and drag; fewer than three paint nothing.
-11. **Optical logic**: The gates, in a submenu of their own.
+2. **Fresnel lens**: A Fresnel lens: a lens whose curved surfaces are cut into zones from the axis to the rim, equal in width or in depth, each zone's arc starting again at the vertex plane, so a thin plate bends light as a thick lens would. The settings are the lens's, with the number of zones and their division; a flat surface stays flat.
+3. **Fibre**: A fibre: a core of higher index inside a cladding, along a smooth path of BÃ©zier segments through its nodes, with flat or round ends. A wave coupled into the core is guided along the path; the cladding can absorb stray light at its rim.
+4. **Bragg reflector**: A Bragg reflector: pairs of layers of two indices stacked along the axis. It reflects strongly around the wavelength the layer thicknesses are tuned to, a quarter wave each, and passes others.
+5. **GRIN lens**: A gradient-index lens: a rectangle whose index falls from the axis to the edge in a parabolic profile, so it focuses like a lens with flat faces.
+6. **Zone plate**: A zone plate: Fresnel zones cut for a design frequency and a focal length, every second zone an absorbing block, the central zone open or, inverted, a block. It focuses by diffraction; an optional mount stops light passing outside the diameter.
+7. **Diffusor**: A diffusor: a plate of glass or mirror whose front face is rough, the back flat. The roughness is a spread of ripples about a centre wavelength, their phases random from the project's seed; it scatters what passes or reflects.
+8. **Interference filter**: An interference filter: a plate of glass or mirror with a stack of thin layers on its front, each with its own thickness and index. Waves reflected at the layers' boundaries interfere, so the stack reflects some wavelengths and passes others; a new filter is a quarter-wave stack for a wavelength of 16 pixels.
+9. **Diffraction gratings**: The gratings, in a submenu of their own.
+10. **Meta surfaces**: The meta surfaces, in a submenu of their own.
+11. **Polygon**: A regular polygon of glass or mirror, by its number of sides and the side length.
+12. **Rectangle**: A rectangle of glass or mirror, by length and width; linked, a square. A flat mirror is a long, narrow one.
+13. **Ellipse**: An ellipse of glass or mirror, by the length and width of its box; linked, a circle.
+14. **Triangle**: A triangle of glass or mirror: the base across the axis, the apex along it, the base angles set by a preset or by hand.
+15. **Outline**: A free outline of glass or mirror: a closed shape through the points you place and drag; fewer than three paint nothing.
+16. **Optical logic**: The gates, in a submenu of their own.
+
+The Diffraction gratings submenu.
+
+1. **Simple 2D grating**: A simple 2D grating: a lattice of round dots, so many columns along the axis by so many rows across, each direction with its own spacing, nothing between them. The dots are mirror, or glass with an index; a wave passing the lattice is diffracted into the orders the spacings set. One column makes a line grating.
+2. **Facetted grating**: A facetted grating: a plate of glass or mirror whose front face carries a periodic relief, a sawtooth, a square wave or a sinusoid repeated every pitch, the back flat. A diffusor of one wavelength: the pitch and the wavelength set the angles the orders leave at.
+
+The Meta surfaces submenu.
+
+1. **Meta lens**: A meta lens: a carrier plate with a sub-wavelength pattern on its front, a ridge of its own index in every cell, whose fill is computed from the target frequency and the focal length so the cells delay the wave as a lens would, zone by zone. Converging or diverging; the pattern's tops and the plate's back can carry an anti-reflection coating.
+2. **Meta prism**: A meta prism: a carrier plate with a sub-wavelength pattern on its front whose cells delay the wave in a line across the face, so a wave arriving along the axis leaves turned by a set angle, as a blazed grating's first order. Cut for a target frequency; the pattern's tops and the plate's back can carry an anti-reflection coating.
+3. **Meta axicon**: A meta axicon: a carrier plate with a sub-wavelength pattern on its front whose cells delay the wave in proportion to the distance from the axis, so the two halves of a wave arriving along the axis are turned toward it by a set angle and cross along a line behind the surface rather than at a point. Cut for a target frequency; the pattern's tops and the plate's back can carry an anti-reflection coating.
 
 ![menu-add-part-logic](Assets/menu-add-part-logic.svg)
 
@@ -413,12 +429,12 @@ Every part's form starts with the same six settings, here at the top of the rect
 
 ![properties-part-material](Assets/properties-part-material.svg)
 
-A lens, a polygon, a rectangle, an ellipse, a triangle and an outline are made of glass or are a mirror, and share the material settings, here the Material section of the rectangle's form: the badges 7 to 15 on their figures below. The GRIN lens has the coating settings as well, at 9 to 13 on its form, and the fibre has its own at 13 to 17.
+A lens, a polygon, a rectangle, an ellipse, a triangle, an outline and a diffusor are made of glass or are a mirror, and share the material settings, here the Material section of the rectangle's form: the badges 7 to 15 on their figures below. The interference filter's plate has them too, at 7 to 13 on its form, with the coating on the back alone. The GRIN lens has the coating settings as well, at 9 to 13 on its form, and the fibre has its own at 13 to 17.
 
 7. **Mirror**: Makes the part a mirror instead of glass. The refractive index, the coating and the absorption are ignored then.
 8. **Refractive index**: Refractive index of the glass, 1.00 to 2.55 in steps of 0.01.
-9. **AR coating**: Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
-10. **Coating profile**: How the index runs through the band: a layer at √n, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
+9. **AR coating**: Thickness in pixels of the anti-reflection band just inside the outline; 0 for none. A quarter-wave layer is Î» / (4 âˆšn) pixels thick, Î» being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+10. **Coating profile**: How the index runs through the band: a layer at âˆšn, the quarter-wave idea, or a graded rise from the medium outside to the glass. A graded band reflects less than a layer once it is a wavelength thick or more, at any wavelength; a layer only at the wavelength it is cut for.
 11. **Coat the front**: Puts the band on the front: the faces turned toward a source on the left, a lens's first surface. Clear it to leave them bare, as the inner faces of a cavity are.
 12. **Coat the back**: Puts the band on the back: the faces turned away from a source on the left, a lens's second surface. Clear it to leave them bare.
 13. **Coat the sides**: Puts the band on the sides: the faces that are neither front nor back, a lens's rim, a slab's narrow ends. Clear it to leave them bare.
@@ -437,6 +453,18 @@ A lens or a mirror: a strip of the diameter between two spherical surfaces, each
 19. **R2**: Radius of the second surface in pixels: negative bulges outward, positive is concave, 0 is flat. A radius too curved for the diameter and the centre thickness is raised to the smallest that fits.
 20. **Centre thickness**: Distance between the two surfaces on the axis in pixels.
 21. **Edge thickness**: Thickness at the rim: the centre thickness less what the convex surfaces take, plus what the concave ones add; 0 when the surfaces meet at the rim. A read-out.
+
+### Fresnel lens
+
+A Fresnel lens: a lens whose curved surfaces are cut into zones from the axis to the rim, each zone's arc starting again at the vertex plane, so a thin plate bends light as a thick lens would. The settings are the lens's, with the number of zones and how they are divided; a flat surface stays flat. A new Fresnel lens is 500 pixels across with radii of 1500 on a plate 20 pixels thick. The deepest zone is the one the centre thickness must hold: a radius too curved for the plate is raised until that zone's sags fit, where a whole lens would need a far flatter one; the edge thickness is what the deepest zone leaves at the rim. There is no Concave box: a negative radius hollows a surface, as on the lens. On the pictures the surface handles and the size grip work as the lens's, the vertex handle setting the deepest zone's depth. Badges 1 to 15 are the shared and the glass and mirror settings.
+
+16. **Diameter**: Extent across the axis in pixels.
+17. **R1**: Radius of the first surface in pixels: positive bulges outward, negative is concave, 0 is flat. A radius too curved for the diameter and the centre thickness is raised to the smallest whose zones fit.
+18. **R2**: Radius of the second surface in pixels: negative bulges outward, positive is concave, 0 is flat.
+19. **Centre thickness**: Distance between the two surfaces on the axis in pixels: the plate.
+20. **Zones**: Number of zones each curved surface is cut into, from the axis to the rim. At each zone's inner edge the arc starts again at the vertex plane, so the plate stays thin; 1 is a plain lens.
+21. **Zone division**: How the zones are divided: equal in width, the outer zone the deepest; or equal in depth, each zone cut to the same depth and the zones narrowing outward, as the elements of a lighthouse lens are.
+22. **Edge thickness**: Thickness at the rim: the centre thickness less the deepest zone's sag on each convex surface, plus what a concave one adds. A read-out.
 
 ### Polygon
 
@@ -473,11 +501,11 @@ An ellipse of glass or mirror, by the length and width of its box; linked, a cir
 
 A triangle of glass or mirror: the base across the axis, the apex along it, the base angles set by a preset or by hand. Badges 1 to 15 are the shared and the glass and mirror settings.
 
-16. **Type**: Equilateral, right isosceles (the 45° prism), 30-60-90, isosceles with one typed angle, or custom with both typed.
+16. **Type**: Equilateral, right isosceles (the 45Â° prism), 30-60-90, isosceles with one typed angle, or custom with both typed.
 17. **Base**: Length of the base in pixels; the base lies across the axis, toward a source on the left.
 18. **Angle A**: Base angle at the first end of the base, in degrees. Typed for the isosceles and custom types; the presets fix it.
 19. **Angle B**: Base angle at the second end of the base, in degrees. Typed for the custom type; the others fix it.
-20. **Apex angle**: The angle at the apex: 180° minus the two base angles. A read-out.
+20. **Apex angle**: The angle at the apex: 180Â° minus the two base angles. A read-out.
 
 ### Outline
 
@@ -493,7 +521,7 @@ A free outline of glass or mirror: a closed shape through the points you place a
 
 ![properties-fibre](Assets/properties-fibre.svg)
 
-A fibre: a core of higher index inside a cladding, along a smooth path of Bézier segments through its nodes, with flat or round ends. A wave coupled into the core is guided along the path; the cladding can absorb stray light at its rim. On the pictures, a selected fibre shows its nodes and their handles: drag a node to move it with its handles, drag a handle to shape the segment arriving at or leaving the node. Badges 1 to 6 are the shared settings.
+A fibre: a core of higher index inside a cladding, along a smooth path of BÃ©zier segments through its nodes, with flat or round ends. A wave coupled into the core is guided along the path; the cladding can absorb stray light at its rim. On the pictures, a selected fibre shows its nodes and their handles: drag a node to move it with its handles, drag a handle to shape the segment arriving at or leaving the node. Badges 1 to 6 are the shared settings.
 
 7. **Core index**: Refractive index of the core, 1.00 to 2.55 in steps of 0.01.
 8. **Core diameter**: Diameter of the core in pixels.
@@ -501,8 +529,8 @@ A fibre: a core of higher index inside a cladding, along a smooth path of Bézie
 10. **Cladding thickness**: Thickness of the cladding around the core in pixels; 0 for a bare core.
 11. **Cladding absorption**: Peak absorption of the cladding's absorbing band, 0 (not at all) to 255, as the scene image's blue channel: a hump in the outer part of the cladding, rising over the band width from nothing, peaking, and falling to nothing at the outer edge, so the guided wave's tail stays untouched and stray light is absorbed from either side. Nothing on a bare core.
 12. **Absorption band**: Half the absorbing band's width in pixels: the absorption rises over this many pixels to its peak and falls over as many to the outer edge. A band wider than the cladding is squeezed into it.
-13. **AR coating**: Thickness in pixels of the anti-reflection band just inside the outer boundary and the end faces; 0 for none. A quarter-wave layer is λ / (4 √n) pixels thick, λ being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
-14. **Coating profile**: As for the glass parts: a layer at √n, or a graded rise from the medium outside to the glass.
+13. **AR coating**: Thickness in pixels of the anti-reflection band just inside the outer boundary and the end faces; 0 for none. A quarter-wave layer is Î» / (4 âˆšn) pixels thick, Î» being the wavelength the source form shows; a graded band is the better the thicker, from a wavelength on.
+14. **Coating profile**: As for the glass parts: a layer at âˆšn, or a graded rise from the medium outside to the glass.
 15. **Coat the front**: Coats the faces turned toward a source on the left: the start face of a fibre that runs to the right.
 16. **Coat the back**: Coats the faces turned away from it: the end face.
 17. **Coat the sides**: Coats the rest: the tube along the path.
@@ -523,9 +551,9 @@ A fibre: a core of higher index inside a cladding, along a smooth path of Bézie
 A Bragg reflector: pairs of layers of two indices stacked along the axis. It reflects strongly around the wavelength the layer thicknesses are tuned to, a quarter wave each, and passes others. Badges 1 to 6 are the shared settings.
 
 7. **Layer pairs**: Number of layer pairs, 1 to 200.
-8. **Thickness 1**: Thickness of the first layer of each pair in pixels. A quarter-wave layer is λ / (4 n) pixels thick.
+8. **Thickness 1**: Thickness of the first layer of each pair in pixels. A quarter-wave layer is Î» / (4 n) pixels thick.
 9. **Index 1**: Refractive index of the first layer of each pair, 1.00 to 2.55 in steps of 0.01.
-10. **Thickness 2**: Thickness of the second layer of each pair in pixels. A quarter-wave layer is λ / (4 n) pixels thick.
+10. **Thickness 2**: Thickness of the second layer of each pair in pixels. A quarter-wave layer is Î» / (4 n) pixels thick.
 11. **Index 2**: Refractive index of the second layer of each pair, 1.00 to 2.55 in steps of 0.01.
 12. **Width**: Extent of the stack across the axis in pixels.
 
@@ -538,7 +566,7 @@ A gradient-index lens: a rectangle whose index falls from the axis to the edge i
 7. **Centre index**: Refractive index on the axis, 1.00 to 2.55 in steps of 0.01.
 8. **Edge index**: Refractive index at the edge, 1.00 to 2.55 in steps of 0.01. The profile between the axis and the edge is parabolic.
 9. **AR coating**: The anti-reflection band just inside the outline, as for the glass parts; 0 for none.
-10. **Coating profile**: A layer at √n, or a graded rise.
+10. **Coating profile**: A layer at âˆšn, or a graded rise.
 11. **Coat the front**: The band on the face turned toward a source on the left.
 12. **Coat the back**: The band on the face turned away from it.
 13. **Coat the sides**: The band on the long sides.
@@ -563,6 +591,99 @@ A zone plate: Fresnel zones cut for a design frequency and a focal length, every
 16. **Number of zones**: The zones the plate gets within its diameter. A read-out.
 17. **Outermost zone**: The width of the outermost whole zone, which the grid must resolve: a few pixels at least. A read-out.
 
+### Diffusor
+
+A diffusor: a plate of glass or mirror whose front face is rough, the back flat. The roughness is a spread of ripples about a centre wavelength, their phases random from the project's seed; it scatters what passes or reflects. Coat the front puts the anti-reflection band on the rough face, Coat the back on the flat one, at any angle; a new diffusor coats the back alone. The roughness is worked out again only when a roughness setting, the width, the name or the project's seed changes, so the same project always gives the same face. On the pictures, a selected diffusor shows a grip on its back corner that sets the length and the width. Settings 1 to 6 are those every part shares, 7 to 15 the glass and mirror settings.
+
+16. **Length**: Extent along the axis in pixels: the plate's thickness at the mean of its rough face.
+17. **Width**: Extent across the axis in pixels: the width of the rough face.
+18. **Centre wavelength**: The spatial wavelength in pixels at the middle of the roughness's spectrum: the ripple along the face that has the full amplitude. Two pixels at least.
+19. **Amplitude**: The amplitude in pixels of the ripple at the centre wavelength. The other wavelengths of the spread get less, by their distance from the centre, and the face carries the sum of them all; 0 makes the face flat.
+20. **Sigma**: The spread of the roughness's wavelengths about the centre wavelength, in pixels: a wavelength gets the amplitude times the bell e^(âˆ’(Î» âˆ’ centre)Â² / 2ÏƒÂ²). 0 leaves the centre wavelength alone, a single regular ripple; the larger, the more wavelengths join in and the less regular the face.
+21. **Profile height**: The rough face from its highest point to its lowest: what the ripples add up to. A read-out.
+22. **Ripples**: How many wavelengths make up the roughness: one at sigma 0, thirteen otherwise, those below two pixels left out. A read-out.
+
+### Interference filter
+
+An interference filter: a plate of glass or mirror with a stack of thin layers on its front, each with its own thickness and index. Waves reflected at the layers' boundaries interfere, so the stack reflects some wavelengths and passes others; a new filter is a quarter-wave stack for a wavelength of 16 pixels in the usual design, beginning and ending with the high index: from the outside in, five pairs of a layer of index 2.00, 2.00 pixels thick, and one of 1.50, 2.67 pixels thick, then one more layer of 2.00 on the plate, eleven layers that reflect most of a wave at that wavelength. The layers lie on the plate's front, outside it, so the plate keeps its length and the filter grows by the stack; the first layer in the list is the outermost, the one a wave from the left meets first. Ticking Mirror makes the plate a mirror and leaves the layers glass in front of it: a coated mirror. The plate's anti-reflection band can lie only on its back, the face away from the layers. On the pictures, a selected filter shows a grip on the plate's back corner that sets the length and the width. Settings 1 to 6 are those every part shares.
+
+7. **Mirror**: Makes the plate a mirror instead of glass; the layers stay glass in front of it. The plate's refractive index, coating and absorption are ignored then.
+8. **Refractive index**: Refractive index of the plate, 1.00 to 2.55 in steps of 0.01.
+9. **AR coating**: Thickness in pixels of the anti-reflection band just inside the plate's back; 0 for none.
+10. **Coating profile**: As for the glass parts: a layer at âˆšn, or a graded rise from the medium outside to the glass.
+11. **Coat the back**: Puts the band on the plate's back, the face away from the layers. Clear it to leave the back bare.
+12. **Absorption**: How strongly the plate absorbs waves, 0 (not at all) to 255, as for the glass parts. The layers do not absorb.
+13. **Absorption ramp**: Depth in pixels over which the plate's absorption rises from nothing at its outline to its full value.
+14. **Length**: Extent of the plate along the axis in pixels, without the layers, which lie on its front.
+15. **Width**: Extent across the axis in pixels, of the plate and the layers alike.
+16. **Stack thickness**: The layers' thicknesses added up: how far the stack stands out of the plate's front. A read-out.
+17. **A layer's row**: Drag the grip at the left to move the layer through the list; the row moves as the pointer passes the others. Then the layer's number, its thickness in pixels to two decimals (a quarter-wave layer is the wavelength divided by four times the index; a layer of 0 is left out), its refractive index, and buttons that move it up (outwards) or down (towards the plate) and remove it. The buttons are in the Tab order, so the keyboard moves a layer as well: the focus stays on the moved layer's button, so pressing Space again moves it on.
+18. **Add a layer**: Appends a copy of the last layer, so a stack of alternating layers grows by copying and changing.
+19. **Remove all**: Removes every layer at once, to build another stack from nothing; Undo (Ctrl+Z) brings them back.
+
+### Simple 2D grating
+
+A simple 2D grating: a lattice of round dots, so many columns along the axis by so many rows across, each direction with its own spacing, nothing between them. The dots are mirror, or glass with an index; a wave passing the lattice is diffracted into the orders the spacings set. One column makes a line grating. A new grating is one column of 31 mirror dots, 16 pixels apart and 2 pixels across: a line grating across the axis, which a wave from the left meets. Odd counts keep the middle dot on the part's position, even counts put the position between two dots. The dots have no anti-reflection coating. Settings 1 to 6 are those every part shares.
+
+7. **Mirror**: Makes the dots mirrors instead of glass. The refractive index and the absorption are ignored then.
+8. **Refractive index**: Refractive index of the glass dots, 1.00 to 2.55 in steps of 0.01.
+9. **Absorption**: How strongly the dots absorb waves, 0 (not at all) to 255, as for the glass parts.
+10. **Absorption ramp**: Depth in pixels over which a dot's absorption rises from nothing at its rim to its full value.
+11. **Columns**: Number of dots along the axis; one column is a line grating across the axis.
+12. **Rows**: Number of dots across the axis.
+13. **Column spacing**: Distance between neighbouring columns in pixels: the grating's period along the axis.
+14. **Row spacing**: Distance between neighbouring rows in pixels: the grating's period across the axis.
+15. **Dot diameter**: Diameter of each dot in pixels, at most half the smaller spacing; the box stops there. A dot of 2 pixels covers a square of 2 Ã— 2 pixels; a mirror dot under 2 pixels covers no pixel centre and paints nothing.
+
+### Facetted grating
+
+A facetted grating: a plate of glass or mirror whose front face carries a periodic relief, a sawtooth, a square wave or a sinusoid repeated every pitch, the back flat. A diffusor of one wavelength: the pitch and the wavelength set the angles the orders leave at. The anti-reflection coating can lie only on the flat back. On the pictures, a selected grating shows a grip on its back corner that sets the length and the width. Settings 1 to 6 are those every part shares, 7 to 13 the glass and mirror settings with the coating on the back alone.
+
+14. **Length**: Extent along the axis in pixels: the plate's thickness at the mean of its facetted face.
+15. **Width**: Extent across the axis in pixels: the width of the facetted face.
+16. **Pattern**: The facets' shape over each pitch: a sawtooth, a ramp then a step; a square wave, a crest and a trough of half a pitch each; or a sinusoid.
+17. **Pitch**: The period of the facets across the face in pixels: the grating's pitch, which with the wavelength sets the diffraction angles. Two pixels at least.
+18. **Amplitude**: The relief's height either side of the mean face in pixels: the facets run from this far out to this far in, twice it from crest to trough. 0 makes the face flat.
+
+### Meta lens
+
+A meta lens: a carrier plate with a sub-wavelength pattern on its front, a ridge of its own index in every cell, whose fill is computed from the target frequency and the focal length so the cells delay the wave as a lens would, zone by zone. The wave sees each cell as a mean index between the plate's surroundings and the ridge's, the more of the cell the ridge fills, the higher; a converging lens fills the cells most at the centre and less outward within each zone, where the fill starts over, a diverging one the other way. A new meta lens is cut for a wavelength of 32 pixels with a focal length of 500, cells of 4 pixels and ridges 32 pixels high of index 2.00: just the height a full turn of phase needs, which the form shows. The anti-reflection coating can lie on the ridges' tops (the front) and the plate's back. On the pictures, a selected meta lens shows a grip on the plate's back corner that sets the length and the width. Settings 1 to 6 are those every part shares, 7 to 14 the glass and mirror settings without the sides.
+
+15. **Length**: Thickness of the carrier plate along the axis in pixels; the pattern stands on its front, outside it.
+16. **Width**: Width of the plate and its pattern across the axis in pixels.
+17. **Target frequency**: The source frequency the lens is designed for, on the same scale as a source's frequency. The cells' fill follows from the wavelength it gives, so the lens focuses this frequency at the focal length; other frequencies focus elsewhere.
+18. **Wavelength**: The wavelength the target frequency gives in a medium of index 1. A read-out.
+19. **Focal length**: Distance in pixels from the lens to its focus, for a plane wave arriving along the axis; a diverging lens spreads the wave as if from a focus that far behind it.
+20. **Lens type**: Converging, the fill greatest at the centre and falling outward within each zone; or diverging, the fill growing outward.
+21. **Zones**: The zones from the centre to the rim, each a full turn of phase. A read-out.
+22. **Pattern index**: Refractive index of the ridges, usually above the plate's. The higher, the lower the pattern can be.
+23. **Pitch**: The width of a cell of the pattern in pixels, one ridge per cell. Well below the wavelength, so the wave sees each cell as a mean index rather than diffracting at it.
+24. **Height**: The height of the ridges in front of the plate in pixels. A full turn of phase takes the wavelength over the pattern index less one; a lower pattern cannot delay enough.
+25. **Full-turn height**: The height at which a filled cell delays by a whole turn. A read-out.
+
+### Meta prism
+
+A meta prism: a carrier plate with a sub-wavelength pattern on its front whose cells delay the wave in a line across the face, so a wave arriving along the axis leaves turned by a set angle, as a blazed grating's first order. The fill of the cells climbs across each zone and starts over at the next; a zone is a full turn of phase, the wavelength over the sine of the angle wide, and must stay a few cells wide, so steep angles need fine cells. A new meta prism is cut for a wavelength of 32 pixels and turns the wave by 20°, with cells of 4 pixels and ridges 32 pixels high of index 2.00. The anti-reflection coating can lie on the ridges' tops and the plate's back. Settings 1 to 6 are those every part shares, 7 to 14 the glass and mirror settings without the sides, 15 and 16 the plate's length and width as the meta lens's.
+
+17. **Target frequency**: The source frequency the prism is designed for, on the same scale as a source's frequency; the wavelength it gives sets the cells' fill. Another frequency is turned by another angle.
+18. **Wavelength**: The wavelength the target frequency gives in a medium of index 1. A read-out.
+19. **Deflection**: The angle in degrees by which a wave arriving along the axis is turned, counter-clockwise on the screen for a positive angle; 0 turns nothing.
+20. **Zone width**: The width of a zone across the face, a full turn of phase. A read-out.
+21. **Zones**: How many zones fit across the face. A read-out.
+22. **Pattern index**, **Pitch**, **Height**, **Full-turn height**: As the meta lens's, badges 22 to 25.
+
+### Meta axicon
+
+A meta axicon: a carrier plate with a sub-wavelength pattern on its front whose cells delay the wave in proportion to the distance from the axis, so the two halves of a wave arriving along the axis are turned toward it by a set angle and cross along a line behind the surface rather than at a point: a long, narrow focus that keeps its shape over its length. The fill is greatest on the axis and falls outward within each zone, as a converging lens's, but at an even pace. A new meta axicon is cut for a wavelength of 32 pixels with a cone angle of 10°, cells of 4 pixels and ridges 32 pixels high of index 2.00. Settings 1 to 6 are those every part shares, 7 to 14 the glass and mirror settings without the sides, 15 and 16 the plate's length and width as the meta lens's.
+
+17. **Target frequency**: The source frequency the axicon is designed for; the wavelength it gives sets the cells' fill.
+18. **Wavelength**: The wavelength the target frequency gives in a medium of index 1. A read-out.
+19. **Cone angle**: The angle in degrees by which each half of the wave is turned toward the axis. The steeper, the shorter the line of focus and the narrower the zones.
+20. **Line of focus**: How far behind the surface the line of focus reaches: half the width over the tangent of the cone angle. A read-out.
+21. **Zone width**: The width of a zone across the face, a full turn of phase. A read-out.
+22. **Zones**: How many zones fit from the centre to the rim. A read-out.
+23. **Pattern index**, **Pitch**, **Height**, **Full-turn height**: As the meta lens's, badges 22 to 25, here 23 to 26.
+
 ### XOR gate
 
 ![properties-xor-gate](Assets/properties-xor-gate.svg)
@@ -573,10 +694,10 @@ An optical XOR gate: two input waveguides, a phase section putting the lower inp
 8. **Wavelength**: The wavelength the design frequency gives in a medium of index 1, with the simulation's source frequency scale. A read-out.
 9. **Core index**: Refractive index of the waveguide cores, 1.00 to 2.55 in steps of 0.01. It must be above the cladding's; the larger the difference, the narrower the cores and the tighter the bends.
 10. **Cladding index**: Refractive index of the cladding around the cores, 1.00 to 2.55 in steps of 0.01.
-11. **AR coating**: Thickness in pixels of the anti-reflection band at the ends ticked below, with the index √n of the core and of the cladding; 0 for none. A quarter-wave band, the least reflecting, is λ / (4 √n) pixels thick; the form shows it for the core.
+11. **AR coating**: Thickness in pixels of the anti-reflection band at the ends ticked below, with the index âˆšn of the core and of the cladding; 0 for none. A quarter-wave band, the least reflecting, is Î» / (4 âˆšn) pixels thick; the form shows it for the core.
 12. **AR on input side**: Puts the anti-reflection band on the input end. Switch it off where the gate takes its light from a gate before it, so the wave passes through the junction.
 13. **AR on output side**: Puts the anti-reflection band on the output end. Switch it off where the gate hands its light to a gate after it, so the wave passes through the junction.
-14. **Quarter-wave coating**: The thickness of the least reflecting coating on the core, λ / (4 √n). A read-out.
+14. **Quarter-wave coating**: The thickness of the least reflecting coating on the core, Î» / (4 âˆšn). A read-out.
 15. **Port spacing**: Distance between the two inputs, and between the two outputs, in pixels. A value below what the design needs to keep the arms apart is raised to it, and the box shows the spacing used.
 16. **Upper output**: Lets the upper output's light leave the gate. Switched off, an absorber with a soft rise takes it in the last stretch of the arm.
 17. **Lower output**: Lets the lower output's light leave the gate. Switched off, an absorber with a soft rise takes it in the last stretch of the arm.
@@ -603,7 +724,9 @@ An optical OR gate: the same coupler with the lower input a twelfth of a period 
 
 ## Probes
 
-A probe measures the wave where you put it and draws a graph over the picture of the layer it measures. A point probe records the field's amplitude, or the intensity's value or its integral, at one pixel over the steps of the run; a line probe records the values along a line from A to B at each frame. Add a probe with the second button of the project tree; it lands at the centre of the canvas, its line end to the right. A probe's measurements are exported as CSV from its context menu, in the tree or on its graph box: a point probe one row per step, a line probe one row per frame, semicolons between the values and a header row; when the run is not complete, it is made first. Moving a probe or changing its graph needs no new run; a probe switched on, or a new one, is recorded by the next run, which starts by itself.
+A probe measures the wave where you put it and draws a graph over the picture of the layer it measures. A point probe records the field's amplitude, or the intensity's value or its integral, at one pixel over the steps of the run; a line probe records the values along a line from A to B at each frame. Add a probe with the second button of the project tree, which opens a menu: a standard probe, or under Probabilistic a counting or an imaging detector; it lands at the centre of the canvas, its line end to the right.
+
+A probabilistic detector is a line probe that turns the intensity along its line into quantised detections, as a photon counter sees light: each step, every point of the line detects a random number of times, Poisson-distributed about the intensity there times the detector sensitivity (the detector's quantum efficiency and the scale from intensity to detections in one number). A counting detector adds the line's detections up and draws them step by step over time, the pulses of a photomultiplier: the denser, the brighter the line. An imaging detector keeps the detections of every point and draws them along the line, added up from the start of the run, so the intensity profile builds up from single detections as it does in a SPAD array or an image intensifier; scrubbed back, the picture shows fewer. Its histogram has bins of a settable width in pixels: the detections of a bin's pixels are added up, so wider bins fill faster and show less detail. The detections are drawn from the project's seed, so a project gives the same detections every time, and a new seed others. A probe's measurements are exported as CSV from its context menu, in the tree or on its graph box: a point probe one row per step, a line probe one row per frame, semicolons between the values and a header row; when the run is not complete, it is made first. Moving a probe or changing its graph needs no new run; a probe switched on, or a new one, is recorded by the next run, which starts by itself.
 
 ### Probe
 
@@ -614,36 +737,39 @@ The form of a point probe of the field.
 1. **Name**: Name shown in the project tree and in the graph title.
 2. **Active**: Samples and draws this probe.
 3. **Start after step**: Step at which recording starts; 0 records from the first step.
-4. **Layer**: Field or Intensity: the output the probe samples and is drawn on.
-5. **Measurement**: Recorded quantity. The field offers its amplitude only; the intensity layer its value, or the value integrated over the run.
-6. **Kind**: A single point, or a line from A to B.
-7. **A x**: X of the probe pixel, or of the start of the line, in canvas pixels.
-8. **A y**: Y of the probe pixel, or of the start of the line, in canvas pixels.
-9. **B x**: X of the end of the line in canvas pixels; line probes only.
-10. **B y**: Y of the end of the line in canvas pixels; line probes only.
-11. **Box size**: Nominal size of the graph box drawn over the output, from tiny to extra large, or custom; a box larger than the canvas is shrunk to fit it, aspect kept.
-12. **Box x**: Left edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
-13. **Box y**: Top edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
-14. **Box width**: Width of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
-15. **Box height**: Height of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
-16. **Step axis**: Running, a sliding window of the last steps, or Full, the whole run; point probes only.
-17. **Window**: Width of the sliding step window, in steps.
-18. **Auto-scale steps**: Lets the step axis follow the samples recorded so far; point probes only.
-19. **Auto-scale values**: Fits the value axis to the data instead of the fixed minimum and maximum.
-20. **Value axis**: A linear or a logarithmic value axis; intensity probes only, the field is always linear, its amplitude axis symmetric about zero.
-21. **Decades**: Decades a logarithmic value axis spans below its top; smaller values, zero included, sit on the bottom line.
-22. **Value minimum**: Lower bound of the value axis when it is not auto-scaled.
-23. **Value maximum**: Upper bound of the value axis when it is not auto-scaled.
+4. **Detector**: A standard probe, or a probabilistic detector: counting, the detections of the whole line step by step over time; or imaging, the detections at every point of the line added up over the run. A detector is a line probe of the integrated intensity: choosing one sets the layer, the measurement and the kind.
+5. **Detector sensitivity**: Expected detections per unit of intensity per step at a point of the line; detectors only. 0 detects nothing. A point source's wave is faint by the time it reaches a line a hundred pixels away, so the sensitivity is in the tens.
+6. **Bin size**: Pixels of the line per bin of an imaging detector's histogram, 1 to 20; the detections of a bin's pixels are added up, and the graph shows the bin's total across them.
+7. **Layer**: Field or Intensity: the output the probe samples and is drawn on.
+8. **Measurement**: Recorded quantity. The field offers its amplitude only; the intensity layer its value, or the value integrated over the run.
+9. **Kind**: A single point, or a line from A to B.
+10. **A x**: X of the probe pixel, or of the start of the line, in canvas pixels.
+11. **A y**: Y of the probe pixel, or of the start of the line, in canvas pixels.
+12. **B x**: X of the end of the line in canvas pixels; line probes only.
+13. **B y**: Y of the end of the line in canvas pixels; line probes only.
+14. **Box size**: Nominal size of the graph box drawn over the output, from tiny to extra large, or custom; a box larger than the canvas is shrunk to fit it, aspect kept.
+15. **Box x**: Left edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
+16. **Box y**: Top edge of the graph box in canvas pixels. A box placed on the probe's point A moves with the probe; dragging it close snaps it on.
+17. **Box width**: Width of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
+18. **Box height**: Height of the graph box in canvas pixels; custom box size only. A box larger than the canvas is shrunk to fit it, aspect kept.
+19. **Step axis**: Running, a sliding window of the last steps, or Full, the whole run; point probes only.
+20. **Window**: Width of the sliding step window, in steps.
+21. **Auto-scale steps**: Lets the step axis follow the samples recorded so far; point probes only.
+22. **Auto-scale values**: Fits the value axis to the data instead of the fixed minimum and maximum.
+23. **Value axis**: A linear or a logarithmic value axis; intensity probes only, the field is always linear, its amplitude axis symmetric about zero.
+24. **Decades**: Decades a logarithmic value axis spans below its top; smaller values, zero included, sit on the bottom line.
+25. **Value minimum**: Lower bound of the value axis when it is not auto-scaled.
+26. **Value maximum**: Upper bound of the value axis when it is not auto-scaled.
 
 ### Line probe
 
 ![properties-line-probe](Assets/properties-line-probe.svg)
 
-The same form for a line probe of the intensity with a logarithmic value axis. A line probe's graph shows the values along the line from A to B at the frame shown, so the step axis settings (16 to 18) do not apply; both ends have a handle on the picture, and the line between them shows where it measures.
+The same form for a line probe of the intensity with a logarithmic value axis. A line probe's graph shows the values along the line from A to B at the frame shown, so the step axis settings (19 to 21) do not apply; both ends have a handle on the picture, and the line between them shows where it measures.
 
 ## Colour schemes
 
-The pictures are coloured through a colour scheme: a gradient of colour stops mapped onto the values of a picture. The Display settings pick a scheme for each picture from the schemes that ship with the program, your own schemes, saved as .wdscheme files in the `ColorSchemes` folder of your WaveDude Next data (`%LOCALAPPDATA%\WaveDudeNext\ColorSchemes`), and the schemes of the project, which are saved in its file and listed in the Colour schemes group of the tree. The picker in the Display form also offers Load from file… and Edit a copy in the project…, which makes a project scheme from the chosen one so you can change it. Renaming a project scheme keeps the pictures that use it.
+The pictures are coloured through a colour scheme: a gradient of colour stops mapped onto the values of a picture. The Display settings pick a scheme for each picture from the schemes that ship with the program, your own schemes, saved as .wdscheme files in the `ColorSchemes` folder of your WaveDude Next data (`%LOCALAPPDATA%\WaveDudeNext\ColorSchemes`), and the schemes of the project, which are saved in its file and listed in the Colour schemes group of the tree. The picker in the Display form also offers Load from fileâ€¦ and Edit a copy in the projectâ€¦, which makes a project scheme from the chosen one so you can change it. Renaming a project scheme keeps the pictures that use it.
 
 ![properties-colour-scheme](Assets/properties-colour-scheme.svg)
 

@@ -36,9 +36,11 @@ namespace WaveDudeNext.Probes;
 /// </summary>
 public sealed class ProbeSampler
 {
-	/// <summary>Stores the per-probe arrays and derives the aggregate <see cref="NeedsIntensity"/>, <see cref="HasSeries"/> and <see cref="HasProfiles"/> flags.</summary>
-	private ProbeSampler(int[][] pixels, bool[] isProfile, bool[] useIntensity, bool[] cumulative, bool[] integrate, double[] lengths, bool[] useStartAfterStep, int[] startAfterStep)
+	/// <summary>Stores the per-probe arrays and derives the aggregate <see cref="NeedsIntensity"/>, <see cref="HasSeries"/>, <see cref="HasProfiles"/> and <see cref="HasCounting"/> flags.</summary>
+	private ProbeSampler(int[][] pixels, bool[] isProfile, bool[] useIntensity, bool[] cumulative, bool[] integrate, double[] lengths, bool[] useStartAfterStep, int[] startAfterStep,
+		ProbeDetector[] detectors, double[] sensitivities, int[] binSizes, uint[] streams, int seed)
 	{
+		BinSizes = binSizes;
 		Count = pixels.Length;
 		Pixels = pixels;
 		IsProfile = isProfile;
@@ -48,6 +50,10 @@ public sealed class ProbeSampler
 		Lengths = lengths;
 		UseStartAfterStep = useStartAfterStep;
 		StartAfterStep = startAfterStep;
+		Detectors = detectors;
+		Sensitivities = sensitivities;
+		Streams = streams;
+		Seed = seed;
 		for (int i = 0; i < Count; i++)
 		{
 			if (useIntensity[i])
@@ -62,6 +68,10 @@ public sealed class ProbeSampler
 			{
 				HasSeries = true;
 			}
+			if (detectors[i] == ProbeDetector.Counting)
+			{
+				HasCounting = true;
+			}
 		}
 	}
 
@@ -74,7 +84,8 @@ public sealed class ProbeSampler
 	/// <param name="w">Canvas width in pixels.</param>
 	/// <param name="h">Canvas height in pixels.</param>
 	/// <param name="rim">Cells of the engine's grid beyond each side of the canvas (<see cref="Engine.SceneData.Rim"/>); the indices are moved into the grid.</param>
-	public static ProbeSampler Build(IReadOnlyList<ProbeSpec> probes, int w, int h, int rim = 0)
+	/// <param name="seed">The project's seed, from which a detector's detections are drawn (<see cref="Seed"/>).</param>
+	public static ProbeSampler Build(IReadOnlyList<ProbeSpec> probes, int w, int h, int rim = 0, int seed = 0)
 	{
 		int count = probes.Count;
 		int[][] pixels = new int[count][];
@@ -85,6 +96,10 @@ public sealed class ProbeSampler
 		double[] lengths = new double[count];
 		bool[] useStartAfterStep = new bool[count];
 		int[] startAfterStep = new int[count];
+		var detectors = new ProbeDetector[count];
+		double[] sensitivities = new double[count];
+		int[] binSizes = new int[count];
+		uint[] streams = new uint[count];
 		int stride = w + 2 + 2 * rim;
 		int shift = rim * stride + rim;   // the canvas starts that far into a grid with a rim (SceneData.Rim)
 		for (int i = 0; i < count; i++)
@@ -92,8 +107,14 @@ public sealed class ProbeSampler
 			ProbeSpec probe = probes[i];
 			int ax = Clamp(probe.AX, w - 1);
 			int ay = Clamp(probe.AY, h - 1);
-			bool isIntegrated = probe.Measurement == ProbeMeasurement.IntegratedValue;
-			if (probe.Kind == ProbeKind.Line)
+			// a detector is a line whose intensity the engine integrates; the collector makes the detections of it
+			bool isDetector = probe.Detector != ProbeDetector.Standard;
+			bool isIntegrated = probe.Measurement == ProbeMeasurement.IntegratedValue || isDetector;
+			detectors[i] = probe.Detector;
+			sensitivities[i] = double.IsFinite(probe.Sensitivity) ? Math.Clamp(probe.Sensitivity, 0.0, Probe.MaxSensitivity) : Probe.DefaultSensitivity;
+			binSizes[i] = Math.Clamp(probe.BinSize, 1, Probe.MaxBinSize);
+			streams[i] = Pcg32.StableHash(probe.Name ?? "");
+			if (probe.Kind == ProbeKind.Line || isDetector)
 			{
 				int bx = Clamp(probe.BX, w - 1);
 				int by = Clamp(probe.BY, h - 1);
@@ -109,8 +130,8 @@ public sealed class ProbeSampler
 				pixels[i] = new int[] { (ay + 1) * stride + ax + 1 };
 				cumulative[i] = isIntegrated;
 			}
-			// Value and IntegratedValue both read the intensity buffer.
-			useIntensity[i] = probe.Measurement != ProbeMeasurement.Amplitude;
+			// Value and IntegratedValue both read the intensity buffer, as a detector does.
+			useIntensity[i] = probe.Measurement != ProbeMeasurement.Amplitude || isDetector;
 			useStartAfterStep[i] = probe.StartAfter > 0;
 			startAfterStep[i] = probe.StartAfter;
 		}
@@ -121,7 +142,7 @@ public sealed class ProbeSampler
 				Shift(indices, shift);
 			}
 		}
-		return new ProbeSampler(pixels, isProfile, useIntensity, cumulative, integrate, lengths, useStartAfterStep, startAfterStep);
+		return new ProbeSampler(pixels, isProfile, useIntensity, cumulative, integrate, lengths, useStartAfterStep, startAfterStep, detectors, sensitivities, binSizes, streams, seed);
 	}
 
 	/// <summary>Clamps <paramref name="value"/> into [0, <paramref name="maxValue"/>].</summary>
@@ -219,8 +240,26 @@ public sealed class ProbeSampler
 	/// <summary>True when at least one point probe exists.</summary>
 	public bool HasSeries { get; }
 
-	/// <summary>True when at least one line probe exists.</summary>
+	/// <summary>True when at least one line probe exists (a detector among them).</summary>
 	public bool HasProfiles { get; }
+
+	/// <summary>Per probe: standard, or the probabilistic detector it is (2026-11-07); a detector's line is integrated by the engine and turned into detections by <see cref="ProbeCollector"/>.</summary>
+	public ProbeDetector[] Detectors { get; }
+
+	/// <summary>Per probe: a detector's expected detections per unit of intensity per step at a point of the line (guarded); unused for a standard probe.</summary>
+	public double[] Sensitivities { get; }
+
+	/// <summary>Per probe: an imaging detector's bin in pixels along the line (guarded), the detections of a bin's pixels added up into one histogram bar.</summary>
+	public int[] BinSizes { get; }
+
+	/// <summary>Per probe: a stable hash of the probe's name, the stream of its random draws, so two detectors of one project differ and a renamed one draws afresh.</summary>
+	public uint[] Streams { get; }
+
+	/// <summary>The project's seed, from which the detectors' detections are drawn: the same project gives the same detections every time, on the CPU and on the GPU alike (their integrated intensities agreeing).</summary>
+	public int Seed { get; }
+
+	/// <summary>True when at least one counting detector exists: its series needs the line's total at every frame, so the scratch runner collects the profiles frame by frame.</summary>
+	public bool HasCounting { get; }
 
 	/// <summary>
 	/// Per probe: whether "start recording at step #" is on. Used to purge (never accumulate) the running

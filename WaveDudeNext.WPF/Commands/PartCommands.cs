@@ -19,7 +19,7 @@ using System.Windows.Input;
 
 namespace WaveDudeNext.WPF.Commands;
 
-/// <summary>Commands of the part editors, bound on the views themselves: the point list of an outline (<c>Views/PartPointsView</c>), the node list of a fibre's path (<c>Views/FiberPathView</c>, 2026-10-22) and the lens's Mirror box (<c>Views/LensPartView</c>, 2026-10-29).</summary>
+/// <summary>Commands of the part editors, bound on the views themselves: the point list of an outline (<c>Views/PartPointsView</c>), the node list of a fibre's path (<c>Views/FiberPathView</c>, 2026-10-22), the lens's Mirror box (<c>Views/LensPartView</c>, 2026-10-29) and an interference filter's layer list (<c>Views/InterferenceFilterPartView</c>, 2026-11-07).</summary>
 public static class PartCommands
 {
 	/// <summary>Appends a point after the last one.</summary>
@@ -27,6 +27,15 @@ public static class PartCommands
 
 	/// <summary>Removes the point given as parameter.</summary>
 	public static readonly RoutedUICommand RemovePoint = new("Remove point", nameof(RemovePoint), typeof(PartCommands));
+
+	/// <summary>Moves the row given as parameter one place up its list (an interference filter's layer, <c>Views/InterferenceFilterPartView</c>, 2026-11-07).</summary>
+	public static readonly RoutedUICommand MoveRowUp = new("Move up", nameof(MoveRowUp), typeof(PartCommands));
+
+	/// <summary>Moves the row given as parameter one place down its list.</summary>
+	public static readonly RoutedUICommand MoveRowDown = new("Move down", nameof(MoveRowDown), typeof(PartCommands));
+
+	/// <summary>Removes every row of a list (an interference filter's layers, 2026-11-07, the user's request: a new filter's eleven layers went one by one); Undo brings them back.</summary>
+	public static readonly RoutedUICommand RemoveAllRows = new("Remove all", nameof(RemoveAllRows), typeof(PartCommands));
 
 	/// <summary>
 	/// The lens's Mirror box was ticked or unticked by the user (the box's own command, run after its binding has set the

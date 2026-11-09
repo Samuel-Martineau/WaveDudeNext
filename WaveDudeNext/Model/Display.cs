@@ -216,7 +216,7 @@ public sealed class DisplayLayer : ObservableObject
 	private bool _preview = true;
 	private bool _overlay = true;
 	private double _overlayGain = DefaultOverlayGain;
-	private bool _overlayInExport;
+	private bool _overlayInExport = true;
 
 	/// <summary>Name of the colour scheme mapped onto the values.</summary>
 	[XmlAttribute]
@@ -294,9 +294,9 @@ public sealed class DisplayLayer : ObservableObject
 		set => SetProperty(ref _overlayGain, value);
 	}
 
-	/// <summary>Whether an export bakes the outline into this output's frames (additively, as the author's program does); off by default.</summary>
+	/// <summary>Whether an export bakes the outline into this output's frames (additively, as the author's program does); on by default (2026-11-08, the user's choice; off until then).</summary>
 	[XmlAttribute]
-	[DefaultValue(false)]
+	[DefaultValue(true)]
 	[Category("Scene outline")]
 	[DisplayName("Outline in the export")]
 	[Description("Bake the outline into exported frames and videos of this output.")]

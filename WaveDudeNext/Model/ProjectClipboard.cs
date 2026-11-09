@@ -132,6 +132,11 @@ public static class ProjectClipboard
 			// the emitters follow the seed of the project they are in now
 			source.GenerateElements(project.Seed);
 		}
+		foreach (ISeeded part in pasted.OfType<ISeeded>())
+		{
+			// so does a diffusor's roughness
+			part.ProjectSeed = project.Seed;
+		}
 		return pasted;
 	}
 

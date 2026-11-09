@@ -15,6 +15,7 @@
 // version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 // <https://www.gnu.org/licenses/>.
 
+using System.Windows;
 using System.Windows.Controls;
 
 namespace WaveDudeNext.WPF.Views;
@@ -22,8 +23,41 @@ namespace WaveDudeNext.WPF.Views;
 /// <summary>The material section shared by the shape parts (<see cref="WaveDudeNext.Model.ShapePart"/>): mirror, index, coating.</summary>
 public partial class ShapeMaterialView : UserControl
 {
+	/// <summary>Identifies the <see cref="BackOnly"/> property.</summary>
+	public static readonly DependencyProperty BackOnlyProperty = DependencyProperty.Register(
+		nameof(BackOnly), typeof(bool), typeof(ShapeMaterialView), new PropertyMetadata(false));
+
+	/// <summary>Identifies the <see cref="CoatingShown"/> property.</summary>
+	public static readonly DependencyProperty CoatingShownProperty = DependencyProperty.Register(
+		nameof(CoatingShown), typeof(bool), typeof(ShapeMaterialView), new PropertyMetadata(true));
+
 	public ShapeMaterialView()
 	{
 		InitializeComponent();
+	}
+
+	/// <summary>Identifies the <see cref="SidesHidden"/> property.</summary>
+	public static readonly DependencyProperty SidesHiddenProperty = DependencyProperty.Register(
+		nameof(SidesHidden), typeof(bool), typeof(ShapeMaterialView), new PropertyMetadata(false));
+
+	/// <summary>Whether the sides box alone is hidden: a meta lens's band goes on its pattern's tops and its plate's back (2026-11-08).</summary>
+	public bool SidesHidden
+	{
+		get => (bool)GetValue(SidesHiddenProperty);
+		set => SetValue(SidesHiddenProperty, value);
+	}
+
+	/// <summary>Whether the coating rows (thickness, profile, faces) are shown; a kind whose shape takes no band hides them (the simple grating's dots, 2026-11-07).</summary>
+	public bool CoatingShown
+	{
+		get => (bool)GetValue(CoatingShownProperty);
+		set => SetValue(CoatingShownProperty, value);
+	}
+
+	/// <summary>Whether the coating goes on the back alone, so the front and side boxes are hidden (an interference filter's plate, whose front carries the layers); set by the kind's form.</summary>
+	public bool BackOnly
+	{
+		get => (bool)GetValue(BackOnlyProperty);
+		set => SetValue(BackOnlyProperty, value);
 	}
 }

@@ -49,6 +49,32 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				</DataTrigger>
 			</Style.Triggers>
 		</Style>
+		<!-- a probabilistic detector (2026-11-07) is a line of the integrated intensity: the layer, measurement and kind are its
+		     own, and the sensitivity is only its -->
+		<Style x:Key="StandardOnlyCombo" TargetType="{x:Type ComboBox}" BasedOn="{StaticResource EnumComboBox}">
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding IsDetector}" Value="True">
+					<Setter Property="IsEnabled" Value="False" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+		<Style x:Key="DetectorOnly" TargetType="{x:Type controls:NumberBox}" BasedOn="{StaticResource {x:Type controls:NumberBox}}">
+			<Setter Property="IsEnabled" Value="False" />
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding IsDetector}" Value="True">
+					<Setter Property="IsEnabled" Value="True" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
+		<!-- the bin is the imaging detector's alone (2026-11-08) -->
+		<Style x:Key="ImagingOnly" TargetType="{x:Type controls:NumberBox}" BasedOn="{StaticResource {x:Type controls:NumberBox}}">
+			<Setter Property="IsEnabled" Value="False" />
+			<Style.Triggers>
+				<DataTrigger Binding="{Binding Detector}" Value="Imaging">
+					<Setter Property="IsEnabled" Value="True" />
+				</DataTrigger>
+			</Style.Triggers>
+		</Style>
 		<!-- a logarithmic value axis only on the intensity layer (the field's amplitude changes sign), the decades only with it -->
 		<Style x:Key="IntensityOnlyCombo" TargetType="{x:Type ComboBox}" BasedOn="{StaticResource EnumComboBox}">
 			<Style.Triggers>
@@ -92,17 +118,29 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 
 			<Label Style="{StaticResource FormSection}" Content="{DynamicResource SectionMeasurement}" />
 			<controls:FormPanel>
+				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:Probe.Detector}" />
+				<ComboBox Style="{StaticResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ProbeDetector}"
+				          SelectedItem="{Binding Detector}" ToolTip="{meta:Hint model:Probe.Detector}" AutomationProperties.AutomationId="ProbeDetector" />
+
+				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:Probe.Sensitivity}" />
+				<controls:NumberBox Style="{StaticResource DetectorOnly}" Text="{Binding Sensitivity}" Minimum="0" Maximum="1000000" DragStep="0.5" Decimals="2"
+				                    ToolTip="{meta:Hint model:Probe.Sensitivity}" AutomationProperties.AutomationId="ProbeSensitivity" />
+
+				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:Probe.BinSize}" />
+				<controls:NumberBox Style="{StaticResource ImagingOnly}" Text="{Binding BinSize}" Minimum="1" Maximum="20"
+				                    ToolTip="{meta:Hint model:Probe.BinSize}" AutomationProperties.AutomationId="ProbeBinSize" />
+
 				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:Probe.Layer}" />
-				<ComboBox Style="{StaticResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ProbeLayer}"
+				<ComboBox Style="{StaticResource StandardOnlyCombo}" ItemsSource="{meta:EnumValues model:ProbeLayer}"
 				          SelectedItem="{Binding Layer}" ToolTip="{meta:Hint model:Probe.Layer}" />
 
 				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:Probe.Measurement}" />
 				<!-- only the measurements the layer offers: amplitude for the field, value / integrated value for the intensity -->
-				<ComboBox Style="{StaticResource EnumComboBox}" ItemsSource="{Binding Layer, Converter={StaticResource MeasurementsForLayer}}"
+				<ComboBox Style="{StaticResource StandardOnlyCombo}" ItemsSource="{Binding Layer, Converter={StaticResource MeasurementsForLayer}}"
 				          SelectedItem="{Binding Measurement}" ToolTip="{meta:Hint model:Probe.Measurement}" />
 
 				<TextBlock Style="{StaticResource FormLabel}" Text="{meta:Label model:Probe.Kind}" />
-				<ComboBox Style="{StaticResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ProbeKind}"
+				<ComboBox Style="{StaticResource StandardOnlyCombo}" ItemsSource="{meta:EnumValues model:ProbeKind}"
 				          SelectedItem="{Binding Kind}" ToolTip="{meta:Hint model:Probe.Kind}" />
 			</controls:FormPanel>
 

@@ -87,11 +87,42 @@ public enum ProbeValueScale
 }
 
 /// <summary>
+/// What a probe is (2026-11-07, the user's request): a standard probe, or a probabilistic detector that turns the
+/// intensity along its line into quantised detections, Poisson-distributed about the intensity times the
+/// <see cref="Probe.Sensitivity"/> (the user's choice of statistic), drawn from the project's seed so a project gives
+/// the same detections every time.
+/// </summary>
+public enum ProbeDetector
+{
+	/// <summary>A standard probe: the field or the intensity as it is.</summary>
+	Standard,
+	/// <summary>A counting detector: the detections of the whole line, step by step, as a photomultiplier's pulses, drawn over time.</summary>
+	Counting,
+	/// <summary>An imaging detector: the detections at every point of the line added up over the run, as a SPAD array or an image intensifier builds an image, drawn along the line.</summary>
+	Imaging,
+}
+
+/// <summary>
 /// A measurement point or line on the canvas and the graph that shows its values. Positions are
-/// canvas pixels with the origin at the top left.
+/// canvas pixels with the origin at the top left. A probabilistic detector (<see cref="Detector"/>) is a line probe
+/// of the integrated intensity whose recording is turned into detections (<see cref="Probes.ProbeCollector"/>).
 /// </summary>
 public sealed class Probe : ObservableObject, IMovable, INamed
 {
+	/// <summary>
+	/// Default <see cref="Sensitivity"/>: expected detections per unit of intensity per step. A plane wave of full
+	/// amplitude has an intensity of about 0.175 a pixel (measured in <c>library_check</c>), but a point source's wave
+	/// a hundred pixels away a few hundredths of a percent of that, so 0.05 showed nothing in a project and the user
+	/// needed 10 to 50 (2026-11-08): at 20 a new detector's line of 100 px in front of a point source counts about one
+	/// detection a step.
+	/// </summary>
+	public const double DefaultSensitivity = 20.0;
+	/// <summary>Largest accepted <see cref="Sensitivity"/>.</summary>
+	public const double MaxSensitivity = 1_000_000.0;
+	/// <summary>Default <see cref="BinSize"/> in pixels.</summary>
+	public const int DefaultBinSize = 4;
+	/// <summary>Largest accepted <see cref="BinSize"/> in pixels.</summary>
+	public const int MaxBinSize = 20;
 	/// <summary>Default <see cref="Window"/> in steps.</summary>
 	public const int DefaultWindow = 500;
 	/// <summary>Smallest accepted <see cref="Window"/>.</summary>
@@ -138,6 +169,9 @@ public sealed class Probe : ObservableObject, IMovable, INamed
 	private int _decades = DefaultDecades;
 	private int _window = DefaultWindow;
 	private int _startAfter;
+	private ProbeDetector _detector = ProbeDetector.Standard;
+	private double _sensitivity = DefaultSensitivity;
+	private int _binSize = DefaultBinSize;
 
 	/// <summary>Name shown in the project tree and in the graph title.</summary>
 	[XmlAttribute]
@@ -202,8 +236,78 @@ public sealed class Probe : ObservableObject, IMovable, INamed
 	public ProbeKind Kind
 	{
 		get => _kind;
-		set => SetProperty(ref _kind, value);
+		set
+		{
+			if (SetProperty(ref _kind, value))
+			{
+				OnPropertyChanged(nameof(ShowsProfile));
+			}
+		}
 	}
+
+	/// <summary>
+	/// A standard probe, or a probabilistic detector (2026-11-07, the user's request): counting, the detections of the
+	/// whole line per step over time, or imaging, the detections at every point of the line added up over the run. A
+	/// detector is a line probe of the integrated intensity: choosing one sets the kind, the layer and the measurement.
+	/// </summary>
+	[XmlAttribute]
+	[DefaultValue(ProbeDetector.Standard)]
+	[Category("Measurement")]
+	[Description("A standard probe, or a probabilistic detector: counting, the detections of the whole line step by step over time, as a photomultiplier's pulses; or imaging, the detections at every point of the line added up over the run, as a SPAD array builds an image. A detector is a line probe of the integrated intensity.")]
+	public ProbeDetector Detector
+	{
+		get => _detector;
+		set
+		{
+			if (SetProperty(ref _detector, value))
+			{
+				if (value != ProbeDetector.Standard)
+				{
+					Kind = ProbeKind.Line;
+					Layer = ProbeLayer.Intensity;
+					Measurement = ProbeMeasurement.IntegratedValue;
+				}
+				OnPropertyChanged(nameof(IsDetector));
+				OnPropertyChanged(nameof(ShowsProfile));
+			}
+		}
+	}
+
+	/// <summary>Expected detections per unit of intensity per step at a point of the line, 0 to <see cref="MaxSensitivity"/>: the detector's quantum efficiency and the scale from intensity to detections in one number.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultSensitivity)]
+	[Range(0.0, MaxSensitivity)]
+	[Category("Measurement")]
+	[DisplayName("Detector sensitivity")]
+	[Description("Expected detections per unit of intensity per step at a point of the line: the detector's quantum efficiency and the scale from intensity to detections in one number. The detections are Poisson-distributed about intensity × sensitivity; 0 detects nothing.")]
+	public double Sensitivity
+	{
+		get => _sensitivity;
+		set => SetProperty(ref _sensitivity, value);
+	}
+
+	/// <summary>An imaging detector's bin in pixels along the line, 1 to <see cref="MaxBinSize"/> (2026-11-08, the user's request): the detections of a bin's pixels are added up and the histogram shows the bin's total at each of them.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultBinSize)]
+	[Range(1, MaxBinSize)]
+	[Category("Measurement")]
+	[DisplayName("Bin size")]
+	[Description("Pixels of the line per bin of an imaging detector's histogram, 1 to 20: the detections of a bin's pixels are added up, and the graph shows the bin's total across them. Wider bins fill faster and show less detail.")]
+	public int BinSize
+	{
+		get => _binSize;
+		set => SetProperty(ref _binSize, value);
+	}
+
+	/// <summary>Whether the probe is a probabilistic detector (<see cref="Detector"/> not standard).</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public bool IsDetector => Detector != ProbeDetector.Standard;
+
+	/// <summary>Whether the graph shows a profile along the line (a line probe, an imaging detector) rather than a series over time (a point probe, a counting detector, whose line gives one count a step).</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public bool ShowsProfile => Kind == ProbeKind.Line && Detector != ProbeDetector.Counting;
 
 	/// <summary>
 	/// X of the probe pixel, or of the start of the line, in canvas pixels. While the graph box is attached
@@ -488,7 +592,7 @@ public sealed class Probe : ObservableObject, IMovable, INamed
 	/// </summary>
 	public static bool AffectsMeasurement(string? property) =>
 		property is nameof(Name) or nameof(Active) or nameof(Layer) or nameof(Measurement) or nameof(Kind)
-			or nameof(AX) or nameof(AY) or nameof(BX) or nameof(BY) or nameof(StartAfter);
+			or nameof(AX) or nameof(AY) or nameof(BX) or nameof(BY) or nameof(StartAfter) or nameof(Detector) or nameof(Sensitivity) or nameof(BinSize);
 
 	/// <summary>The measurements a probe on <paramref name="layer"/> can record (the editor offers only these).</summary>
 	public static ProbeMeasurement[] MeasurementsFor(ProbeLayer layer) =>
@@ -520,6 +624,19 @@ public sealed class Probe : ObservableObject, IMovable, INamed
 	public void Normalize()
 	{
 		Name ??= "";
+		if (!Enum.IsDefined(Detector))
+		{
+			Detector = ProbeDetector.Standard;
+		}
+		if (IsDetector)
+		{
+			// a detector is a line probe of the integrated intensity, whatever the file says
+			Kind = ProbeKind.Line;
+			Layer = ProbeLayer.Intensity;
+			Measurement = ProbeMeasurement.IntegratedValue;
+		}
+		Sensitivity = double.IsFinite(Sensitivity) ? Math.Clamp(Sensitivity, 0.0, MaxSensitivity) : DefaultSensitivity;
+		BinSize = Math.Clamp(BinSize, 1, MaxBinSize);
 		if (Layer == ProbeLayer.Field)
 		{
 			Measurement = ProbeMeasurement.Amplitude;

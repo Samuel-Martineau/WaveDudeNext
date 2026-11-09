@@ -16,6 +16,7 @@
 // <https://www.gnu.org/licenses/>.
 
 using WaveDudeNext.Engine;
+using WaveDudeNext.Model;
 
 namespace WaveDudeNext.Probes;
 
@@ -29,7 +30,7 @@ namespace WaveDudeNext.Probes;
 /// </summary>
 public sealed class ProbeCollector
 {
-	/// <summary>Creates one empty <see cref="ProbeTrace"/> and one pending sample list per probe of <paramref name="sampler"/>.</summary>
+	/// <summary>Creates one empty <see cref="ProbeTrace"/> and one pending sample list per probe of <paramref name="sampler"/>, and a counting detector's Poisson process.</summary>
 	public ProbeCollector(ProbeSampler sampler)
 	{
 		_pending = [];
@@ -37,13 +38,24 @@ public sealed class ProbeCollector
 		Traces = new ProbeTrace[sampler.Count];
 		_totals = new double[sampler.Count];
 		_pendingProfiles = [];
+		_counters = new PoissonProcess?[sampler.Count];
+		_countedExpectation = new double[sampler.Count];
+		_countedSteps = new int[sampler.Count];
+		_imagers = new PoissonProcess[]?[sampler.Count];
 		for (int i = 0; i < sampler.Count; i++)
 		{
 			Traces[i] = new ProbeTrace();
 			_pending.Add(new List<float>());
 			_pendingProfiles.Add(new List<float[]>());
+			if (sampler.Detectors[i] == ProbeDetector.Counting)
+			{
+				_counters[i] = new PoissonProcess((ulong)(uint)sampler.Seed, Stream(sampler.Streams[i], 0));
+			}
 		}
 	}
+
+	/// <summary>The random stream of a detector's process: the probe's name hash, with the pixel's index along the line for an imaging detector's processes.</summary>
+	private static ulong Stream(uint nameHash, int pixel) => ((ulong)nameHash << 24) ^ (ulong)(uint)pixel;
 
 	/// <summary>
 	/// Drains the engine's buffered point-probe samples (<see cref="IWaveEngine.TakeProbeSamples"/>, one value
@@ -124,11 +136,98 @@ public sealed class ProbeCollector
 			{
 				continue;
 			}
+			switch (_sampler.Detectors[i])
+			{
+				case ProbeDetector.Counting:
+					// a series, not a profile: the detections of the line's total, step by step
+					CountDetections(i, profile, stepsDone);
+					continue;
+				case ProbeDetector.Imaging:
+					profile = ImageDetections(i, profile);
+					break;
+			}
 			Traces[i].AddProfile(profile, _sampler.Lengths[i]);
 			Traces[i].StepsSampled = stepsDone;
 			_pendingProfiles[i].Add(profile);
 		}
 		_lastStepsDone = stepsDone;
+	}
+
+	/// <summary>
+	/// A counting detector's detections since its previous collection (2026-11-07, the user's choice of resolution): the
+	/// line's integrated intensity, summed over its pixels and times the sensitivity, is the cumulative expectation; the
+	/// frame's increase is shared evenly over the steps since the previous collection, and each step's detections are
+	/// the events of the probe's Poisson process in its share (a sum of Poisson counts is Poisson of the sum, so the
+	/// frame's total is exact and the steps within it draw from the frame's mean rate). One value a step into the series.
+	/// </summary>
+	private void CountDetections(int i, float[] profile, int stepsDone)
+	{
+		PoissonProcess counter = _counters[i]!;
+		int steps = stepsDone - _countedSteps[i];
+		if (steps <= 0)
+		{
+			return;
+		}
+		double total = 0.0;
+		foreach (float value in profile)
+		{
+			total += value;
+		}
+		double from = _countedExpectation[i];
+		double expectation = Math.Max(from, total * _sampler.Sensitivities[i]);
+		var values = new float[steps];
+		int before = counter.Count;
+		for (int s = 0; s < steps; s++)
+		{
+			int upTo = counter.CountUpTo(from + (expectation - from) * (s + 1) / steps);
+			values[s] = upTo - before;
+			before = upTo;
+		}
+		_countedExpectation[i] = expectation;
+		_countedSteps[i] = stepsDone;
+		Traces[i].Series.Add(values);
+		Traces[i].StepsSampled = stepsDone;
+		_pending[i].AddRange(values);
+	}
+
+	/// <summary>
+	/// An imaging detector's image at this frame: at every pixel of the line the events of that pixel's Poisson process
+	/// up to its integrated intensity times the sensitivity, which only grows, so the image builds up over the run and a
+	/// frame asked for once (a scratch frame) shows what the run shows there. With a bin of more than a pixel
+	/// (2026-11-08, the user's request) the detections of a bin's pixels are added up and every pixel of the bin shows the
+	/// total, a histogram of flat bars over the line; the last bin may be shorter.
+	/// </summary>
+	private float[] ImageDetections(int i, float[] profile)
+	{
+		PoissonProcess[] imagers = _imagers[i] ??= MakeImagers(i, profile.Length);
+		double sensitivity = _sampler.Sensitivities[i];
+		int bin = _sampler.BinSizes[i];
+		var counts = new float[profile.Length];
+		int pixels = Math.Min(profile.Length, imagers.Length);
+		for (int start = 0; start < pixels; start += bin)
+		{
+			int end = Math.Min(pixels, start + bin);
+			float total = 0f;
+			for (int k = start; k < end; k++)
+			{
+				total += imagers[k].CountUpTo(profile[k] * sensitivity);
+			}
+			for (int k = start; k < end; k++)
+			{
+				counts[k] = total;
+			}
+		}
+		return counts;
+	}
+
+	private PoissonProcess[] MakeImagers(int i, int pixels)
+	{
+		var imagers = new PoissonProcess[pixels];
+		for (int k = 0; k < pixels; k++)
+		{
+			imagers[k] = new PoissonProcess((ulong)(uint)_sampler.Seed, Stream(_sampler.Streams[i], k));
+		}
+		return imagers;
 	}
 
 	/// <summary>
@@ -167,6 +266,18 @@ public sealed class ProbeCollector
 
 	/// <summary>Per probe: the profiles recorded since the last <see cref="TakeForUi"/>, in frame order.</summary>
 	private readonly List<List<float[]>> _pendingProfiles;
+
+	/// <summary>Per probe: a counting detector's Poisson process; null for the others.</summary>
+	private readonly PoissonProcess?[] _counters;
+
+	/// <summary>Per probe: the cumulative expectation a counting detector was last counted up to.</summary>
+	private readonly double[] _countedExpectation;
+
+	/// <summary>Per probe: the steps a counting detector's series covers so far.</summary>
+	private readonly int[] _countedSteps;
+
+	/// <summary>Per probe: an imaging detector's Poisson process per pixel of its line, made at its first profile; null for the others.</summary>
+	private readonly PoissonProcess[]?[] _imagers;
 
 	/// <summary>Steps completed at the most recent collect call; numbers the samples of the next batch and is reported as <see cref="ProbeUpdate.StepsDone"/>.</summary>
 	private int _lastStepsDone;

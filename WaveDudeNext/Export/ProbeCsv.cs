@@ -79,11 +79,12 @@ public static class ProbeCsv
 	public static int Write(TextWriter writer, Probe probe, ProbeTrace trace, int visualizeEvery, int frameStride)
 	{
 		CultureInfo culture = CultureInfo.InvariantCulture;
-		if (probe.Kind == ProbeKind.Point)
+		if (!probe.ShowsProfile)
 		{
+			// a point probe, or a counting detector: one row a step
 			writer.Write("step");
 			writer.Write(Separator);
-			writer.WriteLine(ColumnName(probe.Measurement));
+			writer.WriteLine(probe.IsDetector ? "detections" : ColumnName(probe.Measurement));
 			ReadOnlySpan<float> values = trace.Series.Values.AsSpan(0, trace.Series.Count);
 			for (int i = 0; i < values.Length; i++)
 			{

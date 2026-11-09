@@ -130,13 +130,13 @@ $Headings = @{
 	"main-window" = "The main window"; "project-tree" = "The project tree"; "preview" = "The preview"; "timeline" = "The timeline"
 	"menu-file" = "The File menu"; "menu-file-export" = "File > Export"; "menu-file-examples" = "File > Examples"; "menu-edit" = "The Edit menu"; "menu-view" = "The View menu"
 	"menu-simulation" = "The Simulation menu"; "menu-help" = "The Help menu"
-	"menu-add-part" = "The Add part menu"; "menu-add-part-logic" = "Add part > Optical logic"
+	"menu-add-part" = "The Add part menu"; "menu-add-part-gratings" = "Add part > Diffraction gratings"; "menu-add-part-logic" = "Add part > Optical logic"
 	"properties-project" = "Project"; "properties-scene" = "Scene"; "properties-simulation" = "Simulation"; "properties-display" = "Display"
 	"properties-source" = "Source"; "properties-composite-source" = "Composite source"
-	"properties-lens" = "Lens"; "properties-polygon" = "Polygon"; "properties-rectangle" = "Rectangle"; "properties-ellipse" = "Ellipse"
+	"properties-lens" = "Lens"; "properties-fresnel-lens" = "Fresnel lens"; "properties-polygon" = "Polygon"; "properties-rectangle" = "Rectangle"; "properties-ellipse" = "Ellipse"
 	"properties-triangle" = "Triangle"; "properties-outline" = "Outline"; "properties-fibre" = "Fibre"; "properties-bragg-reflector" = "Bragg reflector"
 	"properties-grin-lens" = "GRIN lens"; "properties-xor-gate" = "XOR gate"; "properties-and-gate" = "AND gate"; "properties-or-gate" = "OR gate"
-	"properties-zone-plate" = "Zone plate"; "properties-probe" = "Probe"; "properties-line-probe" = "Line probe"; "properties-colour-scheme" = "Colour scheme"
+	"properties-zone-plate" = "Zone plate"; "properties-diffusor" = "Diffusor"; "properties-interference-filter" = "Interference filter"; "properties-simple-grating" = "Simple 2D grating"; "properties-facetted-grating" = "Facetted grating"; "properties-meta-lens" = "Meta lens"; "properties-meta-prism" = "Meta prism"; "properties-meta-axicon" = "Meta axicon"; "properties-probe" = "Probe"; "properties-line-probe" = "Line probe"; "properties-counting-detector" = "Counting detector"; "properties-imaging-detector" = "Imaging detector"; "menu-add-probe" = "The Add probe menu"; "menu-add-probe-probabilistic" = "Add probe > Probabilistic"; "properties-colour-scheme" = "Colour scheme"
 	"properties-part-common" = "Settings every part shares"; "properties-part-material" = "Glass and mirror settings"
 }
 $script:legend = New-Object System.Text.StringBuilder
@@ -689,6 +689,21 @@ try {
 		else { Problem "the Examples entry of the File menu was not reached" }
 		Close-Menus
 
+		# the Add probe menu of the tree's toolbar (2026-11-07): a standard probe, and the detectors in a submenu
+		FocusOn "ToolAddProbe"
+		Key $VK_SPACE 400
+		if (WaitFor { (Menu-Popups).Count -gt 0 } 1500 100) {
+			Menu-Figure "menu-add-probe" "The Add probe menu of the project tree: a standard probe, or a probabilistic detector."
+			for ($i = 0; $i -lt 4 -and (PopupFocusedId) -ne "AddProbe:Probabilistic"; $i++) { Key $VK_DOWN 120 }
+			if ((PopupFocusedId) -eq "AddProbe:Probabilistic") {
+				Key $VK_RIGHT 400
+				Menu-Figure "menu-add-probe-probabilistic" "The Probabilistic submenu of the Add probe menu: the detectors."
+			}
+			else { Problem "the Probabilistic entry of the Add probe menu was not reached" }
+		}
+		else { Problem "the Add probe menu did not open" }
+		Close-Menus
+
 		# the Add part menu of the tree's toolbar: the kinds, each entry's tooltip its description; Space on the button
 		# runs its command, which opens the menu under the button as a click does (the Apps key would centre it on the
 		# button, above the window's top), Down then walks its entries
@@ -696,6 +711,22 @@ try {
 		Key $VK_SPACE 400
 		if (WaitFor { (Menu-Popups).Count -gt 0 } 1500 100) {
 			Menu-Figure "menu-add-part" "The Add part menu of the project tree: the kinds of optical parts."
+			# the gratings submenu on the way down (2026-11-07), Left closes it again
+			for ($i = 0; $i -lt 16 -and (PopupFocusedId) -ne "AddPart:DiffractionGratings"; $i++) { Key $VK_DOWN 120 }
+			if ((PopupFocusedId) -eq "AddPart:DiffractionGratings") {
+				Key $VK_RIGHT 400
+				Menu-Figure "menu-add-part-gratings" "The Diffraction gratings submenu of the Add part menu."
+				Key $VK_LEFT 400
+			}
+			else { Problem "the Diffraction gratings entry of the Add part menu was not reached" }
+			# the meta surfaces submenu below it (2026-11-08)
+			for ($i = 0; $i -lt 16 -and (PopupFocusedId) -ne "AddPart:MetaSurfaces"; $i++) { Key $VK_DOWN 120 }
+			if ((PopupFocusedId) -eq "AddPart:MetaSurfaces") {
+				Key $VK_RIGHT 400
+				Menu-Figure "menu-add-part-metasurfaces" "The Meta surfaces submenu of the Add part menu."
+				Key $VK_LEFT 400
+			}
+			else { Problem "the Meta surfaces entry of the Add part menu was not reached" }
 			for ($i = 0; $i -lt 16 -and (PopupFocusedId) -ne "AddPart:OpticalLogic"; $i++) { Key $VK_DOWN 120 }
 			if ((PopupFocusedId) -eq "AddPart:OpticalLogic") {
 				Key $VK_RIGHT 400
@@ -725,6 +756,7 @@ try {
 			@("Tree:Source 1", "properties-source", "A point source.", @()),
 			@("Tree:Source 2", "properties-composite-source", "A composite (array) source, pulsed.", @()),
 			@("Tree:Lens*", "properties-lens", (En-String "Kind.LensPart"), @()),
+			@("Tree:Fresnel*", "properties-fresnel-lens", (En-String "Kind.FresnelLensPart"), @()),
 			@("Tree:Polygon*", "properties-polygon", (En-String "Kind.PolygonPart"), @()),
 			@("Tree:Rectangle*", "properties-rectangle", (En-String "Kind.RectanglePart"), @(, @("PartLinked", "Linked: the chain keeps the width equal to the length"))),
 			@("Tree:Ellipse*", "properties-ellipse", (En-String "Kind.EllipsePart"), @(, @("PartLinked", "Linked: the chain keeps the width equal to the length"))),
@@ -737,8 +769,17 @@ try {
 			@("Tree:AND*", "properties-and-gate", (En-String "Kind.AndGatePart"), @()),
 			@("Tree:OR *", "properties-or-gate", (En-String "Kind.OrGatePart"), @()),
 			@("Tree:Zone*", "properties-zone-plate", (En-String "Kind.ZonePlatePart"), @()),
+			@("Tree:Diffusor*", "properties-diffusor", (En-String "Kind.DiffusorPart"), @()),
+			@("Tree:Interference*", "properties-interference-filter", (En-String "Kind.InterferenceFilterPart"), @(@("key:TipRemoveLayer", "Per layer: grip, number, thickness, index, up, down, remove"), @("PartAddLayer", "Add a layer"), @("PartRemoveAllLayers", "Remove all layers"))),
+			@("Tree:Grating*", "properties-simple-grating", (En-String "Kind.SimpleGratingPart"), @()),
+			@("Tree:Facetted*", "properties-facetted-grating", (En-String "Kind.FacettedGratingPart"), @()),
+			@("Tree:Meta lens*", "properties-meta-lens", (En-String "Kind.MetaLensPart"), @()),
+			@("Tree:Meta prism*", "properties-meta-prism", (En-String "Kind.MetaPrismPart"), @()),
+			@("Tree:Meta axicon*", "properties-meta-axicon", (En-String "Kind.MetaAxiconPart"), @()),
 			@("Tree:Probe 1", "properties-probe", "A point probe of the field.", @()),
 			@("Tree:Probe 2", "properties-line-probe", "A line probe of the intensity, logarithmic.", @()),
+			@("Tree:Detector 1", "properties-counting-detector", "A counting detector: the detections of its line, step by step.", @()),
+			@("Tree:Detector 2", "properties-imaging-detector", "An imaging detector: the detections along its line, added up.", @()),
 			@("Tree:Scheme*", "properties-colour-scheme", "A colour scheme of the project.", @(@("StopSwatch:0", "A stop: position, colour swatch (opens the picker), hex value, remove"), @("SchemeAddStop", "Add a stop"))))) {
 			$id = @($ids | Where-Object { $_ -like $spec[0] })
 			if ($id.Count -eq 0) { Problem ("no tree row matches '{0}'" -f $spec[0]); continue }

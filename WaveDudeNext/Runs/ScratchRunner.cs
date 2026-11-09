@@ -170,8 +170,12 @@ public sealed class ScratchRunner : IDisposable
 		int steps = frame * spec.VisualizeEvery + 1;
 		IWaveEngine engine = EngineFor(spec);
 		// the spec's probes, installed per request (Reset removes them; a fresh engine has none)
-		ProbeSampler? sampler = spec.Probes.Length > 0 ? ProbeSampler.Build(spec.Probes, spec.Width, spec.Height, spec.Rim) : null;
+		ProbeSampler? sampler = spec.Probes.Length > 0 ? ProbeSampler.Build(spec.Probes, spec.Width, spec.Height, spec.Rim, spec.Seed) : null;
 		engine.SetProbes(sampler);
+		ProbeCollector? collector = sampler != null ? new ProbeCollector(sampler) : null;
+		// a counting detector's series needs the line's total at every frame, as the run collects it (2026-11-07), so its
+		// profiles are collected frame by frame here too; the other line probes only need the instant's
+		bool perFrame = sampler?.HasCounting == true;
 		var clock = Stopwatch.StartNew();
 		for (int i = 0; i < steps; i++)
 		{
@@ -183,6 +187,10 @@ public sealed class ScratchRunner : IDisposable
 			if (sampler != null)
 			{
 				engine.SampleProbes();
+				if (perFrame && i % spec.VisualizeEvery == 0)
+				{
+					collector!.CollectProfiles(engine, i + 1);
+				}
 			}
 		}
 		TimeSpan stepping = clock.Elapsed;
@@ -193,11 +201,13 @@ public sealed class ScratchRunner : IDisposable
 		snapshot.Step = steps - 1;
 		// the recordings: every series up to this step (integrated probes summed by the collector), the profiles of this instant
 		ProbeTrace[] traces = [];
-		if (sampler != null)
+		if (collector != null)
 		{
-			var collector = new ProbeCollector(sampler);
 			collector.Collect(engine, steps);
-			collector.CollectProfiles(engine, steps);
+			if (!perFrame)
+			{
+				collector.CollectProfiles(engine, steps);
+			}
 			traces = collector.Traces;
 		}
 		clock.Stop();

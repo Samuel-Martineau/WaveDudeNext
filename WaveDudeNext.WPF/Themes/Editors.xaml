@@ -560,6 +560,34 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		</Setter>
 	</Style>
 
+	<!-- a row button drawing the geometry it holds as content (an interference filter's layer row: up, down), the remove button's look -->
+	<Style x:Key="RowGlyphButton" TargetType="{x:Type Button}" BasedOn="{StaticResource RemovePointButton}">
+		<Setter Property="Margin" Value="2,0,0,0" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type Button}">
+					<Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" SnapsToDevicePixels="True">
+						<Path Data="{TemplateBinding Content}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.2"
+						      HorizontalAlignment="Center" VerticalAlignment="Center" />
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsMouseOver" Value="True">
+							<Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonHover}" />
+						</Trigger>
+						<Trigger Property="IsKeyboardFocused" Value="True">
+							<Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Accent}" />
+						</Trigger>
+						<Trigger Property="IsEnabled" Value="False">
+							<Setter Property="Opacity" Value="0.4" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+	<!-- the grip a row is dragged by to reorder its list (an interference filter's layers): three short lines -->
+	<StreamGeometry x:Key="GripGeometry">M0,0.5 H8 M0,3.5 H8 M0,6.5 H8</StreamGeometry>
+
 	<Style x:Key="FormSection" TargetType="{x:Type Label}">
 		<Setter Property="FontWeight" Value="SemiBold" />
 		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />

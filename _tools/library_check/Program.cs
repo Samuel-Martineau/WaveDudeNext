@@ -289,6 +289,13 @@ internal static class Program
 		CheckXorGate();
 		CheckGatePortFollower();
 		CheckZonePlate();
+		CheckDiffusor();
+		CheckInterferenceFilter();
+		CheckSimpleGrating();
+		CheckFresnelLens();
+		CheckDetectors();
+		CheckFacettedGrating();
+		CheckMetaSurfaces();
 		CheckBrightnessFit();
 		CheckRun();
 		ExportChecks.Run(Check);
@@ -351,6 +358,13 @@ internal static class Program
 				scheme.Stops.Add(stop);
 				return (scheme.Normalize, [stop]);
 			}),
+			("FilterLayer", () =>
+			{
+				var filter = new InterferenceFilterPart();
+				var layer = new FilterLayer();
+				filter.Layers.Add(layer);
+				return (filter.Normalize, [layer]);
+			}),
 			// every part kind, found rather than listed, so a new one cannot be left out; a custom triangle with the first
 			// angle at its minimum leaves the second its full range
 			.. typeof(OpticalPart).Assembly.GetTypes()
@@ -362,7 +376,8 @@ internal static class Program
 		];
 		// clamped by Normalize() against a bound that depends on another value, which stays in code alone (CLAUDE.md)
 		// (a probe's value axis falls back to -1..1 when its top is not above its bottom)
-		HashSet<string> dependentBounds = ["Probe.YMin", "Probe.YMax"];
+		// (a grating's dot diameter is capped at half the smaller spacing)
+		HashSet<string> dependentBounds = ["Probe.YMin", "Probe.YMax", "SimpleGratingPart.Diameter"];
 		int total = 0;
 		foreach ((string name, Func<(Action Normalize, object[] Targets)> make) in cases)
 		{
@@ -2852,6 +2867,47 @@ internal static class Program
 			plate.X = 330; plate.Y = 160; plate.Angle = angle; plate.Diameter = 120; plate.Thickness = 20; plate.Coating = 6; plate.Mount = true; plate.MountWidth = 20;
 			var gate = project.AddPart<XorGatePart>();
 			gate.X = 450; gate.Y = 160; gate.Angle = angle;
+			var diffusor = project.AddPart<DiffusorPart>();
+			diffusor.X = 250; diffusor.Y = 320; diffusor.Angle = angle; diffusor.Length = 16; diffusor.Width = 90;
+			diffusor.Coating = 4; diffusor.CoatingProfile = CoatingProfile.Graded; diffusor.BackCoated = false; diffusor.Absorption = 60; diffusor.AbsorptionRamp = 5;
+			// an interference filter on glass with fractional layers, its back coated and absorbing, and one on a mirror plate
+			var filter = project.AddPart<InterferenceFilterPart>();
+			filter.X = 470; filter.Y = 90; filter.Angle = angle; filter.Length = 20; filter.Width = 70;
+			filter.Coating = 3; filter.CoatingProfile = CoatingProfile.Graded; filter.Absorption = 80; filter.AbsorptionRamp = 4;
+			filter.Layers[3].Thickness = 0.4; filter.Layers[6].Thickness = 0;
+			var coated = project.AddPart<InterferenceFilterPart>();
+			coated.X = 60; coated.Y = 160; coated.Angle = angle; coated.Length = 8; coated.Width = 60; coated.Mirror = true;
+			coated.Layers.RemoveAt(0);
+			// a mirror grating of dots and a glass one that absorbs, with an even count straddling the position
+			var grating = project.AddPart<SimpleGratingPart>();
+			grating.X = 470; grating.Y = 30; grating.Angle = angle; grating.Columns = 3; grating.Rows = 4; grating.ColumnSpacing = 8; grating.RowSpacing = 10; grating.Diameter = 3;
+			var phase = project.AddPart<SimpleGratingPart>();
+			phase.X = 260; phase.Y = 30; phase.Angle = angle; phase.Mirror = false; phase.Columns = 2; phase.Rows = 5; phase.ColumnSpacing = 9; phase.RowSpacing = 7;
+			phase.Diameter = 3; phase.RefractiveIndex = 2.1; phase.Absorption = 150; phase.AbsorptionRamp = 2;
+			// a facetted grating, its band on the back, and a square-wave mirror one
+			var facetted = project.AddPart<FacettedGratingPart>();
+			facetted.X = 60; facetted.Y = 330; facetted.Angle = angle; facetted.Length = 14; facetted.Width = 80; facetted.Pitch = 9; facetted.Amplitude = 2.5;
+			facetted.Coating = 3; facetted.CoatingProfile = CoatingProfile.Graded; facetted.Absorption = 70; facetted.AbsorptionRamp = 4;
+			var binary = project.AddPart<FacettedGratingPart>();
+			binary.X = 500; binary.Y = 330; binary.Angle = angle; binary.Length = 10; binary.Width = 60; binary.Pattern = FacetPattern.SquareWave; binary.Pitch = 7; binary.Amplitude = 1.5; binary.Mirror = true;
+			// a meta lens, its band on the pattern's tops and the plate's back, and a diverging one on a mirror plate
+			var meta = project.AddPart<MetaLensPart>();
+			meta.X = 250; meta.Y = 40; meta.Angle = angle; meta.Length = 12; meta.Width = 90; meta.Height = 10; meta.Pitch = 3; meta.FocalLength = 120; meta.Coating = 2;
+			var metaMirror = project.AddPart<MetaLensPart>();
+			metaMirror.X = 330; metaMirror.Y = 310; metaMirror.Angle = angle; metaMirror.Length = 8; metaMirror.Width = 70; metaMirror.Height = 6; metaMirror.Pitch = 2.5;
+			metaMirror.FocalLength = 80; metaMirror.LensType = MetaLensType.Diverging; metaMirror.Mirror = true; metaMirror.PatternIndex = 2.4;
+			// a meta prism turning the wave the other way
+			var prism = project.AddPart<MetaPrismPart>();
+			prism.X = 160; prism.Y = 20; prism.Angle = angle; prism.Length = 10; prism.Width = 80; prism.Height = 12; prism.Pitch = 3; prism.Deflection = -25; prism.Coating = 2;
+			var axicon = project.AddPart<MetaAxiconPart>();
+			axicon.X = 420; axicon.Y = 20; axicon.Angle = angle; axicon.Length = 10; axicon.Width = 70; axicon.Height = 14; axicon.Pitch = 3.5; axicon.ConeAngle = 15;
+			// a Fresnel lens with a graded band and a biconcave one, its steps the other way
+			var fresnel = project.AddPart<FresnelLensPart>();
+			fresnel.X = 380; fresnel.Y = 40; fresnel.Angle = angle; fresnel.Diameter = 60; fresnel.Thickness = 12; fresnel.Zones = 3;
+			fresnel.Coating = 3; fresnel.CoatingProfile = CoatingProfile.Graded; fresnel.Absorption = 30;
+			var hollow = project.AddPart<FresnelLensPart>();
+			hollow.X = 140; hollow.Y = 30; hollow.Angle = angle; hollow.Diameter = 50; hollow.Thickness = 6; hollow.Zones = 3; hollow.R1 = -80; hollow.R2 = 80; hollow.Coating = 2;
+			hollow.Division = ZoneDivision.EqualDepth;
 			cases.Add(($"every kind at {angle}°", project.Scene.Width, project.Scene.Height, project.Parts));
 		}
 		int compared = 0;
@@ -2957,12 +3013,8 @@ internal static class Program
 		const double reach = 0.6;
 		const double step = 1.0 / PartPainter.Supersample;
 		const double half = step / 2.0;
-		foreach (OpticalPart part in parts)
+		foreach (PartShape shape in parts.Where(part => part.Enabled).SelectMany(PartShape.PiecesOf))
 		{
-			if (!part.Enabled || PartShape.For(part) is not { } shape)
-			{
-				continue;
-			}
 			(int x0, int y0, int x1, int y1) = shape.Bounds(width, height);
 			if (x0 > x1 || y0 > y1)
 			{
@@ -3677,6 +3729,817 @@ internal static class Program
 	private static int BlueAt(ScenePixels pixels, int x, int y) => pixels.Bgra[y * pixels.StrideBytes + x * 4];
 
 	/// <summary>
+	/// The diffusor (2026-11-07): its spectrum, the profile kept until a roughness value changes, the phases from the
+	/// project's seed and the name, a flat one painted as the rectangle it is, the rough front and flat back, the band on
+	/// the front alone, the shape's pruned distance against the polygon's, and the file element.
+	/// </summary>
+	private static void CheckDiffusor()
+	{
+		Console.WriteLine("--- diffusor");
+		var project = new Project { Seed = 4242 };
+		project.Scene.Width = 200;
+		project.Scene.Height = 160;
+		var diffusor = project.AddPart<DiffusorPart>();
+		Check(diffusor.Name == "Diffusor 1" && diffusor.ProjectSeed == 4242 && diffusor.Length == 50 && diffusor.Width == 500 && diffusor.Coating == 0
+			&& diffusor is { CenterWavelength: 16.0, Amplitude: 1.0, Sigma: 6.0, FrontCoated: false, BackCoated: true, SidesCoated: false } && diffusor.ComponentCount == 11
+			&& new DiffusorPart() is { FrontCoated: true, BackCoated: true, SidesCoated: true },
+			"a new diffusor: 'Diffusor 1', the project's seed, 50 × 500 px, λ 16, amplitude 1, sigma 6 (11 ripples), no coating, the back alone to be coated; a loaded one keeps the file's faces");
+		// the checks below were written for these values
+		diffusor.Length = 20; diffusor.Width = 200; diffusor.Amplitude = 3; diffusor.Sigma = 4; diffusor.FrontCoated = true; diffusor.SidesCoated = true;
+		(double Wavelength, double Amplitude, int Index)[] components = diffusor.Components();
+		Check(components.Length == 13 && components[6] == (16.0, 3.0, 0) && Math.Abs(components[0].Wavelength - 4.0) < 1e-12 && Math.Abs(components[0].Amplitude - 3.0 * Math.Exp(-4.5)) < 1e-12
+			&& Math.Abs(components[12].Wavelength - 28.0) < 1e-12 && components.All(c => c.Amplitude <= 3.0),
+			$"the default spectrum: 13 wavelengths a half sigma apart from {components[0].Wavelength} to {components[12].Wavelength} px, the centre at the full amplitude, the ends at e^-4.5 of it");
+		diffusor.CenterWavelength = 4;
+		Check(diffusor.Components().Length == 8 && diffusor.Components().All(c => c.Wavelength >= DiffusorPart.MinWavelength), $"wavelengths below two pixels are left out (centre 4, sigma 4: {diffusor.Components().Length} of 13 remain, from 2 to 16 px)");
+		diffusor.CenterWavelength = 16;
+		diffusor.Sigma = 0;
+		Check(diffusor.Components().Length == 1 && diffusor.ComponentCount == 1, "sigma 0: the centre wavelength alone");
+		double[] single = diffusor.Profile;
+		bool periodic = Enumerable.Range(0, single.Length - 16).All(i => Math.Abs(single[i + 16] - single[i]) < 1e-9);
+		Check(single.Length == 201 && periodic && Math.Abs(diffusor.ProfileHeight - 6.0) < 0.05, $"a single ripple of 16 px: {single.Length} samples across 200 px, periodic in 16, {diffusor.ProfileHeight:0.00} px from crest to trough");
+		diffusor.Sigma = 4;
+
+		// the profile is kept until a value it depends on changes
+		double[] profile = diffusor.Profile;
+		diffusor.RefractiveIndex = 1.7;
+		diffusor.Length = 30;
+		diffusor.X += 5;
+		Check(ReferenceEquals(diffusor.Profile, profile), "the profile is kept across edits of the index, the length and the position");
+		diffusor.Amplitude = 2;
+		Check(!ReferenceEquals(diffusor.Profile, profile) && Math.Abs(diffusor.ProfileHeight - 2.0 / 3.0 * (profile.Max() - profile.Min())) < 1e-9, "a new amplitude makes a new profile, two thirds the height");
+		profile = diffusor.Profile;
+		var twin = new DiffusorPart { Name = diffusor.Name, ProjectSeed = 4242, Width = 200, Amplitude = 2, Sigma = 4 };
+		Check(twin.Profile.SequenceEqual(profile), "the same name and seed give the same profile");
+		project.Seed = 4243;
+		Check(diffusor.ProjectSeed == 4243 && !diffusor.Profile.SequenceEqual(profile), "the project's seed reaches the diffusor, and a new seed makes another profile");
+		diffusor.Name = "Rough";
+		Check(!diffusor.Profile.SequenceEqual(twin.Profile), "the phases come from the name too");
+		diffusor.Width = 220;
+		Check(diffusor.Profile.Length == 221, "a wider plate gets a longer profile");
+		diffusor.Width = 200;
+
+		// a flat diffusor paints as the rectangle it is, at every angle
+		diffusor.Amplitude = 0;
+		diffusor.X = 100;
+		diffusor.Y = 80;
+		diffusor.Angle = 23;
+		diffusor.Coating = 5;
+		diffusor.BackCoated = false;
+		diffusor.Absorption = 40;
+		var rectangle = new RectanglePart { Name = "r", X = 100, Y = 80, Angle = 23, Length = 30, Width = 200, RefractiveIndex = 1.7, Coating = 5, BackCoated = false, Absorption = 40 };
+		ScenePixels flat = PartPainter.Paint(null, 200, 160, 1.0, [diffusor])!;
+		ScenePixels asRectangle = PartPainter.Paint(null, 200, 160, 1.0, [rectangle])!;
+		Check(flat.Bgra.AsSpan().SequenceEqual(asRectangle.Bgra), "with no amplitude the diffusor paints byte for byte as the rectangle of its size, coating and absorption included");
+
+		// the rough front and the flat back, the band on the front alone
+		diffusor.Amplitude = 3;
+		diffusor.Angle = 0;
+		diffusor.Absorption = 0;
+		ScenePixels painted = PartPainter.Paint(null, 200, 160, 1.0, [diffusor])!;
+		double[] front = diffusor.FrontFace();
+		int backColumn = 100 + 15 - 1;
+		bool backFlat = Enumerable.Range(0, 160).All(y => RedAt(painted, backColumn, y) == 170 && RedAt(painted, backColumn + 1, y) == 100);
+		int frontColumn = 100 - 15;
+		int[] frontReds = Enumerable.Range(0, 160).Select(y => RedAt(painted, frontColumn, y)).ToArray();
+		Check(backFlat && frontReds.Distinct().Count() > 3 && frontReds.Any(r => r == 100) && frontReds.Any(r => r > 120),
+			$"the back is flat, red 170 to the last column; the column of the mean front is rough, {frontReds.Distinct().Count()} different reds");
+		// a pixel just inside the front where the face is deepest lies in the √n band (√1.7 = 1.30); the back's inner pixel is body
+		int deepest = Array.IndexOf(front, front.Max());
+		int bandX = (int)Math.Floor(100 + front[deepest]) + 1;
+		Check(RedAt(painted, bandX, deepest) is >= 120 and <= 140 && RedAt(painted, backColumn - 1, 80) == 170,
+			$"the band lies on the rough front alone (red {RedAt(painted, bandX, deepest)} a pixel inside the face at its deepest, {RedAt(painted, backColumn - 1, 80)} inside the back)");
+
+		// the front coating is the rough face's and the back coating the flat face's at any angle (the user's rule, 2026-11-07):
+		// layer-band pixels (√1.7 = red 130) counted by the side of the part frame they lie on
+		var sides = new List<string>();
+		bool coupled = true;
+		foreach (double angle in new[] { 0.0, 90.0, 180.0, -123.0 })
+		{
+			foreach (bool frontOnly in new[] { true, false })
+			{
+				var turned = (DiffusorPart)diffusor.Clone();
+				turned.Angle = angle; turned.Amplitude = 3; turned.Coating = 4; turned.CoatingProfile = CoatingProfile.Layer;
+				turned.FrontCoated = frontOnly; turned.BackCoated = !frontOnly; turned.SidesCoated = false;
+				ScenePixels turnedPixels = PartPainter.Paint(null, 200, 160, 1.0, [turned])!;
+				int rough = 0, smooth = 0;
+				for (int y = 0; y < 160; y++)
+				{
+					for (int x = 0; x < 200; x++)
+					{
+						if (RedAt(turnedPixels, x, y) == 130)
+						{
+							if (turned.ToFrame(x + 0.5, y + 0.5).X < 0.0) rough++; else smooth++;
+						}
+					}
+				}
+				coupled &= frontOnly ? rough > 0 && smooth == 0 : smooth > 0 && rough * 20 < smooth;
+				sides.Add($"{angle}° {(frontOnly ? "front" : "back")} {rough}/{smooth}");
+			}
+		}
+		Check(coupled, $"the front coating lies on the rough face, the back coating on the flat one, at any angle (band pixels rough/flat: {string.Join(", ", sides)})");
+
+		// the shape's pruned nearest-edge search against the plain polygon distance, over a grid of points
+		PartShape shape = PartShape.For(diffusor)!;
+		(double X, double Y)[] vertices = diffusor.Vertices();
+		int disagreements = 0;
+		double worst = 0.0;
+		for (double y = 0.5; y < 160; y += 1.0)
+		{
+			for (double x = 0.5; x < 200; x += 1.0)
+			{
+				(double px, double py) = diffusor.ToFrame(x, y);
+				double expected = PolygonSignedDistance(vertices, px, py);
+				double got = shape.DepthAt(x, y);
+				if (Math.Abs(expected - got) > 1e-9)
+				{
+					disagreements++;
+					worst = Math.Max(worst, Math.Abs(expected - got));
+				}
+			}
+		}
+		Check(disagreements == 0, $"the shape's depth is the polygon's signed distance at every pixel centre ({disagreements} disagree, the worst by {worst})");
+
+		// the file: sparse, and the profile back from the seed
+		string xml;
+		using (var stream = new MemoryStream())
+		{
+			project.Save(stream);
+			xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+		}
+		Project back;
+		using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml)))
+		{
+			back = Project.Load(stream);
+		}
+		Check(xml.Contains("<Diffusor Name=\"Rough\" X=\"100\" Y=\"80\" Coating=\"5\" BackCoated=\"false\" RefractiveIndex=\"1.7\" Length=\"30\" Width=\"200\" Amplitude=\"3\" Sigma=\"4\" />") && !xml.Contains("ProjectSeed")
+			&& back.Parts[0] is DiffusorPart loaded && loaded.ProjectSeed == 4243 && loaded.Profile.SequenceEqual(diffusor.Profile),
+			"the diffusor element is sparse, without the seed, and a loaded diffusor has the seed and the same profile");
+	}
+
+	private static void CheckInterferenceFilter()
+	{
+		Console.WriteLine("--- interference filter");
+		var project = new Project();
+		project.Scene.Width = 200;
+		project.Scene.Height = 160;
+		var filter = project.AddPart<InterferenceFilterPart>();
+		bool quarterWave = filter.Layers.Count == 11 && filter.Layers.Select((layer, i) => i % 2 == 0
+			? layer is { Thickness: 2.0, RefractiveIndex: 2.0 }
+			: layer is { Thickness: 2.67, RefractiveIndex: 1.5 }).All(ok => ok);
+		Check(filter.Name == "Interference filter 1" && filter.Length == 50 && filter.Width == 500 && filter.Coating == 0 && quarterWave
+			&& Math.Abs(filter.StackThickness - 25.35) < 1e-9 && new InterferenceFilterPart().Layers.Count == 0,
+			$"a new filter: 'Interference filter 1', 50 × 500 px, no coating, a quarter-wave stack for λ 16 that begins and ends with the high index, 2.00 at 2.00 px and 1.50 at 2.67 px, 11 layers ({filter.StackThickness.ToString(CultureInfo.InvariantCulture)} px); a loaded one has the file's layers alone");
+
+		// along the middle row at 0°: the background, the layers outermost first, the plate, the background
+		filter.X = 100; filter.Y = 80; filter.Length = 40; filter.Width = 100; filter.RefractiveIndex = 1.7;
+		filter.Layers.Clear();
+		filter.Layers.Add(new FilterLayer { Thickness = 4, RefractiveIndex = 2.0 });
+		filter.Layers.Add(new FilterLayer { Thickness = 6, RefractiveIndex = 1.5 });
+		filter.Layers.Add(new FilterLayer { Thickness = 3, RefractiveIndex = 2.5 });
+		static string Row(ScenePixels pixels, int from, int to) => string.Join(" ", Enumerable.Range(from, to - from).Select(x => RedAt(pixels, x, 80)));
+		static bool Runs(ScenePixels pixels, params (int From, int To, int Red)[] runs) =>
+			runs.All(run => Enumerable.Range(run.From, run.To - run.From).All(x => RedAt(pixels, x, 80) == run.Red));
+		ScenePixels glass = PartPainter.Paint(null, 200, 160, 1.0, [filter])!;
+		Check(Runs(glass, (60, 67, 100), (67, 71, 200), (71, 77, 150), (77, 80, 250), (80, 120, 170), (120, 130, 100)),
+			$"the stack lies on the plate's front, outside it, the first layer outermost (reds from x 64: {Row(glass, 64, 84)} … {Row(glass, 116, 124)})");
+		filter.Mirror = true;
+		ScenePixels mirror = PartPainter.Paint(null, 200, 160, 1.0, [filter])!;
+		Check(Runs(mirror, (60, 67, 100), (67, 71, 200), (71, 77, 150), (77, 80, 250), (80, 120, 0), (120, 130, 100)),
+			$"a reflector's plate is a mirror, its layers stay glass in front of it ({Row(mirror, 64, 84)})");
+		filter.Mirror = false;
+		filter.Layers.Move(2, 0);
+		ScenePixels moved = PartPainter.Paint(null, 200, 160, 1.0, [filter])!;
+		Check(Runs(moved, (67, 70, 250), (70, 74, 200), (74, 80, 150)), $"a layer moved to the top of the list becomes the outermost ({Row(moved, 64, 84)})");
+
+		// a boundary inside a pixel mixes the indices there; a layer of thickness 0 is left out
+		filter.Layers.Clear();
+		filter.Layers.Add(new FilterLayer { Thickness = 0, RefractiveIndex = 2.5 });
+		filter.Layers.Add(new FilterLayer { Thickness = 4.5, RefractiveIndex = 2.0 });
+		ScenePixels mixed = PartPainter.Paint(null, 200, 160, 1.0, [filter])!;
+		Check(Runs(mixed, (70, 75, 100), (75, 76, 150), (76, 80, 200), (80, 120, 170)), $"a boundary half way through a pixel gives it the mean index, and a layer of no thickness paints nothing ({Row(mixed, 72, 82)})");
+		filter.Layers.Clear();
+		ScenePixels bare = PartPainter.Paint(null, 200, 160, 1.0, [filter])!;
+		var rectangle = new RectanglePart { Name = "r", X = 100, Y = 80, Length = 40, Width = 100, RefractiveIndex = 1.7 };
+		Check(bare.Bgra.AsSpan().SequenceEqual(PartPainter.Paint(null, 200, 160, 1.0, [rectangle])!.Bgra), "without layers the filter paints byte for byte as the rectangle of its plate");
+
+		// the plate's coating on its back alone, whatever the front and side flags say
+		filter.Layers.Add(new FilterLayer { Thickness = 4, RefractiveIndex = 2.0 });
+		filter.Coating = 4; filter.CoatingProfile = CoatingProfile.Layer;
+		filter.FrontCoated = true; filter.SidesCoated = true; filter.BackCoated = true;
+		ScenePixels back = PartPainter.Paint(null, 200, 160, 1.0, [filter])!;
+		Check(Runs(back, (76, 80, 200), (80, 116, 170), (116, 120, 130)) && RedAt(back, 100, 30) == 170 && RedAt(back, 100, 129) == 170,
+			$"the AR band lies on the plate's back alone, √1.7 = red 130 (row {Row(back, 112, 122)}; the sides' first rows {RedAt(back, 100, 30)} and {RedAt(back, 100, 129)})");
+		filter.BackCoated = false;
+		ScenePixels uncoated = PartPainter.Paint(null, 200, 160, 1.0, [filter])!;
+		Check(Runs(uncoated, (80, 120, 170)), "with the back unchecked the plate has no band");
+
+		// notifications: the stack's thickness follows layer edits, additions, removals and a new list, and a removed layer is let go
+		int raised = 0;
+		filter.PropertyChanged += (_, e) => raised += e.PropertyName == nameof(InterferenceFilterPart.StackThickness) ? 1 : 0;
+		FilterLayer first = filter.Layers[0];
+		first.Thickness = 5;
+		filter.Layers.Add(new FilterLayer());
+		filter.Layers.Remove(first);
+		first.Thickness = 6;
+		filter.Layers = [new FilterLayer { Thickness = 3 }];
+		filter.Layers[0].Thickness = 3.5;
+		Check(raised == 5 && filter.StackThickness == 3.5, $"the stack's thickness is raised for an edit, an addition, a removal, a new list and an edit in it, not for a removed layer ({raised} times)");
+
+		// the watcher reports a layer's edit and a reordering as simulation edits
+		filter.Layers.Add(new FilterLayer());
+		var changes = new List<ProjectChange>();
+		using (var watcher = new ProjectWatcher(project))
+		{
+			watcher.Changed += (_, change) => changes.Add(change);
+			filter.Layers[1].RefractiveIndex = 2.2;
+			filter.Layers.Move(1, 0);
+			filter.Layers.Add(new FilterLayer());
+			filter.Layers[2].Thickness = 1;
+			filter.Layers = [new FilterLayer()];
+			filter.Layers[0].Thickness = 7;
+		}
+		Check(changes.All(c => c.AffectsSimulation) && changes.Count(c => c.Item is FilterLayer) == 3 && changes.Count(c => c.Item is System.Collections.ObjectModel.ObservableCollection<FilterLayer>) == 2
+			&& changes.Count(c => c.Item is InterferenceFilterPart && c.Property == nameof(InterferenceFilterPart.Layers)) == 1,
+			$"the watcher reports a layer's index, a move, an addition, a new layer's thickness, a new list and a layer in it as simulation edits ({changes.Count} reports, the stack's thickness among them)");
+
+		// a copy has layers of its own
+		filter.Layers = [new FilterLayer { Thickness = 4, RefractiveIndex = 2.0 }, new FilterLayer { Thickness = 2.5 }];
+		var copy = (InterferenceFilterPart)filter.Clone();
+		int copyRaised = 0;
+		copy.PropertyChanged += (_, e) => copyRaised += e.PropertyName == nameof(InterferenceFilterPart.StackThickness) ? 1 : 0;
+		copy.Layers[0].Thickness = 9;
+		copy.Layers.Add(new FilterLayer());
+		Check(!ReferenceEquals(copy.Layers, filter.Layers) && filter.Layers.Count == 2 && filter.Layers[0].Thickness == 4 && copy.Layers[1].Thickness == 2.5 && copyRaised == 2
+			&& filter.StackThickness == 6.5,
+			$"a copy's layers are its own: an edit and an addition in it leave the original alone and are raised by the copy ({copyRaised} times)");
+
+		// the file: a Layer child per layer in order, sparse, and back
+		filter.Coating = 0; filter.FrontCoated = true; filter.SidesCoated = true; filter.BackCoated = true;
+		string xml;
+		using (var stream = new MemoryStream())
+		{
+			project.Save(stream);
+			xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+		}
+		Project loaded;
+		using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml)))
+		{
+			loaded = Project.Load(stream);
+		}
+		var read = loaded.Parts[0] as InterferenceFilterPart;
+		Check(xml.Contains("<InterferenceFilter Name=\"Interference filter 1\" X=\"100\" Y=\"80\" RefractiveIndex=\"1.7\" Length=\"40\" Width=\"100\">")
+			&& xml.Contains("<Layer Thickness=\"4\" RefractiveIndex=\"2\" />") && xml.Contains("<Layer Thickness=\"2.5\" />")
+			&& read != null && read.Layers.Count == 2 && read.Layers[0] is { Thickness: 4, RefractiveIndex: 2.0 } && read.Layers[1] is { Thickness: 2.5, RefractiveIndex: 1.5 }
+			&& read.StackThickness == 6.5,
+			"the filter element is sparse with a Layer child per layer, and a loaded filter has the layers in their order");
+	}
+
+	private static void CheckSimpleGrating()
+	{
+		Console.WriteLine("--- simple 2D grating");
+		const int width = 240, height = 560, cx = 120, cy = 280;
+		var project = new Project();
+		project.Scene.Width = width;
+		project.Scene.Height = height;
+		var grating = project.AddPart<SimpleGratingPart>();
+		grating.X = cx;
+		grating.Y = cy;
+		(double X, double Y)[] points = grating.Points();
+		Check(grating.Name == "Grating 1" && grating.Mirror && grating is { Columns: 1, Rows: 31, ColumnSpacing: 16, RowSpacing: 16, Diameter: 2, MaxDiameter: 8 } && !new SimpleGratingPart().Mirror
+			&& points.Length == 31 && points.All(p => p.X == 0.0) && points[0].Y == -240 && points[30].Y == 240 && points[15].Y == 0.0
+			&& grating.Vertices() is [(-1, -241), (1, -241), (1, 241), (-1, 241)] && grating.AxisReach == 1.0,
+			"a new grating: 'Grating 1', a mirror, one column of 31 rows 16 px apart, 2 px dots (8 at most), the dots from -240 to 240 across with the middle one on the position; a loaded one keeps the file's material");
+
+		// a mirror lattice at 0°: each dot the four pixels about its centre, nothing between
+		ScenePixels mirror = PartPainter.Paint(null, width, height, 1.0, [grating])!;
+		bool dots = Enumerable.Range(0, 31).All(k => RedAt(mirror, cx - 1, cy - 240 + 16 * k - 1) == 0 && RedAt(mirror, cx, cy - 240 + 16 * k) == 0 && RedAt(mirror, cx - 1, cy - 240 + 16 * k) == 0 && RedAt(mirror, cx, cy - 240 + 16 * k - 1) == 0);
+		bool gaps = Enumerable.Range(0, 31).All(k => RedAt(mirror, cx + 1, cy - 240 + 16 * k) == 100 && RedAt(mirror, cx - 2, cy - 240 + 16 * k) == 100 && RedAt(mirror, cx, cy - 240 + 16 * k + 8) == 100)
+			&& RedAt(mirror, cx, cy - 240 - 3) == 100 && RedAt(mirror, cx, cy + 240 + 2) == 100;
+		int zeros = Enumerable.Range(0, height).Sum(y => Enumerable.Range(0, width).Count(x => RedAt(mirror, x, y) == 0));
+		Check(dots && gaps && zeros == 4 * 31, $"a mirror grating paints each 2 px dot as the 2 × 2 pixels about its centre, red 0, and nothing between or beyond ({zeros} mirror pixels for 31 dots)");
+
+		// glass dots with absorption: a mixed index at the rim pixels, blue inside
+		grating.Mirror = false;
+		grating.RefractiveIndex = 1.7;
+		grating.Absorption = 100;
+		grating.AbsorptionRamp = 1;
+		ScenePixels glass = PartPainter.Paint(null, width, height, 1.0, [grating])!;
+		int rim = RedAt(glass, cx, cy);
+		Check(rim is > 130 and < 170 && RedAt(glass, cx - 1, cy - 1) == rim && RedAt(glass, cx + 1, cy) == 100 && BlueAt(glass, cx, cy) > 0 && BlueAt(glass, cx + 1, cy) == 0,
+			$"glass dots: the four pixels of a 2 px dot take the samples' mean index (red {rim}, a disc of radius 1 at their corner), the neighbours stay at 100, and the dot absorbs");
+		grating.Diameter = 8;
+		ScenePixels wide = PartPainter.Paint(null, width, height, 1.0, [grating])!;
+		Check(RedAt(wide, cx, cy) == 170 && RedAt(wide, cx + 3, cy) == 170 && RedAt(wide, cx + 4, cy) < 170 && RedAt(wide, cx + 5, cy) == 100 && RedAt(wide, cx, cy + 7) == 100,
+			"an 8 px dot is body to three pixels from its centre, mixed at the fourth, and ends before the next dot");
+
+		// the diameter is capped at half the smaller spacing, the spacings at 2
+		grating.Diameter = 50;
+		grating.Normalize();
+		int capped = grating.Diameter;
+		grating.ColumnSpacing = 6;
+		int narrowed = grating.MaxDiameter;
+		grating.Normalize();
+		int renarrowed = grating.Diameter;
+		grating.RowSpacing = 1;
+		grating.Normalize();
+		Check(capped == 8 && narrowed == 3 && renarrowed == 3 && grating.RowSpacing == 2 && grating.Diameter == 1 && grating.MaxDiameter == 1,
+			$"the diameter is capped at half the smaller spacing ({capped} at 16, {renarrowed} at a column spacing of 6), a spacing at 2, where a dot is a pixel");
+		grating.ColumnSpacing = 16;
+		grating.RowSpacing = 16;
+		grating.Diameter = 2;
+
+		// an even count straddles the position; the lattice turns with the part
+		grating.Columns = 2;
+		grating.Rows = 3;
+		(double X, double Y)[] even = grating.Points();
+		grating.Mirror = true;
+		grating.Angle = 90;
+		ScenePixels turned = PartPainter.Paint(null, width, height, 1.0, [grating])!;
+		// at 90° the part's x' points up the screen and y' to the right: the two columns at y = cy ∓ 8, the three rows at x = cx − 16, cx, cx + 16
+		bool turnedDots = new[] { -16, 0, 16 }.All(dx => new[] { -8, 8 }.All(dy => RedAt(turned, cx + dx, cy + dy) == 0 && RedAt(turned, cx + dx - 1, cy + dy - 1) == 0))
+			&& Enumerable.Range(0, height).Sum(y => Enumerable.Range(0, width).Count(x => RedAt(turned, x, y) == 0)) == 4 * 6;
+		Check(even.Length == 6 && even.Select(p => p.X).Distinct().Order().SequenceEqual([-8.0, 8.0]) && even.Select(p => p.Y).Distinct().Order().SequenceEqual([-16.0, 0.0, 16.0]) && turnedDots,
+			"two columns straddle the position 8 px either side, and at 90° the lattice stands turned on the canvas, 24 mirror pixels for 6 dots");
+
+		// the file: sparse
+		var saved = new Project();
+		var fresh = saved.AddPart<SimpleGratingPart>();
+		fresh.X = cx;
+		fresh.Y = cy;
+		fresh.Rows = 7;
+		string xml;
+		using (var stream = new MemoryStream())
+		{
+			saved.Save(stream);
+			xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+		}
+		Project back;
+		using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml)))
+		{
+			back = Project.Load(stream);
+		}
+		Check(xml.Contains("<SimpleGrating Name=\"Grating 1\" X=\"120\" Y=\"280\" Mirror=\"true\" Rows=\"7\" />") && back.Parts[0] is SimpleGratingPart { Mirror: true, Rows: 7, Columns: 1, Diameter: 2 },
+			"the grating element is sparse, and a loaded grating has its values");
+	}
+
+	private static void CheckFresnelLens()
+	{
+		Console.WriteLine("--- Fresnel lens");
+		const int width = 300, height = 300, cx = 150, cy = 150;
+		var project = new Project();
+		project.Scene.Width = width;
+		project.Scene.Height = height;
+		var fresnel = project.AddPart<FresnelLensPart>();
+		fresnel.X = cx;
+		fresnel.Y = cy;
+		double newSag = LensPart.ZoneSag(1500, 250, 4);
+		Check(fresnel.Name == "Fresnel lens 1" && fresnel is { Zones: 4, ZoneCount: 4, Division: ZoneDivision.EqualWidth, Thickness: 20, Diameter: 500, R1: 1500, R2: -1500 }
+			&& new FresnelLensPart() is { Thickness: 40, Diameter: 200, R1: 300 } && Math.Abs(newSag - 9.21) < 0.01 && Math.Abs(fresnel.EdgeThickness - (20 - 2 * newSag)) < 1e-9,
+			$"a new Fresnel lens: 'Fresnel lens 1', 4 zones of equal width, a plate of 20 px, 500 across with radii of 1500 (a loaded one keeps the file's values); the outer zone's sag {newSag:0.00} px, the edge {fresnel.EdgeThickness:0.00} px");
+
+		// the checks below were written for the lens's diameter and radii
+		fresnel.Diameter = 200;
+		fresnel.R1 = 300;
+		fresnel.R2 = -300;
+		double zoneSag = LensPart.ZoneSag(300, 100, 4);
+		Check(Math.Abs(zoneSag - (LensPart.Sag(300, 100) - LensPart.Sag(300, 75))) < 1e-12 && Math.Abs(zoneSag - 7.63) < 0.01
+			&& Math.Abs(fresnel.EdgeThickness - (20 - 2 * zoneSag)) < 1e-9 && Math.Abs(fresnel.RimX(1) - (-10 + zoneSag)) < 1e-9 && Math.Abs(fresnel.AxisReach - (10 + zoneSag)) < 1e-9,
+			$"at 200 across with radii of 300 the outer zone's sag is {zoneSag:0.00} px, the edge {fresnel.EdgeThickness:0.00} px, the rim of the profile and the reach by it");
+
+		// the fit reckons with the zone sags: a plate too thin for the two zone sags gets radii raised until they fit; the whole lens would be flatter still
+		var thin = new FresnelLensPart { Diameter = 200, Thickness = 10, R1 = 300, R2 = -300 };
+		thin.Normalize();
+		(double flatR1, _) = LensPart.FitRadii(200, 10, 300, -300);
+		double fitted = LensPart.ZoneSag(thin.R1, 100, 4) + LensPart.ZoneSag(thin.R2, 100, 4);
+		Check(thin.R1 > 300 && thin.R2 < -300 && thin.R1 == -thin.R2 && fitted <= 10 + 1e-9 && fitted > 9.9 && flatR1 > thin.R1 && thin.EdgeThickness >= 0.0 && thin.EdgeThickness < 0.1,
+			$"a 10 px plate raises the radii to {thin.R1} so the two zone sags just fit ({fitted:0.000} px; a whole lens needs {flatR1})");
+
+		// with one zone it is the lens, byte for byte
+		var lens = new LensPart { Name = "l", X = cx, Y = cy, Thickness = 20, Coating = 4, CoatingProfile = CoatingProfile.Graded, Absorption = 50 };
+		var single = new FresnelLensPart { Name = "f", X = cx, Y = cy, Thickness = 20, Zones = 1, Coating = 4, CoatingProfile = CoatingProfile.Graded, Absorption = 50 };
+		ScenePixels asLens = PartPainter.Paint(null, width, height, 1.0, [lens])!;
+		ScenePixels oneZone = PartPainter.Paint(null, width, height, 1.0, [single])!;
+		// the outline's points lie on the lens's arcs (sampled at other y's: the first half down to the axis, then up); with one
+		// zone two sags of 17 px do not fit in 20, so both have their radii refit, where four zones keep the 300
+		(double fitR1, double fitR2) = LensPart.FitRadii(200, 20, 300, -300);
+		(double X, double Y)[] singleOutline = single.Outline();
+		bool onArcs = singleOutline.All(p => Math.Abs(p.X - (-10 + LensPart.SurfaceSag(fitR1, p.Y))) < 1e-9 || Math.Abs(p.X - (10 + LensPart.SurfaceSag(fitR2, p.Y))) < 1e-9);
+		Check(asLens.Bgra.AsSpan().SequenceEqual(oneZone.Bgra) && onArcs && fitR1 > 300 && fresnel.R1 == 300,
+			$"with one zone a Fresnel lens paints byte for byte as the lens, coating and absorption included, and its outline lies on the lens's arcs (both refit to {fitR1}, where four zones keep 300)");
+
+		// the zones at 0°: along the axis the plate's 20 px; in zone 0 the first surface recedes to a pixel at its outer edge; at each
+		// zone's inner edge the surface is back at the vertex plane; the second surface mirrors the first
+		ScenePixels painted = PartPainter.Paint(null, width, height, 1.0, [fresnel])!;
+		bool axis = RedAt(painted, cx - 11, cy) == 100 && RedAt(painted, cx - 10, cy) == 150 && RedAt(painted, cx + 9, cy) == 150 && RedAt(painted, cx + 10, cy) == 100;
+		bool recedes = RedAt(painted, cx - 10, cy + 24) == 100 && RedAt(painted, cx - 9, cy + 24) == 150 && RedAt(painted, cx - 8, cy + 49) == 100 && RedAt(painted, cx - 7, cy + 49) >= 140
+			&& RedAt(painted, cx + 7, cy + 49) == 100 && RedAt(painted, cx + 6, cy + 49) >= 140;
+		bool restarts = RedAt(painted, cx - 10, cy + 25) >= 140 && RedAt(painted, cx - 10, cy + 50) >= 140 && RedAt(painted, cx - 10, cy + 75) >= 140 && RedAt(painted, cx + 9, cy + 50) >= 140
+			&& RedAt(painted, cx - 10, cy - 26) >= 140 && RedAt(painted, cx - 10, cy - 25) == 100;
+		Check(axis && recedes && restarts,
+			$"at 0° the plate is 20 px on the axis; in a zone the surface recedes (red {RedAt(painted, cx - 10, cy + 24)}, {RedAt(painted, cx - 7, cy + 49)} at the vertex plane and 3 px in), and at every zone's inner edge it is back at the vertex plane ({RedAt(painted, cx - 10, cy + 25)}, {RedAt(painted, cx - 10, cy + 50)}, {RedAt(painted, cx - 10, cy + 75)})");
+
+		// the outline has the steps: at each zone boundary two points at the same y and different x, on both surfaces and both sides
+		(double X, double Y)[] outline = fresnel.Outline();
+		// (the rim's edge at +100, where the first surface's last point meets the second's first, is no zone step)
+		int steps = Enumerable.Range(1, outline.Length - 1).Count(i => outline[i].Y == outline[i - 1].Y && Math.Abs(outline[i].Y) < 100 && Math.Abs(outline[i].X - outline[i - 1].X) > 0.5);
+		Check(steps == 12 && outline.All(p => Math.Abs(p.X) <= 10.0 + 1e-9) && outline.Any(p => Math.Abs(p.X - (-10 + zoneSag)) < 1e-9 && Math.Abs(p.Y) == 100),
+			$"the outline steps back to the vertex plane at every zone boundary ({steps} steps for 4 zones), stays within the plate, and meets the rim at the outer zone's sag");
+
+		// the vertex handle: pulled out by 2 px with the rim held, the zone sag grows by 2 and the plate by 2, the radius found for the zone
+		// (the part's centre moves to the new middle, as the lens's does, so the rim is held on the canvas)
+		double rim = fresnel.RimX(1);
+		double rimOnCanvas = fresnel.ToCanvas(rim, 0.0).X;
+		fresnel.SetVertex(1, -12.0, rim, fresnel.VertexX(2));
+		Check(fresnel.Thickness == 22 && fresnel.X == cx - 1 && Math.Abs(fresnel.ToCanvas(fresnel.RimX(1), 0.0).X - rimOnCanvas) < 0.02 && fresnel.R1 < 300 && Math.Abs(LensPart.ZoneSag(fresnel.R1, 100, 4) - (zoneSag + 2)) < 0.02,
+			$"the first vertex pulled out by 2 px: the plate 22 px, the centre a pixel on, the rim held on the canvas ({fresnel.ToCanvas(fresnel.RimX(1), 0.0).X:0.00}), R1 {fresnel.R1} for a zone sag of {LensPart.ZoneSag(fresnel.R1, 100, 4):0.00}");
+
+		// a biconcave Fresnel lens: the steps face the other way, the glass of a zone ending at its outer edge
+		var hollow = new FresnelLensPart { Name = "h", X = cx, Y = cy, Thickness = 10, Diameter = 200, R1 = -300, R2 = 300, Zones = 4 };
+		ScenePixels concave = PartPainter.Paint(null, width, height, 1.0, [hollow])!;
+		// (at a zone's first row the arc has advanced a few hundredths of a pixel past the vertex plane: the pixel there is a few percent glass)
+		Check(RedAt(concave, cx - 5, cy) == 150 && RedAt(concave, cx - 6, cy) == 100 && RedAt(concave, cx - 6, cy + 24) == 150 && RedAt(concave, cx - 6, cy + 25) < 110
+			&& RedAt(concave, cx - 6, cy + 49) == 150 && RedAt(concave, cx - 6, cy + 50) < 110 && Math.Abs(hollow.EdgeThickness - (10 + 2 * zoneSag)) < 1e-9,
+			$"biconcave: a zone's surface advances outward and ends at the zone's outer edge (red {RedAt(concave, cx - 6, cy + 24)} then {RedAt(concave, cx - 6, cy + 25)} a pixel out from the plane), the next starting at the vertex plane again; the edge {hollow.EdgeThickness:0.00} px");
+
+		// zones of equal depth: each the same share of the rim's sag, the boundaries where the arc reaches it, narrowing outward;
+		// the fit, the edge and the vertex handle reckon with that share
+		var deep = new FresnelLensPart { Name = "d", X = cx, Y = cy, Thickness = 20, Diameter = 200, R1 = 300, R2 = -300, Zones = 4, Division = ZoneDivision.EqualDepth };
+		double share = LensPart.Sag(300, 100) / 4;
+		double[] bounds = [.. Enumerable.Range(0, 5).Select(k => LensPart.ZoneBound(300, 100, 4, ZoneDivision.EqualDepth, k))];
+		bool narrowing = bounds[0] == 0 && bounds[4] == 100 && Enumerable.Range(1, 4).All(k => bounds[k] - bounds[k - 1] < bounds[k - 1] - (k >= 2 ? bounds[k - 2] : 0) || k == 1)
+			&& Enumerable.Range(1, 3).All(k => Math.Abs(LensPart.Sag(300, bounds[k]) - k * share) < 1e-9);
+		Check(narrowing && Math.Abs(LensPart.ZoneSag(300, 100, 4, ZoneDivision.EqualDepth) - share) < 1e-12 && Math.Abs(deep.EdgeThickness - (20 - 2 * share)) < 1e-9
+			&& LensPart.ZoneIndex(300, 100, 4, ZoneDivision.EqualDepth, bounds[1] - 0.1) == 0 && LensPart.ZoneIndex(300, 100, 4, ZoneDivision.EqualDepth, bounds[1] + 0.1) == 1,
+			$"equal depth: the boundaries at {string.Join(", ", bounds.Skip(1).Take(3).Select(b => b.ToString("0.0", CultureInfo.InvariantCulture)))} px, where the sag reaches a quarter, a half and three quarters of the rim's, the zones narrowing outward; each zone {share:0.00} px deep, the edge {deep.EdgeThickness:0.00} px");
+		ScenePixels equalDepth = PartPainter.Paint(null, width, height, 1.0, [deep])!;
+		int y1 = (int)Math.Floor(bounds[1]);
+		Check(RedAt(equalDepth, cx - 10, cy + y1 - 1) == 100 && RedAt(equalDepth, cx - 10, cy + y1 + 1) >= 130 && RedAt(equalDepth, cx + 9, cy + y1 + 1) >= 130
+			&& RedAt(equalDepth, cx - 10, cy + 25) == 100 && RedAt(equalDepth, cx - 9, cy + 25) >= 140,
+			$"painted, the first zone runs past 25 px (red {RedAt(equalDepth, cx - 10, cy + 25)} at the vertex plane there, {RedAt(equalDepth, cx - 9, cy + 25)} a pixel in: the arc has receded but a pixel) and the surface is back at the vertex plane just beyond {bounds[1]:0.0} px ({RedAt(equalDepth, cx - 10, cy + y1 + 1)})");
+		var thinDeep = new FresnelLensPart { Diameter = 200, Thickness = 6, R1 = 300, R2 = -300, Zones = 4, Division = ZoneDivision.EqualDepth };
+		thinDeep.Normalize();
+		double fittedDeep = 2 * LensPart.Sag(thinDeep.R1, 100) / 4;
+		Check(thinDeep.R1 > 300 && fittedDeep <= 6 + 1e-9 && fittedDeep > 5.9, $"a 6 px plate of equal-depth zones raises the radii to {thinDeep.R1} so the two zone depths just fit ({fittedDeep:0.000} px)");
+		double deepRim = deep.ToCanvas(deep.RimX(1), 0.0).X;
+		deep.SetVertex(1, -12.0, deep.RimX(1), deep.VertexX(2));
+		Check(deep.Thickness == 22 && Math.Abs(deep.ToCanvas(deep.RimX(1), 0.0).X - deepRim) < 0.02 && Math.Abs(LensPart.Sag(deep.R1, 100) / 4 - (share + 2)) < 0.02,
+			$"the vertex handle on equal-depth zones: the rim held, R1 {deep.R1} for a zone depth of {LensPart.Sag(deep.R1, 100) / 4:0.00}");
+
+		// the file: sparse, the diameter, radii and thickness written since a new one differs from the lens's defaults
+		string xml;
+		using (var stream = new MemoryStream())
+		{
+			var saved = new Project();
+			var fresh = saved.AddPart<FresnelLensPart>();
+			fresh.X = cx;
+			fresh.Y = cy;
+			fresh.Zones = 6;
+			fresh.Division = ZoneDivision.EqualDepth;
+			saved.Save(stream);
+			xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+		}
+		Project back;
+		using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml)))
+		{
+			back = Project.Load(stream);
+		}
+		Check(xml.Contains("<FresnelLens Name=\"Fresnel lens 1\" X=\"150\" Y=\"150\" Diameter=\"500\" R1=\"1500\" R2=\"-1500\" Thickness=\"20\" Division=\"EqualDepth\" Zones=\"6\" />")
+			&& back.Parts[0] is FresnelLensPart { Zones: 6, Thickness: 20, ZoneCount: 6, Division: ZoneDivision.EqualDepth, ZoneDivision: ZoneDivision.EqualDepth },
+			"the Fresnel lens element is sparse, and a loaded one has its zones, division and sizes");
+	}
+
+	private static void CheckFacettedGrating()
+	{
+		Console.WriteLine("--- facetted grating");
+		var project = new Project();
+		project.Scene.Width = 120;
+		project.Scene.Height = 120;
+		var grating = project.AddPart<FacettedGratingPart>();
+		double[] profile = grating.Profile();
+		bool periodic = Enumerable.Range(0, profile.Length - 32).All(i => Math.Abs(profile[i + 32] - profile[i]) < 1e-9);
+		Check(grating.Name == "Facetted grating 1" && grating is { Length: 50, Width: 500, Pattern: FacetPattern.Sawtooth, Pitch: 32.0, Amplitude: 4.0, BackCoated: true }
+			&& profile.Length == 501 && periodic && Math.Abs(profile.Min() + 4.0) < 1e-9 && profile.Max() < 4.0 && profile.Max() > 3.7 && Math.Abs(profile[250] + 4.0) < 1e-9 && profile[251] > profile[250],
+			$"a new facetted grating: 'Facetted grating 1', 50 × 500 px, a sawtooth of pitch 32 and amplitude 4, periodic in 32, from -4 at the centre of the face rising to {profile.Max():0.00}");
+		grating.Pattern = FacetPattern.SquareWave;
+		double[] square = grating.Profile();
+		grating.Pattern = FacetPattern.Sinusoidal;
+		double[] sine = grating.Profile();
+		Check(square.All(v => Math.Abs(Math.Abs(v) - 4.0) < 1e-9) && square[250] == -4.0 && square[266] == 4.0 && square[282] == -4.0
+			&& Math.Abs(sine[250]) < 1e-9 && Math.Abs(sine[258] - 4.0) < 1e-9 && Math.Abs(sine[274] + 4.0) < 1e-9,
+			"a square wave is ±4 in halves of the pitch, a sinusoid 0 at the centre, +4 a quarter pitch on, −4 three quarters on");
+
+		// painted at 0°: a sawtooth of pitch 16, amplitude 4 on a 20 × 64 plate; the face at y' is -10 + profile(y'), a sample a pixel
+		grating.Pattern = FacetPattern.Sawtooth;
+		grating.X = 60; grating.Y = 60; grating.Length = 20; grating.Width = 64; grating.Pitch = 16; grating.RefractiveIndex = 1.5;
+		ScenePixels painted = PartPainter.Paint(null, 120, 120, 1.0, [grating])!;
+		const int cx = 60, cy = 60;
+		// row cy (y' 0..1): the crest, the face from -14 to -13.5, so pixel -14 is mixed and -13 glass; row cy + 14 (y' 14..15): 3 to 3.5 in, -7 mixed, -6 glass; row cy + 16: the next tooth's crest again
+		Check(RedAt(painted, cx - 15, cy) == 100 && RedAt(painted, cx - 14, cy) is > 100 and < 150 && RedAt(painted, cx - 13, cy) == 150
+			&& RedAt(painted, cx - 8, cy + 14) == 100 && RedAt(painted, cx - 7, cy + 14) is > 100 and < 150 && RedAt(painted, cx - 6, cy + 14) == 150
+			&& RedAt(painted, cx - 13, cy + 16) == 150 && RedAt(painted, cx - 15, cy + 16) == 100 && RedAt(painted, cx + 9, cy) == 150 && RedAt(painted, cx + 10, cy) == 100,
+			$"the sawtooth's face: a tooth's crest 4 px out at its start (reds {RedAt(painted, cx - 15, cy)}, {RedAt(painted, cx - 14, cy)}, {RedAt(painted, cx - 13, cy)}), 3.5 px in at its end ({RedAt(painted, cx - 8, cy + 14)}, {RedAt(painted, cx - 7, cy + 14)}, {RedAt(painted, cx - 6, cy + 14)}), the next crest a pitch on; the back flat at +10");
+		// the band on the back alone, whatever the front and side flags say
+		grating.Coating = 4; grating.CoatingProfile = CoatingProfile.Layer; grating.FrontCoated = true; grating.SidesCoated = true;
+		ScenePixels banded = PartPainter.Paint(null, 120, 120, 1.0, [grating])!;
+		int bandPixels = 0, frontBand = 0;
+		for (int y = 0; y < 120; y++)
+		{
+			for (int x = 0; x < 120; x++)
+			{
+				if (RedAt(banded, x, y) == 122)
+				{
+					bandPixels++;
+					if (x < cx)
+					{
+						frontBand++;
+					}
+				}
+			}
+		}
+		Check(bandPixels > 0 && frontBand == 0 && RedAt(banded, cx + 8, cy) == 122 && RedAt(banded, cx + 5, cy) == 150,
+			$"the AR band (√1.5 = red 122) lies on the flat back alone: {bandPixels} band pixels, none in front of the centre line");
+		// a mirror grating: red 0 by the pixel-centre test, the teeth kept
+		grating.Mirror = true; grating.Coating = 0;
+		ScenePixels mirror = PartPainter.Paint(null, 120, 120, 1.0, [grating])!;
+		Check(RedAt(mirror, cx - 13, cy) == 0 && RedAt(mirror, cx - 15, cy) == 100 && RedAt(mirror, cx - 6, cy + 14) == 0 && RedAt(mirror, cx - 8, cy + 14) == 100 && RedAt(mirror, cx + 8, cy) == 0,
+			"a mirror facetted grating is red 0 with the same teeth");
+		// the file
+		string xml;
+		using (var stream = new MemoryStream())
+		{
+			var saved = new Project();
+			var fresh = saved.AddPart<FacettedGratingPart>();
+			fresh.X = 60; fresh.Y = 60; fresh.Pattern = FacetPattern.Sinusoidal; fresh.Pitch = 24;
+			saved.Save(stream);
+			xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+		}
+		Project back;
+		using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml)))
+		{
+			back = Project.Load(stream);
+		}
+		Check(xml.Contains("<FacettedGrating ") && xml.Contains(" Pattern=\"Sinusoidal\"") && xml.Contains(" Pitch=\"24\"") && !xml.Contains(" Amplitude=") && !xml.Contains(" Length=") && !xml.Contains(" Width=") && back.Parts[0] is FacettedGratingPart { Pattern: FacetPattern.Sinusoidal, Pitch: 24, Amplitude: 4 },
+			"the facetted grating element is sparse, and a loaded one has its pattern and pitch");
+	}
+
+	private static void CheckMetaSurfaces()
+	{
+		Console.WriteLine("--- meta surfaces");
+		var project = new Project();
+		project.Scene.Width = 100;
+		project.Scene.Height = 100;
+		var lens = project.AddPart<MetaLensPart>();
+		double[] fills = lens.FillFactors();
+		int centre = fills.Length / 2;
+		// within the first zone the fill falls from the centre out; at the next zone it restarts near 1
+		int firstWrap = Enumerable.Range(centre + 1, fills.Length - centre - 1).First(j => fills[j] > fills[j - 1] + 0.5);
+		bool falling = Enumerable.Range(centre + 1, firstWrap - centre - 1).All(j => fills[j] <= fills[j - 1] + 1e-12);
+		double lambda = 2.0 * Math.PI * 255.0 / 50.0; // level 50 at the default scale of 2: ω = 50 / 255 × 0.5 × 2 radians a step, 32.04 px
+		Check(lens.Name == "Meta lens 1" && lens is { Length: 50, Width: 500, FocalLength: 500, LensType: MetaLensType.Converging, Pitch: 4.0, Height: 32.0, PatternIndex: 2.0, DesignFrequency: 50.0, SidesCoated: false }
+			&& Math.Abs(lens.Wavelength - lambda) < 1e-9 && Math.Abs(lens.FullTurnHeight - lambda) < 1e-9 && lens.CellCount == 125 && fills.Length == 125 && Math.Abs(fills[centre] - 1.0) < 1e-9
+			&& falling && lens.ZoneCount == 2 && fills[firstWrap] > 0.9 && Math.Abs(fills[centre - 1] - fills[centre + 1]) < 1e-12,
+			$"a new meta lens: 'Meta lens 1', 50 × 500 px, F 500, converging, cells of 4 px, ridges 32 px of index 2 for λ {lambda:0.00} (a full turn needs {lens.FullTurnHeight:0.00} px): {fills.Length} cells, the centre one full, the fill falling to the zone's edge at cell {firstWrap - centre} from the centre and restarting at {fills[firstWrap]:0.00}, {lens.ZoneCount} zones, symmetric");
+		lens.LensType = MetaLensType.Diverging;
+		double[] diverging = lens.FillFactors();
+		bool rising = Enumerable.Range(centre + 1, firstWrap - centre - 1).All(j => diverging[j] >= diverging[j - 1] - 1e-12);
+		Check(Math.Abs(diverging[centre]) < 1e-9 && rising && diverging[firstWrap - 1] > 0.9 && diverging[firstWrap] < 0.1,
+			"diverging: the centre cell empty, the fill rising to the zone's edge and restarting at nothing");
+		lens.LensType = MetaLensType.Converging;
+		lens.Height = 16;
+		double[] low = lens.FillFactors();
+		Check(low.Count(f => f >= 1.0 - 1e-9) > 20 && low[centre] == 1.0, $"a pattern of half the full-turn height saturates: {low.Count(f => f >= 1.0 - 1e-9)} of {low.Length} cells are solid");
+		lens.Height = 32;
+		// the simulation's frequency scale reaches the lens through the follower, halving the wavelength at twice the scale
+		using (new GatePortFollower(project))
+		{
+			project.Simulation.SourceFrequencyScale = 4.0;
+			Check(lens.FrequencyScale == 4.0 && Math.Abs(lens.Wavelength - lambda / 2.0) < 1e-9 && Math.Abs(lens.FullTurnHeight - lambda / 2.0) < 1e-9, "the frequency scale reaches the meta lens: at twice the scale the wavelength and the full-turn height halve");
+			project.Simulation.SourceFrequencyScale = 2.0;
+		}
+
+		// the prism: a line of delay across the face, a zone of λ / sin θ; the axicon: symmetric, its zones half as many across
+		var prism = project.AddPart<MetaPrismPart>();
+		double[] ramp = prism.FillFactors();
+		int wraps = Enumerable.Range(1, ramp.Length - 1).Count(j => Math.Abs(ramp[j] - ramp[j - 1]) > 0.5);
+		var axicon = project.AddPart<MetaAxiconPart>();
+		double[] cone = axicon.FillFactors();
+		int axiconCentre = cone.Length / 2;
+		Check(prism.Name == "Meta prism 1" && prism.Deflection == 20.0 && Math.Abs(prism.ZoneWidth - lambda / Math.Sin(20.0 * Math.PI / 180.0)) < 1e-9 && prism.ZoneCount == 6 && wraps == 5
+			&& axicon.Name == "Meta axicon 1" && axicon.ConeAngle == 10.0 && Math.Abs(axicon.ZoneWidth - lambda / Math.Sin(10.0 * Math.PI / 180.0)) < 1e-9 && axicon.ZoneCount == 2
+			&& Math.Abs(axicon.LineLength - 250.0 / Math.Tan(10.0 * Math.PI / 180.0)) < 1e-9 && Math.Abs(cone[axiconCentre] - 1.0) < 1e-9
+			&& Enumerable.Range(1, 30).All(k => Math.Abs(cone[axiconCentre - k] - cone[axiconCentre + k]) < 1e-12) && cone[axiconCentre + 10] < cone[axiconCentre + 5],
+			$"the prism turns by 20°: zones of {prism.ZoneWidth:0.0} px, {prism.ZoneCount} across the face, the fill wrapping {wraps} times; the axicon of 10°: zones of {axicon.ZoneWidth:0.0} px, {axicon.ZoneCount} to the rim, a line of focus of {axicon.LineLength:0} px, the fill full on the axis and falling evenly either way");
+		prism.Deflection = -20.0;
+		double[] mirrored = prism.FillFactors();
+		Check(Enumerable.Range(0, ramp.Length).All(j => Math.Abs(mirrored[j] - ramp[ramp.Length - 1 - j]) < 1e-9), "the opposite deflection is the ramp the other way");
+
+		// painted at 0°: a plate of 12 × 48 with ridges 8 px high in cells of 8 px, so that the cells sit at y' ±4, ±12, ±20 and the
+		// two middle ones are nearly full; the row through y' 3.5 runs along the middle of the cell at +4, 3.5 px from its flanks
+		var small = new MetaLensPart { Name = "m", X = 50, Y = 50, Length = 12, Width = 48, Height = 8, Pitch = 8, RefractiveIndex = 1.5 };
+		small.Normalize();
+		double[] smallFills = small.FillFactors();
+		ScenePixels painted = PartPainter.Paint(null, 100, 100, 1.0, [small])!;
+		const int cx = 50, ry = 53;
+		Check(smallFills.Length == 6 && smallFills[2] > 0.99 && smallFills[3] > 0.99
+			&& RedAt(painted, cx - 15, ry) == 100 && RedAt(painted, cx - 14, ry) == 200 && RedAt(painted, cx - 7, ry) == 200 && RedAt(painted, cx - 6, ry) == 150 && RedAt(painted, cx + 5, ry) == 150 && RedAt(painted, cx + 6, ry) == 100
+			&& RedAt(painted, cx - 10, ry - 28) == 100 && RedAt(painted, cx - 2, ry - 28) == 100,
+			$"the ridges stand in front of the plate: a full cell is red 200 from -14 to -7, the plate 150 from -6 to +5, nothing beyond the width (reds along the row {RedAt(painted, cx - 15, ry)}, {RedAt(painted, cx - 14, ry)}, {RedAt(painted, cx - 7, ry)}, {RedAt(painted, cx - 6, ry)}, {RedAt(painted, cx + 5, ry)}, {RedAt(painted, cx + 6, ry)})");
+		// the band on the ridges' tops (front) and the plate's back; a mirror plate keeps glass ridges
+		small.Coating = 2; small.CoatingProfile = CoatingProfile.Layer; small.FrontCoated = true; small.BackCoated = true; small.SidesCoated = true;
+		ScenePixels banded = PartPainter.Paint(null, 100, 100, 1.0, [small])!;
+		Check(RedAt(banded, cx - 14, ry) == 141 && RedAt(banded, cx - 13, ry) == 141 && RedAt(banded, cx - 12, ry) == 200 && RedAt(banded, cx - 7, ry) == 200 && RedAt(banded, cx - 6, ry) == 150
+			&& RedAt(banded, cx + 4, ry) == 122 && RedAt(banded, cx + 5, ry) == 122 && RedAt(banded, cx + 3, ry) == 150,
+			$"the band lies on a ridge's top (√2 = red 141 over 2 px) and the plate's back (√1.5 = 122), not at the ridge's foot (reds {RedAt(banded, cx - 14, ry)}, {RedAt(banded, cx - 13, ry)}, {RedAt(banded, cx - 12, ry)}, {RedAt(banded, cx - 7, ry)}, {RedAt(banded, cx - 6, ry)}, {RedAt(banded, cx + 3, ry)}, {RedAt(banded, cx + 4, ry)})");
+		small.Mirror = true;
+		ScenePixels mirrorPlate = PartPainter.Paint(null, 100, 100, 1.0, [small])!;
+		Check(RedAt(mirrorPlate, cx - 10, ry) == 200 && RedAt(mirrorPlate, cx, ry) == 0 && RedAt(mirrorPlate, cx + 5, ry) == 0, "a mirror plate keeps its glass ridges in front");
+		// the file: sparse, the sides unticked as a new one is
+		string xml;
+		using (var stream = new MemoryStream())
+		{
+			var saved = new Project();
+			var fresh = saved.AddPart<MetaPrismPart>();
+			fresh.X = 50; fresh.Y = 50; fresh.Deflection = 15;
+			saved.Save(stream);
+			xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+		}
+		Project back;
+		using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml)))
+		{
+			back = Project.Load(stream);
+		}
+		Check(xml.Contains("<MetaPrism ") && xml.Contains(" SidesCoated=\"false\"") && xml.Contains(" Deflection=\"15\"") && !xml.Contains(" Height=") && !xml.Contains(" Pitch=") && !xml.Contains(" DesignFrequency=") && back.Parts[0] is MetaPrismPart { Deflection: 15, Height: 32 },
+			"the meta prism element is sparse, and a loaded one has its deflection");
+	}
+
+	private static void CheckDetectors()
+	{
+		Console.WriteLine("--- probabilistic detectors");
+		// the model: a detector is a line of the integrated intensity, whatever was set; its edits are measurement edits
+		var counting = new Probe { Name = "c", Layer = ProbeLayer.Field, Kind = ProbeKind.Point, Detector = ProbeDetector.Counting };
+		var imaging = new Probe { Name = "i", Detector = ProbeDetector.Imaging, Sensitivity = -3, BinSize = 50 };
+		imaging.Normalize();
+		var project = new Project { Seed = 11 };
+		project.Scene.Width = 120;
+		project.Scene.Height = 80;
+		Probe added = project.AddProbe(10, 10, ProbeDetector.Counting);
+		Check(counting is { Kind: ProbeKind.Line, Layer: ProbeLayer.Intensity, Measurement: ProbeMeasurement.IntegratedValue, IsDetector: true, ShowsProfile: false }
+			&& imaging is { Kind: ProbeKind.Line, Sensitivity: 0.0, BinSize: 20, ShowsProfile: true } && new Probe { Kind = ProbeKind.Line } is { ShowsProfile: true, IsDetector: false }
+			&& Probe.AffectsMeasurement(nameof(Probe.Sensitivity)) && Probe.AffectsMeasurement(nameof(Probe.Detector)) && Probe.AffectsMeasurement(nameof(Probe.BinSize))
+			&& added.Name == "Detector 1" && added.Detector == ProbeDetector.Counting && added.Sensitivity == 20.0 && added.BinSize == 4 && project.AddProbe().Name == "Probe 1",
+			"a detector is a line probe of the integrated intensity; a counting one gives a series, an imaging one a profile; its sensitivity and bin are clamped; a new one is 'Detector 1' at sensitivity 20, bins of 4");
+
+		// a plane wave over two detectors on one line, the CPU engine, collected every second step as a run does (the last
+		// step a frame's, so the series reaches it: a run's series ends at its last frame)
+		const int width = 120, height = 80, every = 2, steps = 601, frames = (steps - 1) / every + 1;
+		var emitters = new List<Emitter>();
+		for (int y = 4; y < height - 4; y++)
+		{
+			emitters.Add(Make(10, y, 20, 1.0));
+		}
+		ProbeSpec[] specs =
+		[
+			new ProbeSpec("counter", ProbeKind.Line, ProbeMeasurement.IntegratedValue, 60, 10, 60, 70, 0, null, ProbeDetector.Counting, 0.05),
+			new ProbeSpec("imager", ProbeKind.Line, ProbeMeasurement.IntegratedValue, 60, 10, 60, 70, 0, null, ProbeDetector.Imaging, 0.5, 1),
+			new ProbeSpec("plain", ProbeKind.Line, ProbeMeasurement.IntegratedValue, 60, 10, 60, 70, 0),
+			// the imager again, with bins of 4 (the same name, so the same processes at every pixel)
+			new ProbeSpec("imager", ProbeKind.Line, ProbeMeasurement.IntegratedValue, 60, 10, 60, 70, 0, null, ProbeDetector.Imaging, 0.5, 4),
+		];
+		(ProbeTrace[] Traces, double Expectation) Collected(int seed, bool perFrame)
+		{
+			ProbeSampler sampler = ProbeSampler.Build(specs, width, height, 0, seed);
+			SceneData scene = SceneData.Empty(width, height, 0, 1.0, true);
+			var engine = new WaveSimulator(scene, new EngineOptions(2.0, 1.0, true, true, 10.0, 1.0), emitters);
+			engine.SetProbes(sampler);
+			var collector = new ProbeCollector(sampler);
+			for (int i = 0; i < steps; i++)
+			{
+				engine.AdvanceOneStep();
+				engine.SampleProbes();
+				if (perFrame && i % every == 0)
+				{
+					collector.Collect(engine, i + 1);
+					collector.CollectProfiles(engine, i + 1);
+				}
+			}
+			if (!perFrame)
+			{
+				collector.Collect(engine, steps);
+				collector.CollectProfiles(engine, steps);
+			}
+			// the expectation of the counter: the plain line's totals summed, times its sensitivity
+			double total = collector.Traces[2].Profile!.Sum(v => (double)v);
+			return (collector.Traces, total * 0.05);
+		}
+		(ProbeTrace[] run, double expectation) = Collected(11, true);
+		float[] series = run[0].Series.Values.AsSpan(0, run[0].Series.Count).ToArray();
+		double counted = series.Sum(v => (double)v);
+		double meanIntensity = expectation / 0.05 / steps / run[2].Profile!.Length;
+		Check(run[0].Series.Count == steps && run[0].Profiles.Count == 0 && series.All(v => v >= 0 && v == Math.Floor(v)) && Math.Abs(counted - expectation) <= 4 * Math.Sqrt(expectation) + 2,
+			$"the counting detector: one whole count a step over {steps} steps, {counted} in all against an expectation of {expectation:0.0} (the line's integrated intensity × 0.05; the intensity averages {meanIntensity:0.000} a pixel a step)");
+		// the counts are Poisson: the index of dispersion (variance over mean) of the settled steps near 1, and a count every few steps, not every step
+		float[] settled = series[(steps / 2)..];
+		double mean = settled.Average();
+		double variance = settled.Sum(v => (v - mean) * (v - mean)) / (settled.Length - 1);
+		Check(mean > 0.2 && variance / mean > 0.6 && variance / mean < 1.6 && settled.Count(v => v == 0) > settled.Length / 10,
+			$"the counts are Poisson: a mean of {mean:0.00} a step with a variance over mean of {variance / mean:0.00}, {settled.Count(v => v == 0)} of {settled.Length} steps empty");
+		// the imaging detector: a count a pixel a frame that never falls, near its expectation at the end
+		IReadOnlyList<float[]> images = run[1].Profiles;
+		bool monotone = Enumerable.Range(1, images.Count - 1).All(f => Enumerable.Range(0, images[f].Length).All(k => images[f][k] >= images[f - 1][k]));
+		double imageTotal = images[^1].Sum(v => (double)v);
+		double imageExpectation = run[2].Profile!.Sum(v => (double)v) * 0.5;
+		Check(images.Count == frames && monotone && images[^1].All(v => v == Math.Floor(v)) && Math.Abs(imageTotal - imageExpectation) <= 4 * Math.Sqrt(imageExpectation) + 2,
+			$"the imaging detector: {images.Count} images that only grow, {imageTotal} detections over the line at the end against {imageExpectation:0.0} expected");
+
+		// bins of 4 (2026-11-08): every pixel of a bin shows the bin's total, the sum of the unbinned image's pixels, the last bin shorter
+		float[] binned = run[3].Profiles[^1];
+		float[] image = images[^1];
+		bool bins = binned.Length == image.Length && Enumerable.Range(0, (image.Length + 3) / 4).All(b =>
+		{
+			int start = b * 4, end = Math.Min(image.Length, start + 4);
+			float total = Enumerable.Range(start, end - start).Sum(k => image[k]);
+			return Enumerable.Range(start, end - start).All(k => binned[k] == total);
+		});
+		Check(bins && image.Length % 4 == 1 && binned[^1] == image[^1] && binned[0] == image[0] + image[1] + image[2] + image[3],
+			$"with bins of 4 every pixel of a bin shows the bin's total ({binned[0]} for the first four pixels' {image[0]}, {image[1]}, {image[2]}, {image[3]}), the last bin the one pixel left over");
+
+		// the same project gives the same detections, once at the end as frame by frame (the scratch frame and the run agree); another seed differs
+		(ProbeTrace[] again, _) = Collected(11, true);
+		(ProbeTrace[] once, _) = Collected(11, false);
+		(ProbeTrace[] other, _) = Collected(12, true);
+		bool same = again[0].Series.Values.AsSpan(0, steps).SequenceEqual(series) && again[1].Profiles[^1].AsSpan().SequenceEqual(images[^1]);
+		bool scratch = once[1].Profiles.Count == 1 && once[1].Profiles[0].AsSpan().SequenceEqual(images[^1]) && once[0].Series.Count == steps && once[0].Series.Values.AsSpan(0, steps).ToArray().Sum() == counted;
+		bool differs = !other[0].Series.Values.AsSpan(0, steps).SequenceEqual(series) && !other[1].Profiles[^1].AsSpan().SequenceEqual(images[^1]);
+		Check(same && scratch && differs, "the detections are the project's: the same seed gives them again, frame by frame or once at the end (the image the same, the count total the same); another seed gives others");
+
+		// the graph: a counting detector's is a series over the steps though it is a line, an imaging detector's a profile along the line
+		var countingProbe = new Probe { Name = "c", Detector = ProbeDetector.Counting };
+		var imagingProbe = new Probe { Name = "i", Detector = ProbeDetector.Imaging };
+		ProbeGraph.ComputeRanges(countingProbe, ProbeGraphData.At(run[0], steps - 1, frames - 1), steps, out double cx0, out double cx1, out double cy0, out double cy1);
+		ProbeGraph.ComputeRanges(imagingProbe, ProbeGraphData.At(run[1], steps - 1, frames - 1), steps, out double ix0, out double ix1, out double iy0, out double iy1);
+		Check(cx1 == steps && cx0 == steps - Probe.DefaultWindow && cy0 == 0.0 && cy1 >= series.Max() && ix0 == 0.0 && ix1 == run[1].ProfileLength && iy0 == 0.0 && iy1 >= images[^1].Max(),
+			$"the counting detector's graph runs over the steps ({cx0}..{cx1}, counts 0..{cy1:0.#}), the imaging detector's along the line (0..{ix1} px, counts 0..{iy1:0.#})");
+
+		// the CSV: a counting detector one row a step of detections, an imaging one a row a frame
+		string countingCsv, imagingCsv;
+		using (var writer = new StringWriter())
+		{
+			ProbeCsv.Write(writer, countingProbe, run[0], every, 1);
+			countingCsv = writer.ToString();
+		}
+		using (var writer = new StringWriter())
+		{
+			ProbeCsv.Write(writer, imagingProbe, run[1], every, 1);
+			imagingCsv = writer.ToString();
+		}
+		Check(countingCsv.StartsWith("step;detections" + Environment.NewLine + "0;") && countingCsv.Split('\n').Length == steps + 2 && imagingCsv.StartsWith("frame;step;0;") && imagingCsv.Split('\n').Length == frames + 2,
+			"the CSV of a counting detector is a row of detections a step, of an imaging detector a row a frame along the line");
+
+		// the file: the detector written, the kind, layer and measurement it forces too; back the same
+		string xml;
+		using (var stream = new MemoryStream())
+		{
+			var saved = new Project();
+			Probe detector = saved.AddProbe(10, 20, ProbeDetector.Imaging);
+			detector.Sensitivity = 0.25;
+			saved.Save(stream);
+			xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+		}
+		Project back;
+		using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml)))
+		{
+			back = Project.Load(stream);
+		}
+		string element = xml.Split('\n').First(line => line.Contains("<Probe ")).Trim();
+		Check(element.Contains("Name=\"Detector 1\"") && element.Contains("Layer=\"Intensity\" Measurement=\"IntegratedValue\" Kind=\"Line\" Detector=\"Imaging\" Sensitivity=\"0.25\"")
+			&& element.Contains("BX=\"110\"") && !element.Contains("Window") && back.Probes[0] is { Detector: ProbeDetector.Imaging, Sensitivity: 0.25, Kind: ProbeKind.Line },
+			$"the probe element names the detector and its sensitivity, sparse ({element}), and a loaded detector is one");
+	}
+
+	/// <summary>The signed distance to a simple polygon, the plain way: the nearest of every edge, negative outside by the crossing count.</summary>
+	private static double PolygonSignedDistance((double X, double Y)[] vertices, double x, double y)
+	{
+		bool inside = false;
+		double nearest = double.PositiveInfinity;
+		for (int i = 0, j = vertices.Length - 1; i < vertices.Length; j = i++)
+		{
+			(double ax, double ay) = vertices[j];
+			(double bx, double by) = vertices[i];
+			if (ay > y != by > y && x < ax + (y - ay) / (by - ay) * (bx - ax))
+			{
+				inside = !inside;
+			}
+			double dx = bx - ax, dy = by - ay;
+			double length2 = dx * dx + dy * dy;
+			double t = length2 > 0.0 ? Math.Clamp(((x - ax) * dx + (y - ay) * dy) / length2, 0.0, 1.0) : 0.0;
+			double ex = ax + t * dx - x, ey = ay + t * dy - y;
+			nearest = Math.Min(nearest, Math.Sqrt(ex * ex + ey * ey));
+		}
+		return inside ? nearest : -nearest;
+	}
+
+	/// <summary>
 	/// The XOR gate (2026-10-21): the mode solver against a measured straight guide, the design scaling with the wavelength,
 	/// the painted layout, and the gate itself driven by sources on its inputs (on the GPU when there is one, the CPU is
 	/// slow at this size): one input splits about evenly, both cancel at the XOR output and double at the sum output.
@@ -3875,7 +4738,8 @@ internal static class Program
 	private static void CheckZonePlate()
 	{
 		Console.WriteLine("--- zone plate");
-		var plate = new ZonePlatePart { Name = "z", Diameter = 480, FocalLength = 360 };
+		// the thickness and rise the measurements below were made with (the defaults are 32 and 0 since 2026-11-08, the user's choice)
+		var plate = new ZonePlatePart { Name = "z", Diameter = 480, FocalLength = 360, Thickness = 64, Coating = 32 };
 		double lambda = plate.Wavelength, f = plate.FocalLength;
 		double Radius(int n) => Math.Sqrt(n * lambda * f + n * lambda / 2.0 * (n * lambda / 2.0));
 		Check(plate.ZoneAt(Radius(1) - 0.5) == 0 && plate.ZoneAt(Radius(1) + 0.5) == 1 && plate.ZoneAt(Radius(3) + 0.5) == 3
@@ -3908,7 +4772,9 @@ internal static class Program
 			project.Save(stream);
 			xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
 		}
-		Check(xml.Contains("<ZonePlate Name=\"z\" X=\"240\" Y=\"320\" Diameter=\"480\" FocalLength=\"360\" />"), "the zone plate element, sparse");
+		Check(xml.Contains("<ZonePlate Name=\"z\" X=\"240\" Y=\"320\"") && xml.Contains(" Diameter=\"480\"") && xml.Contains(" FocalLength=\"360\"") && xml.Contains(" Thickness=\"64\"") && xml.Contains(" Coating=\"32\"")
+			&& !xml.Contains(" DesignFrequency=") && !xml.Contains(" Rotation=") && !xml.Contains(" RefractiveIndex="),
+			"the zone plate element, sparse: the thickness and the coating set off their defaults of 32 and 0 are written, the rest is not");
 
 		// a plane wave from a line of emitters, focused behind the plate
 		var emitters = new List<Emitter>();

@@ -27,7 +27,7 @@ namespace WaveDudeNext.Model;
 
 /// <summary>
 /// An optical part placed on the canvas: a lens or mirror, a shape (polygon, rectangle, ellipse, triangle, outline), a
-/// fibre, a Bragg reflector, a GRIN lens, a logic gate or a zone plate (Jeroen Vleggaar's proposal, decided 2026-10-18;
+/// diffusor, an interference filter, a simple grating, a facetted grating, a meta lens, a Fresnel lens, a fibre, a Bragg reflector, a GRIN lens, a logic gate or a zone plate (Jeroen Vleggaar's proposal, decided 2026-10-18;
 /// OpticalParts.md is the reference). Parts are painted into the scene pixels before a run
 /// (<see cref="Parts.PartPainter"/>), so the engines, the outline and the export see them as part of the scene: the
 /// index into red, an absorber's damping into blue; green is never touched. Positions and lengths are canvas pixels; the
@@ -365,11 +365,11 @@ public enum SurfaceShape
 /// the axis between two spherical surfaces of radii <see cref="R1"/> (left, facing -x') and <see cref="R2"/>
 /// (right), <see cref="Thickness"/> apart on the axis. A radius is signed: R1 &gt; 0 and R2 &lt; 0 bulge outward
 /// (biconvex), 0 is flat. The diameter and the centre thickness are the lens's bulk; the radii fit them: a radius
-/// too curved for them is raised to the smallest that fits (<see cref="FitRadii"/>), so the lens always fills its
+/// too curved for them is raised to the smallest that fits (<see cref="FitRadii(int, int, double, double, int)"/>), so the lens always fills its
 /// diameter and the edge thickness is never negative (the user's point, 2026-10-18: a diameter of 2000 with the
 /// default radii gave a tiny lens, since the surfaces crossed long before the rim).
 /// </summary>
-public sealed class LensPart : CoatedPart
+public class LensPart : CoatedPart
 {
 	/// <summary>Default <see cref="RefractiveIndex"/>.</summary>
 	public const double DefaultIndex = 1.5;
@@ -393,6 +393,21 @@ public sealed class LensPart : CoatedPart
 
 	/// <inheritdoc/>
 	public override string NameStem => "Lens";
+
+	/// <summary>
+	/// How many zones of equal width each curved surface is cut into from the axis to the rim, the arc restarted at the
+	/// vertex plane at each zone's inner edge (a <see cref="FresnelLensPart"/>, 2026-11-07): 1 for the plain lens, whose
+	/// surfaces are whole arcs. The sag that counts for the fit, the reach, the edge thickness and the vertex handles is
+	/// the outer zone's (<see cref="ZoneSag(double, double, int, ZoneDivision)"/>), the deepest. Not stored here.
+	/// </summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public virtual int ZoneCount => 1;
+
+	/// <summary>How the zones are divided over the radius (<see cref="Model.ZoneDivision"/>): equal in width unless a Fresnel lens says otherwise. Not stored here.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public virtual ZoneDivision ZoneDivision => ZoneDivision.EqualWidth;
 
 	/// <summary>Whether the part is a mirror (red 0, a wall no wave gets through) instead of a lens; the index, the coating and the absorption are ignored then.</summary>
 	[XmlAttribute]
@@ -546,9 +561,9 @@ public sealed class LensPart : CoatedPart
 	{
 		get
 		{
-			(double r1, double r2) = FitRadii(Diameter, Thickness, R1, R2);
+			(double r1, double r2) = FittedRadii();
 			double half = Math.Max(2, Diameter) / 2.0;
-			return Math.Max(1, Thickness) / 2.0 + Math.Max(Sag(r1, half), Sag(r2, half));
+			return Math.Max(1, Thickness) / 2.0 + Math.Max(ZoneSag(r1, half, ZoneCount, ZoneDivision), ZoneSag(r2, half, ZoneCount, ZoneDivision));
 		}
 	}
 
@@ -558,7 +573,7 @@ public sealed class LensPart : CoatedPart
 	/// <inheritdoc/>
 	public override (double X, double Y)[] Outline()
 	{
-		(double r1, double r2) = FitRadii(Diameter, Thickness, R1, R2);
+		(double r1, double r2) = FittedRadii();
 		double half = Math.Max(2, Diameter) / 2.0;
 		double vertex = Math.Max(1, Thickness) / 2.0;
 		var points = new (double X, double Y)[2 * (OutlineSteps + 1)];
@@ -573,7 +588,7 @@ public sealed class LensPart : CoatedPart
 	}
 
 	/// <summary>Where a surface of signed <paramref name="radius"/> lies along x' at <paramref name="y"/> from the axis, relative to its vertex: 0 for flat, positive toward +x'.</summary>
-	private static double SurfaceSag(double radius, double y)
+	public static double SurfaceSag(double radius, double y)
 	{
 		if (radius == 0.0)
 		{
@@ -583,18 +598,69 @@ public sealed class LensPart : CoatedPart
 		return radius - Math.CopySign(Math.Sqrt(inside), radius);
 	}
 
-	/// <summary>Thickness at the rim in pixels: the centre thickness less what the convex surfaces take, plus what the concave ones add; never negative after <see cref="FitRadii"/>.</summary>
+	/// <summary>Thickness at the rim in pixels: the centre thickness less what the convex surfaces take, plus what the concave ones add; never negative after <see cref="FitRadii(int, int, double, double, int)"/>.</summary>
 	[XmlIgnore]
 	[Browsable(false)]
 	public double EdgeThickness
 	{
 		get
 		{
-			(double r1, double r2) = FitRadii(Diameter, Thickness, R1, R2);
+			(double r1, double r2) = FittedRadii();
 			double half = Math.Max(2, Diameter) / 2.0;
-			return Math.Max(1, Thickness) - Math.CopySign(Sag(r1, half), r1) + Math.CopySign(Sag(r2, half), r2);
+			return Math.Max(1, Thickness) - Math.CopySign(ZoneSag(r1, half, ZoneCount, ZoneDivision), r1) + Math.CopySign(ZoneSag(r2, half, ZoneCount, ZoneDivision), r2);
 		}
 	}
+
+	/// <summary><see cref="ZoneSag(double, double, int, ZoneDivision)"/> for zones of equal width.</summary>
+	public static double ZoneSag(double radius, double half, int zones) => ZoneSag(radius, half, zones, ZoneDivision.EqualWidth);
+
+	/// <summary>
+	/// How far the deepest of <paramref name="zones"/> zones of a surface of radius <paramref name="radius"/> bows out
+	/// beyond its own start at the vertex plane, in pixels: the whole sag for one zone (<see cref="Sag"/>); for zones of
+	/// equal width the outer zone's, the sag at <paramref name="half"/> less the sag at its inner edge, since the sag grows
+	/// ever faster outward; for zones of equal depth every zone's, the whole sag over the count. The fit and the edge
+	/// thickness reckon with it.
+	/// </summary>
+	public static double ZoneSag(double radius, double half, int zones, ZoneDivision division) =>
+		zones <= 1 ? Sag(radius, half)
+		: division == ZoneDivision.EqualDepth ? Sag(radius, half) / zones
+		: Sag(radius, half) - Sag(radius, half * (zones - 1) / zones);
+
+	/// <summary>
+	/// Where zone boundary <paramref name="k"/> (0 the axis, <paramref name="zones"/> the rim) of a surface of radius
+	/// <paramref name="radius"/> lies from the axis, in pixels: k / zones of <paramref name="half"/> for zones of equal
+	/// width; for zones of equal depth where the sag reaches k / zones of the rim's, √(R² − (R − k·S/N)²), the zones
+	/// narrowing outward (a flat surface is divided by width, having no sag).
+	/// </summary>
+	public static double ZoneBound(double radius, double half, int zones, ZoneDivision division, int k)
+	{
+		zones = Math.Max(1, zones);
+		k = Math.Clamp(k, 0, zones);
+		if (division == ZoneDivision.EqualWidth || radius == 0.0 || k == zones)
+		{
+			return half * k / zones;
+		}
+		double a = Math.Abs(radius);
+		double along = a - Sag(radius, half) * k / zones;
+		return Math.Sqrt(Math.Max(0.0, a * a - along * along));
+	}
+
+	/// <summary>The zone, 0 to <paramref name="zones"/> − 1, that <paramref name="across"/> pixels from the axis lies in, by the division's boundaries (<see cref="ZoneBound"/>).</summary>
+	public static int ZoneIndex(double radius, double half, int zones, ZoneDivision division, double across)
+	{
+		zones = Math.Max(1, zones);
+		double share = division == ZoneDivision.EqualWidth || radius == 0.0 || Sag(radius, half) <= 0.0
+			? across / half
+			: Sag(radius, Math.Min(across, half)) / Sag(radius, half);
+		return Math.Clamp((int)(share * zones), 0, zones - 1);
+	}
+
+	/// <summary>Where the profile of a surface of signed <paramref name="radius"/> meets the rim, relative to its vertex, with <paramref name="zones"/> zones: <see cref="SurfaceSag"/> at the rim less the sag at the outer zone's inner edge.</summary>
+	private static double ProfileSag(double radius, double half, int zones, ZoneDivision division) =>
+		zones <= 1 ? SurfaceSag(radius, half) : SurfaceSag(radius, half) - SurfaceSag(radius, ZoneBound(radius, half, zones, division, zones - 1));
+
+	/// <summary>The radii as this lens uses them: <see cref="FitRadii(int, int, double, double, int, ZoneDivision)"/> of its values, <see cref="ZoneCount"/> and <see cref="ZoneDivision"/>.</summary>
+	protected (double R1, double R2) FittedRadii() => FitRadii(Diameter, Thickness, R1, R2, ZoneCount, ZoneDivision);
 
 	/// <summary>
 	/// The shape of a surface whose radius, signed so that positive bows outward, is <paramref name="outward"/> on a lens of
@@ -625,13 +691,26 @@ public sealed class LensPart : CoatedPart
 	/// proportion to the radius at which their sags just fit, so the surfaces meet at the rim and not before it.
 	/// Shared by <see cref="Normalize"/>, the painter and the readouts, so all see the same lens.
 	/// </summary>
-	public static (double R1, double R2) FitRadii(int diameter, int thickness, double r1, double r2)
+	public static (double R1, double R2) FitRadii(int diameter, int thickness, double r1, double r2) => FitRadii(diameter, thickness, r1, r2, 1);
+
+	/// <summary>
+	/// <see cref="FitRadii(int, int, double, double)"/> for a surface cut into <paramref name="zones"/> zones (a Fresnel lens):
+	/// the sag that must fit is the outer zone's (<see cref="ZoneSag(double, double, int, ZoneDivision)"/>), the deepest, so a thin plate holds radii a whole
+	/// lens could not; and the outer zone's outer edge is where two surfaces would meet first, since within every zone and
+	/// from zone to zone the convex surfaces' loss outgrows the concave ones' gain.
+	/// </summary>
+	public static (double R1, double R2) FitRadii(int diameter, int thickness, double r1, double r2, int zones) =>
+		FitRadii(diameter, thickness, r1, r2, zones, ZoneDivision.EqualWidth);
+
+	/// <summary><see cref="FitRadii(int, int, double, double, int)"/> with the zones divided as <paramref name="division"/> says: the deepest zone's sag (<see cref="ZoneSag(double, double, int, ZoneDivision)"/>) must fit.</summary>
+	public static (double R1, double R2) FitRadii(int diameter, int thickness, double r1, double r2, int zones, ZoneDivision division)
 	{
 		double half = Math.Max(2, diameter) / 2.0;
+		zones = Math.Max(1, zones);
 		r1 = GuardRadius(r1, half);
 		r2 = GuardRadius(r2, half);
-		double sag1 = Sag(r1, half);
-		double sag2 = Sag(r2, half);
+		double sag1 = ZoneSag(r1, half, zones, division);
+		double sag2 = ZoneSag(r2, half, zones, division);
 		double convex = (r1 > 0.0 ? sag1 : 0.0) + (r2 < 0.0 ? sag2 : 0.0);
 		double budget = Math.Max(1, thickness) + (r1 < 0.0 ? sag1 : 0.0) + (r2 > 0.0 ? sag2 : 0.0);
 		// a hair over the budget (the floating point of a stretched lens's sags) is no case for a refit
@@ -640,18 +719,56 @@ public sealed class LensPart : CoatedPart
 			double scale = budget / convex;
 			if (r1 > 0.0)
 			{
-				r1 = RadiusForSag(half, sag1 * scale);
+				r1 = RadiusForSag(half, zones, division, sag1 * scale);
 			}
 			if (r2 < 0.0)
 			{
-				r2 = -RadiusForSag(half, sag2 * scale);
+				r2 = -RadiusForSag(half, zones, division, sag2 * scale);
 			}
 		}
 		return (r1, r2);
 	}
 
-	/// <summary>The radius whose sag at <paramref name="half"/> from the axis is <paramref name="sag"/>, (h² + s²) / 2s, rounded up to a whole pixel (a flatter surface still fits).</summary>
-	private static double RadiusForSag(double half, double sag) => Math.Ceiling((half * half + sag * sag) / (2.0 * sag));
+	/// <summary>The radius whose deepest zone's sag (<see cref="ZoneSag(double, double, int, ZoneDivision)"/>) at <paramref name="half"/> from the axis with <paramref name="zones"/> zones is <paramref name="sag"/>, rounded up to a whole pixel (a flatter surface still fits).</summary>
+	private static double RadiusForSag(double half, int zones, ZoneDivision division, double sag) => Math.Ceiling(RadiusOfZoneSag(half, zones, division, sag));
+
+	/// <summary>
+	/// The radius, at least <paramref name="half"/>, whose deepest zone's sag (<see cref="ZoneSag(double, double, int, ZoneDivision)"/>)
+	/// is <paramref name="sag"/>: the sagitta (h² + s²) / 2s of the whole sag for one zone and for zones of equal depth
+	/// (whose whole sag is the count times the zone's); for zones of equal width found by bisection, the outer zone's sag
+	/// falling steadily from the hemisphere's at a radius of half toward 0 as the radius grows (a sag the hemisphere
+	/// cannot reach gives half).
+	/// </summary>
+	private static double RadiusOfZoneSag(double half, int zones, ZoneDivision division, double sag)
+	{
+		if (zones <= 1 || division == ZoneDivision.EqualDepth)
+		{
+			double whole = Math.Min(half, sag * Math.Max(1, zones));
+			return (half * half + whole * whole) / (2.0 * whole);
+		}
+		if (sag >= ZoneSag(half, half, zones))
+		{
+			return half;
+		}
+		double low = half, high = half * 2.0;
+		while (ZoneSag(high, half, zones) > sag)
+		{
+			high *= 2.0;
+		}
+		for (int i = 0; i < 100 && high - low > 1e-9 * high; i++)
+		{
+			double mid = (low + high) / 2.0;
+			if (ZoneSag(mid, half, zones) > sag)
+			{
+				low = mid;
+			}
+			else
+			{
+				high = mid;
+			}
+		}
+		return high;
+	}
 
 	/// <summary>
 	/// Sets the diameter and the centre thickness the size grip stands for by stretching the lens as a rectangle's or an
@@ -667,7 +784,7 @@ public sealed class LensPart : CoatedPart
 	/// <param name="thickness">The centre thickness asked for, in pixels.</param>
 	public void SetExtents(int diameter, int thickness)
 	{
-		(double r1, double r2) = FitRadii(Diameter, Thickness, R1, R2);
+		(double r1, double r2) = FittedRadii();
 		double half = Math.Max(2, Diameter) / 2.0;
 		double grown = Math.Max(2, diameter) / 2.0;
 		double along = Math.Max(1, thickness) / (double)Math.Max(1, Thickness);
@@ -675,9 +792,9 @@ public sealed class LensPart : CoatedPart
 		{
 			return;
 		}
-		// the sags signed as the radii are: surface 1 convex is positive, surface 2 convex is negative
-		double sag1 = Math.Clamp(SurfaceSag(r1, half) * along, -grown, grown);
-		double sag2 = Math.Clamp(SurfaceSag(r2, half) * along, -grown, grown);
+		// the sags signed as the radii are: surface 1 convex is positive, surface 2 convex is negative (the profile's at the rim: the outer zone's)
+		double sag1 = Math.Clamp(ProfileSag(r1, half, ZoneCount, ZoneDivision) * along, -grown, grown);
+		double sag2 = Math.Clamp(ProfileSag(r2, half, ZoneCount, ZoneDivision) * along, -grown, grown);
 		// the thicker value first, so no state in between has the radii fitted
 		if (thickness > Thickness)
 		{
@@ -694,15 +811,16 @@ public sealed class LensPart : CoatedPart
 	/// <paramref name="half"/> from the axis: the sagitta (h² + s²) / 2s; 0 for no sag. Rounded to a hundredth of a pixel
 	/// (2026-10-28, Jeroen's report: a dragged vertex or grip left sixteen decimals in the box and the file), surface 1's
 	/// towards +∞ and surface 2's towards −∞, which makes a convex surface a hair flatter and a concave one a hair deeper, never
-	/// the other way, so the rounding never brings on the refit of <see cref="FitRadii"/> for a lens whose surfaces meet at the rim.
+	/// the other way, so the rounding never brings on the refit of <see cref="FitRadii(int, int, double, double, int)"/> for a lens whose surfaces meet at the rim.
 	/// </summary>
-	private static double RadiusOfSag(int surface, double half, double sag)
+	private double RadiusOfSag(int surface, double half, double sag)
 	{
 		if (sag == 0.0)
 		{
 			return 0.0;
 		}
-		double hundredths = Math.CopySign((half * half + sag * sag) / (2.0 * Math.Abs(sag)), sag) * 100.0;
+		// with zones the sag is the outer zone's (the profile at the rim), the radius found by bisection
+		double hundredths = Math.CopySign(RadiusOfZoneSag(half, ZoneCount, ZoneDivision, Math.Abs(sag)), sag) * 100.0;
 		return (surface == 1 ? Math.Ceiling(hundredths) : Math.Floor(hundredths)) / 100.0;
 	}
 
@@ -712,8 +830,8 @@ public sealed class LensPart : CoatedPart
 	/// <summary>Where surface <paramref name="surface"/> meets the rim, on the axis in the part frame: its vertex plus its sag at the half diameter, the radii as fitted.</summary>
 	public double RimX(int surface)
 	{
-		(double r1, double r2) = FitRadii(Diameter, Thickness, R1, R2);
-		return VertexX(surface) + SurfaceSag(surface == 1 ? r1 : r2, Math.Max(2, Diameter) / 2.0);
+		(double r1, double r2) = FittedRadii();
+		return VertexX(surface) + ProfileSag(surface == 1 ? r1 : r2, Math.Max(2, Diameter) / 2.0, ZoneCount, ZoneDivision);
 	}
 
 	/// <summary>
@@ -776,13 +894,152 @@ public sealed class LensPart : CoatedPart
 		AbsorptionRamp = Math.Clamp(AbsorptionRamp, 1, MaxAbsorptionRamp);
 		Diameter = Math.Max(2, Diameter);
 		Thickness = Math.Max(1, Thickness);
-		(double r1, double r2) = FitRadii(Diameter, Thickness, R1, R2);
+		(double r1, double r2) = FittedRadii();
 		R1 = r1;
 		R2 = r2;
 	}
 
 	/// <inheritdoc/>
 	public override OpticalPart Clone() => ShallowClone<LensPart>();
+}
+
+/// <summary>
+/// A Fresnel lens (the user's request, 2026-11-07): the lens of <see cref="LensPart"/> with each curved surface cut into
+/// <see cref="Zones"/> zones from the axis to the rim, the arc restarted at the vertex plane at each zone's inner edge,
+/// so the glass between the arcs is cut away and a thin plate bends light as the thick lens would (the user's choices:
+/// both curved surfaces, a flat surface staying flat). The zones are divided as <see cref="Division"/> says: equal in
+/// width, or equal in depth as a lighthouse lens's elements are (the user's request the same day), each zone then taking
+/// the same share of the rim's sag, so they narrow outward. Within zone k, |y'| from its boundary y'ₖ to y'ₖ₊₁
+/// (<see cref="LensPart.ZoneBound"/>), a surface lies at s(y') − s(y'ₖ) from its vertex; at a zone boundary a step across
+/// the axis leads back to the vertex plane. The sag that counts for the fit
+/// (<see cref="LensPart.FitRadii(int, int, double, double, int, ZoneDivision)"/>), the edge thickness and the vertex handles
+/// is the deepest zone's. A new one is a plate of <see cref="DefaultPlateThickness"/>, <see cref="DefaultDiameter"/>
+/// across with radii of <see cref="DefaultRadius"/> (<see cref="PrepareNew"/>; a loaded one has the file's values). The
+/// lens's Concave box is not shown for it: a surface is hollowed by a negative radius (the user's choice).
+/// </summary>
+public sealed class FresnelLensPart : LensPart
+{
+	/// <summary>Default <see cref="Zones"/>.</summary>
+	public const int DefaultZones = 4;
+	/// <summary>Largest <see cref="Zones"/>.</summary>
+	public const int MaxZones = 100;
+	/// <summary>A new Fresnel lens's centre thickness in pixels (the user's choice, 2026-11-07): a thin plate.</summary>
+	public const int DefaultPlateThickness = 20;
+	/// <summary>A new Fresnel lens's diameter in pixels (the user's choice, 2026-11-07: about 500).</summary>
+	public new const int DefaultDiameter = 500;
+	/// <summary>A new Fresnel lens's radii in pixels, R1 and −R2: with four zones of equal width on a diameter of 500 the outer zone's sag is 9.2 px a surface, so the two fit in the plate of 20.</summary>
+	public const double DefaultRadius = 1500.0;
+
+	private int _zones = DefaultZones;
+	private ZoneDivision _division = ZoneDivision.EqualWidth;
+
+	/// <inheritdoc/>
+	public override string NameStem => "Fresnel lens";
+
+	/// <summary>How the zones are divided over the radius: equal in width, or equal in depth (each zone the same sag, the zones narrowing outward, as in a lighthouse lens).</summary>
+	[XmlAttribute]
+	[DefaultValue(ZoneDivision.EqualWidth)]
+	[Category("Shape")]
+	[DisplayName("Zone division")]
+	[Description("How the zones are divided from the axis to the rim: equal in width, or equal in depth, each zone cut to the same depth and the zones narrowing outward, as the elements of a lighthouse lens are.")]
+	public ZoneDivision Division
+	{
+		get => _division;
+		set
+		{
+			if (SetProperty(ref _division, value))
+			{
+				OnPropertyChanged(nameof(ZoneDivision));
+			}
+		}
+	}
+
+	/// <inheritdoc/>
+	public override ZoneDivision ZoneDivision => Enum.IsDefined(Division) ? Division : ZoneDivision.EqualWidth;
+
+	/// <summary>Number of zones each curved surface is cut into from the axis to the rim, 1 to <see cref="MaxZones"/>, divided by <see cref="Division"/>; 1 is the plain lens.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultZones)]
+	[Range(1, MaxZones)]
+	[Category("Shape")]
+	[Description("Number of zones each curved surface is cut into, from the axis to the rim, equal in width or in depth as the zone division says. At each zone's inner edge the arc starts again at the vertex plane, so the plate stays thin; 1 is a plain lens.")]
+	public int Zones
+	{
+		get => _zones;
+		set
+		{
+			if (SetProperty(ref _zones, value))
+			{
+				OnPropertyChanged(nameof(ZoneCount));
+			}
+		}
+	}
+
+	/// <inheritdoc/>
+	public override int ZoneCount => Math.Clamp(Zones, 1, MaxZones);
+
+	/// <summary>A new Fresnel lens is a thin plate of <see cref="DefaultPlateThickness"/>, <see cref="DefaultDiameter"/> across, its radii <see cref="DefaultRadius"/>.</summary>
+	public override void PrepareNew()
+	{
+		Diameter = DefaultDiameter;
+		R1 = DefaultRadius;
+		R2 = -DefaultRadius;
+		Thickness = DefaultPlateThickness;
+	}
+
+	/// <summary>The profile with its zones: each zone's arc, and at each zone boundary the step back to the vertex plane, down the first surface and up the second.</summary>
+	public override (double X, double Y)[] Outline()
+	{
+		(double r1, double r2) = FittedRadii();
+		double half = Math.Max(2, Diameter) / 2.0;
+		double vertex = Math.Max(1, Thickness) / 2.0;
+		List<(double X, double Y)> first = Profile(-vertex, r1, half, ZoneCount, ZoneDivision);
+		List<(double X, double Y)> second = Profile(vertex, r2, half, ZoneCount, ZoneDivision);
+		second.Reverse();
+		return [.. first, .. second];
+	}
+
+	/// <summary>One surface's profile from −half to half: the zones in turn by their boundaries (<see cref="LensPart.ZoneBound"/>), each sampled along its arc from its own start at the vertex plane, so a zone's last point and the next zone's first make the step.</summary>
+	private static List<(double X, double Y)> Profile(double vertex, double radius, double half, int zones, ZoneDivision division)
+	{
+		int steps = Math.Max(2, 32 / zones);
+		var points = new List<(double X, double Y)>(2 * zones * (steps + 1));
+		for (int k = -zones; k < zones; k++)
+		{
+			int zone = k < 0 ? -k - 1 : k;
+			double inner = ZoneBound(radius, half, zones, division, zone);
+			double outer = ZoneBound(radius, half, zones, division, zone + 1);
+			double shift = SurfaceSag(radius, inner);
+			// the negative side runs from the zone's outer edge in to its inner one
+			(double from, double to) = k < 0 ? (-outer, -inner) : (inner, outer);
+			for (int i = 0; i <= steps; i++)
+			{
+				double y = from + (to - from) * i / steps;
+				points.Add((vertex + SurfaceSag(radius, y) - shift, y));
+			}
+		}
+		return points;
+	}
+
+	/// <summary>The zones and the division first, so the fit of the radii reckons with the clamped count.</summary>
+	public override void Normalize()
+	{
+		Zones = Math.Clamp(Zones, 1, MaxZones);
+		Division = ZoneDivision;
+		base.Normalize();
+	}
+
+	/// <inheritdoc/>
+	public override OpticalPart Clone() => ShallowClone<FresnelLensPart>();
+}
+
+/// <summary>How a <see cref="FresnelLensPart"/>'s zones are divided over the radius (2026-11-07, the user's request for both).</summary>
+public enum ZoneDivision
+{
+	/// <summary>Every zone the same width from the axis to the rim; the outer zone is the deepest.</summary>
+	EqualWidth,
+	/// <summary>Every zone the same depth, the rim's sag shared out equally, so the zones narrow outward: the elements of a lighthouse lens.</summary>
+	EqualDepth,
 }
 
 /// <summary>
@@ -1353,6 +1610,1443 @@ public sealed class OutlinePart : ShapePart
 		copy.Points = ClonePoints(Points);
 		return copy;
 	}
+}
+
+/// <summary>
+/// A diffusor (the user's request, 2026-11-07): a rectangular plate of <see cref="Length"/> along the axis and
+/// <see cref="Width"/> across whose front face (−x', toward a source on the left) is rough and whose back is flat; the
+/// material, the coating and the absorption of a <see cref="ShapePart"/>. The roughness is a sum of sinusoids across the
+/// face: one at the <see cref="CenterWavelength"/> with the <see cref="Amplitude"/>, and about it wavelengths spread by
+/// <see cref="Sigma"/>, each weighted by a Gaussian of its distance from the centre wavelength (<see cref="Components"/>);
+/// the phases are random, drawn from the project's seed and the part's name (<see cref="ISeeded"/>, as a source's jitter
+/// is), so a file reproduces its surface. The profile is computed once and kept until a value it depends on changes
+/// (<see cref="Profile"/>). Coatings on the front follow the rough face; the sides are the two short ends.
+/// </summary>
+public sealed class DiffusorPart : ShapePart, ISeeded, IProfiledPlate
+{
+	/// <summary>Default <see cref="Length"/> in pixels.</summary>
+	public const int DefaultLength = 50;
+	/// <summary>Default <see cref="Width"/> in pixels.</summary>
+	public const int DefaultWidth = 500;
+	/// <summary>Default <see cref="CenterWavelength"/> in pixels.</summary>
+	public const double DefaultWavelength = 16.0;
+	/// <summary>Shortest <see cref="CenterWavelength"/> in pixels: two pixels, what the profile's one-pixel sampling can hold.</summary>
+	public const double MinWavelength = 2.0;
+	/// <summary>Longest <see cref="CenterWavelength"/>, <see cref="Amplitude"/> and <see cref="Sigma"/> in pixels.</summary>
+	public const double MaxPixels = 10000.0;
+	/// <summary>Default <see cref="Amplitude"/> in pixels.</summary>
+	public const double DefaultAmplitude = 1.0;
+	/// <summary>Default <see cref="Sigma"/> in pixels.</summary>
+	public const double DefaultSigma = 6.0;
+	/// <summary>
+	/// How far the spread reaches on either side of the centre wavelength, in sigmas, and how many wavelengths lie in each
+	/// sigma: components at every half sigma out to three sigmas, 13 in all, the outermost at e^(−4.5) of the centre's amplitude.
+	/// </summary>
+	public const int SpreadSigmas = 3;
+	/// <summary>Components per sigma of the spread (see <see cref="SpreadSigmas"/>).</summary>
+	public const int StepsPerSigma = 2;
+	/// <summary>Stream selector XOR-ed onto the name hash, so the phases come from another <see cref="Pcg32"/> stream than a source's jitter would.</summary>
+	private const ulong RoughnessStream = 0x44494646UL;
+
+	private int _length = DefaultLength;
+	private int _width = DefaultWidth;
+	private double _centerWavelength = DefaultWavelength;
+	private double _amplitude = DefaultAmplitude;
+	private double _sigma = DefaultSigma;
+	private int _projectSeed;
+	private double[]? _profile;
+	private (int Width, double Wavelength, double Amplitude, double Sigma, string Name, int Seed) _profileKey;
+
+	/// <summary>A diffusor at the defaults; the readouts follow a rename too, as the phases come from the name (the setter is the base class's).</summary>
+	public DiffusorPart()
+	{
+		PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName == nameof(Name))
+			{
+				OnRoughnessChanged();
+			}
+		};
+	}
+
+	/// <inheritdoc/>
+	public override string NameStem => "Diffusor";
+
+	/// <summary>
+	/// A new diffusor coats its flat back alone (2026-11-07, the user's defaults): the faces' defaults are the
+	/// <see cref="CoatedPart"/>'s, every face, so a loaded diffusor keeps what its file says and a new one gets these.
+	/// </summary>
+	public override void PrepareNew()
+	{
+		FrontCoated = false;
+		BackCoated = true;
+		SidesCoated = false;
+	}
+
+	/// <summary>Extent along the axis in pixels: the plate's thickness at the mean of its rough face.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultLength)]
+	[Range(1, int.MaxValue)]
+	[Category("Shape")]
+	[Description("Extent along the axis in pixels: the plate's thickness at the mean of its rough face.")]
+	public int Length
+	{
+		get => _length;
+		set => SetProperty(ref _length, value);
+	}
+
+	/// <summary>Extent across the axis in pixels: the rough face's width.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultWidth)]
+	[Range(2, int.MaxValue)]
+	[Category("Shape")]
+	[Description("Extent across the axis in pixels: the width of the rough face.")]
+	public int Width
+	{
+		get => _width;
+		set
+		{
+			if (SetProperty(ref _width, value))
+			{
+				OnRoughnessChanged();
+			}
+		}
+	}
+
+	/// <summary>The spatial wavelength in pixels at the middle of the roughness's spectrum, the one with the full <see cref="Amplitude"/>.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultWavelength)]
+	[Range(MinWavelength, MaxPixels)]
+	[Category("Roughness")]
+	[DisplayName("Centre wavelength")]
+	[Description("The spatial wavelength in pixels at the middle of the roughness's spectrum: the ripple along the face that has the full amplitude. Two pixels at least.")]
+	public double CenterWavelength
+	{
+		get => _centerWavelength;
+		set
+		{
+			if (SetProperty(ref _centerWavelength, value))
+			{
+				OnRoughnessChanged();
+			}
+		}
+	}
+
+	/// <summary>The amplitude in pixels of the ripple at the centre wavelength; the other wavelengths get less, by their distance from it, and the face carries their sum.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultAmplitude)]
+	[Range(0.0, MaxPixels)]
+	[Category("Roughness")]
+	[Description("The amplitude in pixels of the ripple at the centre wavelength. The other wavelengths of the spread get less, by their distance from the centre, and the face carries the sum of them all; 0 makes the face flat.")]
+	public double Amplitude
+	{
+		get => _amplitude;
+		set
+		{
+			if (SetProperty(ref _amplitude, value))
+			{
+				OnRoughnessChanged();
+			}
+		}
+	}
+
+	/// <summary>
+	/// The spread of the roughness's wavelengths about the centre wavelength, in pixels: a wavelength λ gets the amplitude
+	/// times e^(−(λ − centre)² / 2σ²), the bell. 0 leaves the centre wavelength alone, a single ripple; the larger, the more
+	/// wavelengths join in and the less regular the face.
+	/// </summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultSigma)]
+	[Range(0.0, MaxPixels)]
+	[Category("Roughness")]
+	[DisplayName("Sigma")]
+	[Description("The spread of the roughness's wavelengths about the centre wavelength, in pixels: a wavelength gets the amplitude times the bell e^(−(λ − centre)² / 2σ²). 0 leaves the centre wavelength alone, a single regular ripple; the larger, the more wavelengths join in and the less regular the face.")]
+	public double Sigma
+	{
+		get => _sigma;
+		set
+		{
+			if (SetProperty(ref _sigma, value))
+			{
+				OnRoughnessChanged();
+			}
+		}
+	}
+
+	/// <inheritdoc/>
+	[XmlIgnore]
+	[Browsable(false)]
+	public int ProjectSeed
+	{
+		get => _projectSeed;
+		set
+		{
+			if (SetProperty(ref _projectSeed, value))
+			{
+				OnRoughnessChanged();
+			}
+		}
+	}
+
+	/// <summary>
+	/// The wavelengths of the roughness and their amplitudes, in pixels: the centre wavelength at the full amplitude and,
+	/// when <see cref="Sigma"/> is above 0, <see cref="SpreadSigmas"/> × <see cref="StepsPerSigma"/> more on either side
+	/// of it, a half sigma apart, each at the amplitude times e^(−(λ − centre)² / 2σ²); a wavelength below
+	/// <see cref="MinWavelength"/> is left out. Out-of-range values are guarded as the painter guards them. The phases are
+	/// drawn per component in this order, so a change of the width or the sigma keeps the phases of the components that stay.
+	/// </summary>
+	public (double Wavelength, double Amplitude, int Index)[] Components()
+	{
+		double centre = double.IsFinite(CenterWavelength) ? Math.Clamp(CenterWavelength, MinWavelength, MaxPixels) : DefaultWavelength;
+		double amplitude = double.IsFinite(Amplitude) ? Math.Clamp(Amplitude, 0.0, MaxPixels) : 0.0;
+		double sigma = double.IsFinite(Sigma) ? Math.Clamp(Sigma, 0.0, MaxPixels) : 0.0;
+		if (sigma <= 0.0)
+		{
+			return [(centre, amplitude, 0)];
+		}
+		var components = new List<(double, double, int)>();
+		int reach = SpreadSigmas * StepsPerSigma;
+		for (int k = -reach; k <= reach; k++)
+		{
+			double wavelength = centre + k * sigma / StepsPerSigma;
+			if (wavelength < MinWavelength)
+			{
+				continue;
+			}
+			double distance = wavelength - centre;
+			components.Add((wavelength, amplitude * Math.Exp(-distance * distance / (2.0 * sigma * sigma)), k));
+		}
+		return [.. components];
+	}
+
+	/// <summary>
+	/// The rough face's displacement from the plate's mean front plane in pixels, at every whole pixel across the face from
+	/// y' = −width / 2 to +width / 2 (<see cref="Width"/> + 1 values, positive into the plate): the sum of the
+	/// <see cref="Components"/>, each a sine of 2π y' / λ with a random phase from the project's seed and the part's name
+	/// (one <see cref="Pcg32"/> stream per part, the phases drawn in component order). Computed once and kept until the
+	/// width, a roughness value, the name or the seed changes (the user's rule, 2026-11-07); the array is never modified,
+	/// so a clone may share it. Any thread for a part no other thread edits.
+	/// </summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double[] Profile
+	{
+		get
+		{
+			int width = Math.Max(2, Width);
+			var key = (width, CenterWavelength, Amplitude, Sigma, Name ?? "", ProjectSeed);
+			if (_profile == null || !_profileKey.Equals(key))
+			{
+				_profile = BuildProfile(width, key.Item5, ProjectSeed, Components());
+				_profileKey = key;
+			}
+			return _profile;
+		}
+	}
+
+	/// <summary>The displacement of each whole pixel across a face of <paramref name="width"/> pixels from the sum of <paramref name="components"/>, the phases from <paramref name="seed"/> and <paramref name="name"/>.</summary>
+	private static double[] BuildProfile(int width, string name, int seed, (double Wavelength, double Amplitude, int Index)[] components)
+	{
+		// the phases: one draw per possible component in order, so a component keeps its phase whether its neighbours are there or not
+		var rng = new Pcg32((ulong)(uint)seed, Pcg32.StableHash(name) ^ RoughnessStream);
+		int reach = SpreadSigmas * StepsPerSigma;
+		var phases = new double[2 * reach + 1];
+		for (int k = 0; k < phases.Length; k++)
+		{
+			phases[k] = 2.0 * Math.PI * rng.NextDouble();
+		}
+		var profile = new double[width + 1];
+		double half = width / 2.0;
+		foreach ((double wavelength, double amplitude, int index) in components)
+		{
+			double phase = phases[index + reach];
+			double k = 2.0 * Math.PI / wavelength;
+			for (int i = 0; i <= width; i++)
+			{
+				profile[i] += amplitude * Math.Sin(k * (i - half) + phase);
+			}
+		}
+		return profile;
+	}
+
+	/// <summary>The rough face from its highest point to its lowest, in pixels; what the form shows for the roughness as a whole.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double ProfileHeight
+	{
+		get
+		{
+			double[] profile = Profile;
+			return profile.Max() - profile.Min();
+		}
+	}
+
+	/// <summary>How many wavelengths make up the roughness (<see cref="Components"/>).</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public int ComponentCount => Components().Length;
+
+	/// <summary>Tells the form that the values derived from the roughness follow an edit; the profile itself is rebuilt when next asked for.</summary>
+	private void OnRoughnessChanged()
+	{
+		OnPropertyChanged(nameof(ProfileHeight));
+		OnPropertyChanged(nameof(ComponentCount));
+	}
+
+	/// <summary>
+	/// The front face's x' at every whole pixel across the plate, from y' = −width / 2 to +width / 2: −length / 2 plus the
+	/// <see cref="Profile"/>, held at least a pixel before the back face, so the plate is never cut through.
+	/// </summary>
+	public double[] FrontFace()
+	{
+		double[] profile = Profile;
+		double half = Math.Max(1, Length) / 2.0;
+		var front = new double[profile.Length];
+		for (int i = 0; i < front.Length; i++)
+		{
+			front[i] = Math.Min(-half + profile[i], half - 1.0);
+		}
+		return front;
+	}
+
+	/// <inheritdoc/>
+	public override double AxisReach => Math.Max(1, Length) / 2.0 + Math.Max(0.0, -Profile.Min());
+
+	/// <summary>The outline: down the rough front face, pixel by pixel, then the two back corners.</summary>
+	public override (double X, double Y)[] Vertices()
+	{
+		double[] front = FrontFace();
+		double halfWidth = Math.Max(2, Width) / 2.0;
+		double halfLength = Math.Max(1, Length) / 2.0;
+		var vertices = new (double X, double Y)[front.Length + 2];
+		for (int i = 0; i < front.Length; i++)
+		{
+			vertices[i] = (front[i], -halfWidth + i);
+		}
+		vertices[front.Length] = (halfLength, halfWidth);
+		vertices[front.Length + 1] = (halfLength, -halfWidth);
+		return vertices;
+	}
+
+	/// <inheritdoc/>
+	public override void Normalize()
+	{
+		base.Normalize();
+		Length = Math.Max(1, Length);
+		Width = Math.Max(2, Width);
+		CenterWavelength = double.IsFinite(CenterWavelength) ? Math.Clamp(CenterWavelength, MinWavelength, MaxPixels) : DefaultWavelength;
+		Amplitude = double.IsFinite(Amplitude) ? Math.Clamp(Amplitude, 0.0, MaxPixels) : DefaultAmplitude;
+		Sigma = double.IsFinite(Sigma) ? Math.Clamp(Sigma, 0.0, MaxPixels) : DefaultSigma;
+	}
+
+	/// <inheritdoc/>
+	public override OpticalPart Clone() => ShallowClone<DiffusorPart>();
+}
+
+/// <summary>
+/// A plate whose front face (−x') is a profile over y', one sample per pixel across the width (a <see cref="DiffusorPart"/>'s
+/// roughness, a <see cref="FacettedGratingPart"/>'s facets): what the shared shape (<c>DiffusorShape</c>) paints.
+/// </summary>
+public interface IProfiledPlate
+{
+	/// <summary>Extent along the axis in pixels: the plate's thickness at the mean of its front face.</summary>
+	int Length { get; }
+
+	/// <summary>Extent across the axis in pixels: the width of the front face.</summary>
+	int Width { get; }
+
+	/// <summary>The front face's x' at every whole pixel across the face, from −width / 2 to width / 2 (width + 1 values), each at least a pixel before the back.</summary>
+	double[] FrontFace();
+}
+
+/// <summary>The facet pattern of a <see cref="FacettedGratingPart"/> (2026-11-08, the user's request for these three, sawtooth the default).</summary>
+public enum FacetPattern
+{
+	/// <summary>A ramp over each pitch from the crest to the trough, then a step back: a blazed grating.</summary>
+	Sawtooth,
+	/// <summary>A crest over half of each pitch and a trough over the other half: a binary grating.</summary>
+	SquareWave,
+	/// <summary>A sine over each pitch: a holographic grating.</summary>
+	Sinusoidal,
+}
+
+/// <summary>
+/// A facetted grating (2026-11-08, the user's request, in the Diffraction gratings submenu): a plate of
+/// <see cref="Length"/> along the axis and <see cref="Width"/> across, the material of a <see cref="ShapePart"/>, whose
+/// front face (−x') carries a periodic relief, <see cref="Pattern"/> repeated every <see cref="Pitch"/> pixels across
+/// the face with <see cref="Amplitude"/> pixels either side of the mean; the back is flat. A diffusor with one
+/// wavelength, as the user put it, and painted by the same shape: the face is a sample per pixel, so a square wave's
+/// and a sawtooth's steps stand between two pixels. The AR coating lies on the back alone (the user's rule; only
+/// <see cref="CoatedPart.BackCoated"/> counts, the form hides the other two boxes).
+/// </summary>
+public sealed class FacettedGratingPart : ShapePart, IProfiledPlate
+{
+	/// <summary>Default <see cref="Length"/> in pixels.</summary>
+	public const int DefaultLength = 50;
+	/// <summary>Default <see cref="Width"/> in pixels.</summary>
+	public const int DefaultWidth = 500;
+	/// <summary>Default <see cref="Pitch"/> in pixels (the user's choice, 2026-11-08, after a first look at 16).</summary>
+	public const double DefaultPitch = 32.0;
+	/// <summary>Smallest <see cref="Pitch"/> in pixels: the face is sampled a pixel apart.</summary>
+	public const double MinPitch = 2.0;
+	/// <summary>Default <see cref="Amplitude"/> in pixels (the user's choice, 2026-11-08, after a first look at 2).</summary>
+	public const double DefaultAmplitude = 4.0;
+
+	private int _length = DefaultLength;
+	private int _width = DefaultWidth;
+	private FacetPattern _pattern = FacetPattern.Sawtooth;
+	private double _pitch = DefaultPitch;
+	private double _amplitude = DefaultAmplitude;
+
+	/// <inheritdoc/>
+	public override string NameStem => "Facetted grating";
+
+	/// <summary>Extent along the axis in pixels: the plate's thickness at the mean of its facetted face.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultLength)]
+	[Range(1, int.MaxValue)]
+	[Category("Shape")]
+	[Description("Extent along the axis in pixels: the plate's thickness at the mean of its facetted face.")]
+	public int Length
+	{
+		get => _length;
+		set => SetProperty(ref _length, value);
+	}
+
+	/// <summary>Extent across the axis in pixels: the width of the facetted face.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultWidth)]
+	[Range(2, int.MaxValue)]
+	[Category("Shape")]
+	[Description("Extent across the axis in pixels: the width of the facetted face.")]
+	public int Width
+	{
+		get => _width;
+		set => SetProperty(ref _width, value);
+	}
+
+	/// <summary>The facets' shape over each pitch.</summary>
+	[XmlAttribute]
+	[DefaultValue(FacetPattern.Sawtooth)]
+	[Category("Facets")]
+	[Description("The facets' shape over each pitch: a sawtooth, a ramp then a step; a square wave, a crest and a trough of half a pitch each; or a sinusoid.")]
+	public FacetPattern Pattern
+	{
+		get => _pattern;
+		set => SetProperty(ref _pattern, value);
+	}
+
+	/// <summary>The period of the facets across the face in pixels, 2 to <see cref="DiffusorPart.MaxPixels"/>.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultPitch)]
+	[Range(MinPitch, DiffusorPart.MaxPixels)]
+	[Category("Facets")]
+	[Description("The period of the facets across the face in pixels: the grating's pitch, which with the wavelength sets the diffraction angles. Two pixels at least.")]
+	public double Pitch
+	{
+		get => _pitch;
+		set => SetProperty(ref _pitch, value);
+	}
+
+	/// <summary>The relief's height either side of the mean face in pixels, 0 to <see cref="DiffusorPart.MaxPixels"/>; the facets span twice this.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultAmplitude)]
+	[Range(0.0, DiffusorPart.MaxPixels)]
+	[Category("Facets")]
+	[Description("The relief's height either side of the mean face in pixels: the facets run from this far out to this far in, twice it from crest to trough. 0 makes the face flat.")]
+	public double Amplitude
+	{
+		get => _amplitude;
+		set => SetProperty(ref _amplitude, value);
+	}
+
+	/// <summary>The relief at every whole pixel across the face, positive into the plate: the pattern over the position in its pitch, from the face's centre.</summary>
+	public double[] Profile()
+	{
+		int width = Math.Max(2, Width);
+		double pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, MinPitch, DiffusorPart.MaxPixels) : DefaultPitch;
+		double amplitude = double.IsFinite(Amplitude) ? Math.Clamp(Amplitude, 0.0, DiffusorPart.MaxPixels) : 0.0;
+		FacetPattern pattern = Enum.IsDefined(Pattern) ? Pattern : FacetPattern.Sawtooth;
+		var profile = new double[width + 1];
+		double half = width / 2.0;
+		for (int i = 0; i <= width; i++)
+		{
+			double t = (i - half) / pitch;
+			t -= Math.Floor(t);
+			profile[i] = amplitude * pattern switch
+			{
+				FacetPattern.SquareWave => t < 0.5 ? -1.0 : 1.0,
+				FacetPattern.Sinusoidal => Math.Sin(2.0 * Math.PI * t),
+				_ => 2.0 * t - 1.0,
+			};
+		}
+		return profile;
+	}
+
+	/// <inheritdoc/>
+	public double[] FrontFace()
+	{
+		double[] profile = Profile();
+		double half = Math.Max(1, Length) / 2.0;
+		var front = new double[profile.Length];
+		for (int i = 0; i < front.Length; i++)
+		{
+			front[i] = Math.Min(-half + profile[i], half - 1.0);
+		}
+		return front;
+	}
+
+	/// <inheritdoc/>
+	public override double AxisReach => Math.Max(1, Length) / 2.0 + Math.Max(0.0, -Profile().Min());
+
+	/// <summary>The polygon of the face, a vertex per pixel, then the back's two corners.</summary>
+	public override (double X, double Y)[] Vertices()
+	{
+		double[] front = FrontFace();
+		double halfWidth = Math.Max(2, Width) / 2.0;
+		double halfLength = Math.Max(1, Length) / 2.0;
+		var vertices = new (double X, double Y)[front.Length + 2];
+		for (int i = 0; i < front.Length; i++)
+		{
+			vertices[i] = (front[i], -halfWidth + i);
+		}
+		vertices[front.Length] = (halfLength, halfWidth);
+		vertices[front.Length + 1] = (halfLength, -halfWidth);
+		return vertices;
+	}
+
+	/// <inheritdoc/>
+	public override void Normalize()
+	{
+		base.Normalize();
+		Length = Math.Max(1, Length);
+		Width = Math.Max(2, Width);
+		Pattern = Enum.IsDefined(Pattern) ? Pattern : FacetPattern.Sawtooth;
+		Pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, MinPitch, DiffusorPart.MaxPixels) : DefaultPitch;
+		Amplitude = double.IsFinite(Amplitude) ? Math.Clamp(Amplitude, 0.0, DiffusorPart.MaxPixels) : DefaultAmplitude;
+	}
+
+	/// <inheritdoc/>
+	public override OpticalPart Clone() => ShallowClone<FacettedGratingPart>();
+}
+
+/// <summary>
+/// A meta surface (2026-11-08, the user's request): a carrier plate of <see cref="Length"/> along the axis and
+/// <see cref="Width"/> across, the material of a <see cref="ShapePart"/>, with a sub-wavelength pattern on its front
+/// (−x'): a ridge of <see cref="PatternIndex"/> in every cell of <see cref="Pitch"/> across the face, <see cref="Height"/>
+/// deep in front of the plate (the user's choice: before the plate, as the filter's layers), its width the cell's fill
+/// factor times the pitch. What the surface does is the phase delay a subclass asks of each cell (<see cref="Delay"/>,
+/// wrapped to a turn): a ridge of effective index n_eff delays by (2π/λ)·H·(n_eff − 1), where a cell filled to f has
+/// n_eff² = f·n_p² + (1 − f) (the lamellar effective medium), so f = (n_eff² − 1) / (n_p² − 1), clamped to 0..1: a full
+/// turn needs a height of λ / (n_p − 1) (<see cref="FullTurnHeight"/>), and a lower pattern saturates. λ comes from
+/// <see cref="DesignFrequency"/> through the simulation's frequency scale, as a zone plate's. The AR band lies on the
+/// ridges' tops (front) and the plate's back (the user's rule); the plate's sides are not offered.
+/// </summary>
+public abstract class MetaSurfacePart : ShapePart, IFrequencyDesigned
+{
+	/// <summary>Default <see cref="Length"/> in pixels.</summary>
+	public const int DefaultLength = 50;
+	/// <summary>Default <see cref="Width"/> in pixels.</summary>
+	public const int DefaultWidth = 500;
+	/// <summary>Default <see cref="DesignFrequency"/>: level 50, a wavelength of 32 px at the default solver settings, as the zone plate's.</summary>
+	public const double DefaultFrequency = 50.0;
+	/// <summary>Default <see cref="Pitch"/> in pixels: an eighth of the default wavelength, sub-wavelength.</summary>
+	public const double DefaultPitch = 4.0;
+	/// <summary>Default <see cref="Height"/> in pixels: a full turn at the default wavelength and pattern index, λ / (n − 1) = 32.</summary>
+	public const double DefaultHeight = 32.0;
+	/// <summary>Default <see cref="PatternIndex"/> (the user's choice, 2026-11-08).</summary>
+	public const double DefaultPatternIndex = 2.0;
+
+	private int _length = DefaultLength;
+	private int _width = DefaultWidth;
+	private double _designFrequency = DefaultFrequency;
+	private double _frequencyScale = Simulation.DefaultSourceFrequencyScale;
+	private double _pitch = DefaultPitch;
+	private double _height = DefaultHeight;
+	private double _patternIndex = DefaultPatternIndex;
+
+	/// <summary>A new meta surface coats nothing on its sides: the band goes on the ridges' tops and the plate's back when a thickness is set.</summary>
+	public override void PrepareNew() => SidesCoated = false;
+
+	/// <summary>Extent of the carrier plate along the axis in pixels, without the pattern.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultLength)]
+	[Range(1, int.MaxValue)]
+	[Category("Shape")]
+	[Description("Thickness of the carrier plate along the axis in pixels; the pattern stands on its front, outside it.")]
+	public int Length
+	{
+		get => _length;
+		set => SetProperty(ref _length, value);
+	}
+
+	/// <summary>Extent of the plate and the pattern across the axis in pixels.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultWidth)]
+	[Range(2, int.MaxValue)]
+	[Category("Shape")]
+	[Description("Width of the plate and its pattern across the axis in pixels.")]
+	public int Width
+	{
+		get => _width;
+		set
+		{
+			if (SetProperty(ref _width, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <summary>The source frequency the surface is designed for, on a source's scale; the wavelength it gives sets every cell's fill.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultFrequency)]
+	[Range(LogicGatePart.MinFrequency, Source.MaxLevel)]
+	[Category("Design")]
+	[DisplayName("Target frequency")]
+	[Description("The source frequency the surface is designed for, on the same scale as a source's frequency. The cells' fill follows from the wavelength it gives; other frequencies see another surface.")]
+	public double DesignFrequency
+	{
+		get => _designFrequency;
+		set
+		{
+			if (SetProperty(ref _designFrequency, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <inheritdoc/>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double FrequencyScale
+	{
+		get => _frequencyScale;
+		set
+		{
+			if (SetProperty(ref _frequencyScale, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <summary>The cell's width across the face in pixels, 1 to <see cref="DiffusorPart.MaxPixels"/>: one ridge per cell; well below the wavelength, so the wave sees a mean index.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultPitch)]
+	[Range(1.0, DiffusorPart.MaxPixels)]
+	[Category("Pattern")]
+	[Description("The width of a cell of the pattern across the face in pixels, one ridge per cell. Well below the wavelength, so the wave sees each cell as a mean index rather than diffracting at it.")]
+	public double Pitch
+	{
+		get => _pitch;
+		set
+		{
+			if (SetProperty(ref _pitch, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <summary>The ridges' height in front of the plate in pixels, 1 to <see cref="DiffusorPart.MaxPixels"/>; a full turn of phase needs λ / (n − 1).</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultHeight)]
+	[Range(1.0, DiffusorPart.MaxPixels)]
+	[Category("Pattern")]
+	[Description("The height of the ridges in front of the plate in pixels. A full turn of phase takes a height of the wavelength over the pattern index less one; a lower pattern cannot delay enough and its fill saturates.")]
+	public double Height
+	{
+		get => _height;
+		set
+		{
+			if (SetProperty(ref _height, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <summary>Refractive index of the ridges, 1.00 to 2.55 in steps of 0.01; the plate's is <see cref="ShapePart.RefractiveIndex"/>.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultPatternIndex)]
+	[Range(MinIndex, MaxIndex)]
+	[Category("Pattern")]
+	[DisplayName("Pattern index")]
+	[Description("Refractive index of the ridges, 1.00 to 2.55 in steps of 0.01, usually above the plate's. The higher, the lower the pattern can be.")]
+	public double PatternIndex
+	{
+		get => _patternIndex;
+		set
+		{
+			if (SetProperty(ref _patternIndex, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <summary>The wavelength in pixels in a medium of index 1 that <see cref="DesignFrequency"/> gives with <see cref="FrequencyScale"/>; NaN for none.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double Wavelength => Simulation.Wavelength(DesignFrequency, 1.0, FrequencyScale);
+
+	/// <summary>The height in pixels at which a fully filled cell delays by a whole turn, λ / (n − 1).</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double FullTurnHeight => Wavelength / Math.Max(1e-9, GuardedPatternIndex - 1.0);
+
+	/// <summary>How many zones, each a turn of phase, the surface has across its face (a lens's from the centre to the rim), the last one cut by the rim; 0 without a wavelength.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public abstract int ZoneCount { get; }
+
+	/// <summary>Number of cells across the face: the width over the pitch, rounded down, 1 at least.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public int CellCount => Math.Max(1, (int)Math.Floor(Math.Max(2, Width) / GuardedPitch));
+
+	/// <summary>The pitch as the pattern uses it: finite, 1 to the width.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double GuardedPitch => double.IsFinite(Pitch) ? Math.Clamp(Pitch, 1.0, Math.Max(2, Width)) : DefaultPitch;
+
+	/// <summary>The height as the pattern uses it: finite, 1 to <see cref="DiffusorPart.MaxPixels"/>.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double GuardedHeight => double.IsFinite(Height) ? Math.Clamp(Height, 1.0, DiffusorPart.MaxPixels) : DefaultHeight;
+
+	/// <summary>The pattern index as the pattern uses it: finite, within the index range.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double GuardedPatternIndex => double.IsFinite(PatternIndex) ? Math.Clamp(PatternIndex, MinIndex, MaxIndex) : DefaultPatternIndex;
+
+	/// <summary>Whether the design has a wavelength to work with.</summary>
+	protected bool HasWavelength => double.IsFinite(Wavelength) && Wavelength > 0.0;
+
+	/// <summary>The y' of the centre of cell <paramref name="cell"/> (0 to <see cref="CellCount"/> − 1), the cells laid from the face's one end, centred together on the axis.</summary>
+	public double CellCentre(int cell)
+	{
+		double pitch = GuardedPitch;
+		return (cell - (CellCount - 1) / 2.0) * pitch;
+	}
+
+	/// <summary>The phase delay the surface asks of the cell at <paramref name="y"/> from the axis, in radians, any value: it is wrapped to a turn for the fill. Only asked with a wavelength.</summary>
+	protected abstract double Delay(double y);
+
+	/// <summary><paramref name="phase"/> wrapped into 0 to 2π.</summary>
+	protected static double Wrap(double phase) => phase - 2.0 * Math.PI * Math.Floor(phase / (2.0 * Math.PI));
+
+	/// <summary>
+	/// The fill factor of every cell, 0 (no ridge) to 1 (the cell solid): the delay the cell needs (<see cref="Delay"/>,
+	/// wrapped to a turn, a full turn kept as one, so a converging centre cell is solid rather than empty), turned into the effective index the ridge must give, (delay / 2π)·λ / H + 1, and that into the
+	/// fill through the lamellar mean of n², clamped where the height cannot reach it. Empty without a wavelength.
+	/// </summary>
+	public double[] FillFactors()
+	{
+		int cells = CellCount;
+		var fills = new double[cells];
+		if (!HasWavelength)
+		{
+			return fills;
+		}
+		double lambda = Wavelength;
+		double height = GuardedHeight;
+		double n2 = GuardedPatternIndex * GuardedPatternIndex;
+		for (int j = 0; j < cells; j++)
+		{
+			double asked = Delay(CellCentre(j));
+			double delay = asked >= 0.0 && asked <= 2.0 * Math.PI ? asked : Wrap(asked);
+			double effective = 1.0 + delay / (2.0 * Math.PI) * lambda / height;
+			fills[j] = n2 > 1.0 ? Math.Clamp((effective * effective - 1.0) / (n2 - 1.0), 0.0, 1.0) : 0.0;
+		}
+		return fills;
+	}
+
+	/// <summary>Raises the readouts that follow the design: the wavelength, the full-turn height, the zones, the cells; a subclass adds its own.</summary>
+	protected virtual void OnDesignChanged()
+	{
+		OnPropertyChanged(nameof(Wavelength));
+		OnPropertyChanged(nameof(FullTurnHeight));
+		OnPropertyChanged(nameof(ZoneCount));
+		OnPropertyChanged(nameof(CellCount));
+	}
+
+	/// <inheritdoc/>
+	public override double AxisReach => Math.Max(1, Length) / 2.0 + GuardedHeight;
+
+	/// <summary>The box around the plate and its pattern: the outline the overlay draws.</summary>
+	public override (double X, double Y)[] Vertices()
+	{
+		double back = Math.Max(1, Length) / 2.0;
+		double front = -back - GuardedHeight;
+		double w = Math.Max(2, Width) / 2.0;
+		return [(front, -w), (back, -w), (back, w), (front, w)];
+	}
+
+	/// <inheritdoc/>
+	public override void Normalize()
+	{
+		base.Normalize();
+		Length = Math.Max(1, Length);
+		Width = Math.Max(2, Width);
+		DesignFrequency = double.IsFinite(DesignFrequency) ? Math.Round(Math.Clamp(DesignFrequency, LogicGatePart.MinFrequency, Source.MaxLevel), 2) : DefaultFrequency;
+		Pitch = double.IsFinite(Pitch) ? Math.Clamp(Pitch, 1.0, DiffusorPart.MaxPixels) : DefaultPitch;
+		Height = GuardedHeight;
+		PatternIndex = NormalizeIndex(PatternIndex);
+	}
+}
+
+/// <summary>What a <see cref="MetaLensPart"/> does to a plane wave: focus it, or spread it as from a focus behind it.</summary>
+public enum MetaLensType
+{
+	/// <summary>Converging: the cells' delay is greatest at the centre and falls outward within each zone, as a convex lens's glass thins.</summary>
+	Converging,
+	/// <summary>Diverging: the delay grows outward within each zone, as a concave lens's glass thickens.</summary>
+	Diverging,
+}
+
+/// <summary>
+/// A meta lens (2026-11-08, the user's request, the first entry of the Meta surfaces submenu): a <see cref="MetaSurfacePart"/>
+/// whose cells delay as a lens would (the user's choice: computed from the wavelength and the <see cref="FocalLength"/>):
+/// a cell at y' needs the phase of a lens, (2π/λ)(√(F² + y'²) − F), wrapped to a turn, taken from a full turn down for
+/// a converging lens and up from zero for a diverging one (<see cref="LensType"/>).
+/// </summary>
+public sealed class MetaLensPart : MetaSurfacePart
+{
+	/// <summary>Default <see cref="FocalLength"/> in pixels (the user's choice, 2026-11-08).</summary>
+	public const int DefaultFocalLength = 500;
+
+	private int _focalLength = DefaultFocalLength;
+	private MetaLensType _lensType = MetaLensType.Converging;
+
+	/// <inheritdoc/>
+	public override string NameStem => "Meta lens";
+
+	/// <summary>Distance in pixels from the lens to its focus along the axis (+x'), for a plane wave arriving along it; a diverging lens spreads as from a focus that far behind it.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultFocalLength)]
+	[Range(1, int.MaxValue)]
+	[Category("Lens")]
+	[DisplayName("Focal length")]
+	[Description("Distance in pixels from the lens to its focus, for a plane wave arriving along the axis; a diverging lens spreads the wave as if from a focus that far behind it.")]
+	public int FocalLength
+	{
+		get => _focalLength;
+		set
+		{
+			if (SetProperty(ref _focalLength, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <summary>Converging or diverging: which way the fill runs within each zone.</summary>
+	[XmlAttribute]
+	[DefaultValue(MetaLensType.Converging)]
+	[Category("Lens")]
+	[DisplayName("Lens type")]
+	[Description("Converging, the fill greatest at the centre and falling outward within each zone, as a convex lens's glass thins; or diverging, the fill growing outward.")]
+	public MetaLensType LensType
+	{
+		get => _lensType;
+		set
+		{
+			if (SetProperty(ref _lensType, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <inheritdoc/>
+	public override int ZoneCount => HasWavelength ? (int)Math.Floor(LensPhase(Math.Max(2, Width) / 2.0) / (2.0 * Math.PI)) + 1 : 0;
+
+	/// <summary>The lens's phase lead at <paramref name="y"/> from the axis relative to the centre, in radians, (2π/λ)(√(F² + y²) − F): what a converging lens must take away there, a diverging one add; 0 without a wavelength.</summary>
+	public double LensPhase(double y)
+	{
+		if (!HasWavelength)
+		{
+			return 0.0;
+		}
+		double f = Math.Max(1, FocalLength);
+		return 2.0 * Math.PI / Wavelength * (Math.Sqrt(f * f + y * y) - f);
+	}
+
+	/// <summary>A full turn less the wrapped lens phase for a converging lens, the wrapped phase itself for a diverging one.</summary>
+	protected override double Delay(double y)
+	{
+		double wrapped = Wrap(LensPhase(y));
+		return LensType == MetaLensType.Diverging ? wrapped : 2.0 * Math.PI - wrapped;
+	}
+
+	/// <inheritdoc/>
+	public override void Normalize()
+	{
+		base.Normalize();
+		FocalLength = Math.Max(1, FocalLength);
+		LensType = Enum.IsDefined(LensType) ? LensType : MetaLensType.Converging;
+	}
+
+	/// <inheritdoc/>
+	public override OpticalPart Clone() => ShallowClone<MetaLensPart>();
+}
+
+/// <summary>
+/// A meta prism (2026-11-08, the user's request, the second entry of the Meta surfaces submenu): a <see cref="MetaSurfacePart"/>
+/// whose cells delay in a line across the face, (2π/λ)·y'·sin θ wrapped to a turn, so a plane wave arriving along the
+/// axis leaves turned by <see cref="Deflection"/> θ, counter-clockwise on the screen for a positive angle, as a blazed
+/// grating's first order does; each zone is a turn, λ / sin θ wide (<see cref="ZoneWidth"/>).
+/// </summary>
+public sealed class MetaPrismPart : MetaSurfacePart
+{
+	/// <summary>Default <see cref="Deflection"/> in degrees.</summary>
+	public const double DefaultDeflection = 20.0;
+	/// <summary>Largest magnitude of <see cref="Deflection"/> in degrees: short of grazing.</summary>
+	public const double MaxDeflection = 89.0;
+
+	private double _deflection = DefaultDeflection;
+
+	/// <inheritdoc/>
+	public override string NameStem => "Meta prism";
+
+	/// <summary>The angle in degrees by which a plane wave arriving along the axis is turned, −<see cref="MaxDeflection"/> to <see cref="MaxDeflection"/>, counter-clockwise on the screen for a positive angle.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultDeflection)]
+	[Range(-MaxDeflection, MaxDeflection)]
+	[Category("Prism")]
+	[Description("The angle in degrees by which a wave arriving along the axis is turned, counter-clockwise on the screen for a positive angle; 0 turns nothing. The steeper, the narrower the zones, which must stay a few cells wide.")]
+	public double Deflection
+	{
+		get => _deflection;
+		set
+		{
+			if (SetProperty(ref _deflection, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <summary>The sine of the deflection, guarded.</summary>
+	private double Sine => Math.Sin((double.IsFinite(Deflection) ? Math.Clamp(Deflection, -MaxDeflection, MaxDeflection) : DefaultDeflection) * Math.PI / 180.0);
+
+	/// <summary>The width of a zone, a full turn of phase, across the face in pixels: λ / sin θ; infinite at no deflection.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double ZoneWidth => Wavelength / Math.Max(1e-12, Math.Abs(Sine));
+
+	/// <inheritdoc/>
+	public override int ZoneCount => HasWavelength ? (int)Math.Floor(Math.Max(2, Width) / ZoneWidth) + 1 : 0;
+
+	/// <summary>A line across the face: the delay grows toward −y' (up the screen at 0°) for a positive angle, so the wavefront lags there and the wave turns that way.</summary>
+	protected override double Delay(double y) => -2.0 * Math.PI / Wavelength * y * Sine;
+
+	/// <inheritdoc/>
+	protected override void OnDesignChanged()
+	{
+		base.OnDesignChanged();
+		OnPropertyChanged(nameof(ZoneWidth));
+	}
+
+	/// <inheritdoc/>
+	public override void Normalize()
+	{
+		base.Normalize();
+		Deflection = double.IsFinite(Deflection) ? Math.Round(Math.Clamp(Deflection, -MaxDeflection, MaxDeflection), 2) : DefaultDeflection;
+	}
+
+	/// <inheritdoc/>
+	public override OpticalPart Clone() => ShallowClone<MetaPrismPart>();
+}
+
+/// <summary>
+/// A meta axicon (2026-11-08, the user's request, the third entry of the Meta surfaces submenu): a <see cref="MetaSurfacePart"/>
+/// whose cells delay in proportion to the distance from the axis, a full turn less (2π/λ)·|y'|·sin β wrapped to a
+/// turn, so the two halves of a plane wave arriving along the axis are turned toward it by <see cref="ConeAngle"/> β and
+/// cross along a line behind the surface (a Bessel-like beam) of about half the width over tan β
+/// (<see cref="LineLength"/>) rather than at a point; each zone is λ / sin β wide (<see cref="ZoneWidth"/>).
+/// </summary>
+public sealed class MetaAxiconPart : MetaSurfacePart
+{
+	/// <summary>Default <see cref="ConeAngle"/> in degrees.</summary>
+	public const double DefaultConeAngle = 10.0;
+	/// <summary>Smallest <see cref="ConeAngle"/> in degrees: short of no cone.</summary>
+	public const double MinConeAngle = 0.1;
+	/// <summary>Largest <see cref="ConeAngle"/> in degrees: short of grazing.</summary>
+	public const double MaxConeAngle = 89.0;
+
+	private double _coneAngle = DefaultConeAngle;
+
+	/// <inheritdoc/>
+	public override string NameStem => "Meta axicon";
+
+	/// <summary>The angle in degrees by which each half of a wave arriving along the axis is turned toward it, <see cref="MinConeAngle"/> to <see cref="MaxConeAngle"/>.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultConeAngle)]
+	[Range(MinConeAngle, MaxConeAngle)]
+	[Category("Axicon")]
+	[DisplayName("Cone angle")]
+	[Description("The angle in degrees by which each half of a wave arriving along the axis is turned toward it. The steeper, the shorter the line of focus behind the surface and the narrower the zones, which must stay a few cells wide.")]
+	public double ConeAngle
+	{
+		get => _coneAngle;
+		set
+		{
+			if (SetProperty(ref _coneAngle, value))
+			{
+				OnDesignChanged();
+			}
+		}
+	}
+
+	/// <summary>The cone angle guarded, in radians.</summary>
+	private double Radians => (double.IsFinite(ConeAngle) ? Math.Clamp(ConeAngle, MinConeAngle, MaxConeAngle) : DefaultConeAngle) * Math.PI / 180.0;
+
+	/// <summary>The width of a zone, a full turn of phase, across the face in pixels: λ / sin β.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double ZoneWidth => Wavelength / Math.Sin(Radians);
+
+	/// <summary>How far behind the surface the line of focus reaches, in pixels: the half width over tan β, where the rim's rays cross the axis.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double LineLength => Math.Max(2, Width) / 2.0 / Math.Tan(Radians);
+
+	/// <inheritdoc/>
+	public override int ZoneCount => HasWavelength ? (int)Math.Floor(Math.Max(2, Width) / 2.0 / ZoneWidth) + 1 : 0;
+
+	/// <summary>A full turn less the phase a cone needs, (2π/λ)·|y'|·sin β, so the delay is greatest on the axis and falls outward within each zone, as a converging lens's.</summary>
+	protected override double Delay(double y) => 2.0 * Math.PI - Wrap(2.0 * Math.PI / Wavelength * Math.Abs(y) * Math.Sin(Radians));
+
+	/// <inheritdoc/>
+	protected override void OnDesignChanged()
+	{
+		base.OnDesignChanged();
+		OnPropertyChanged(nameof(ZoneWidth));
+		OnPropertyChanged(nameof(LineLength));
+	}
+
+	/// <inheritdoc/>
+	public override void Normalize()
+	{
+		base.Normalize();
+		ConeAngle = double.IsFinite(ConeAngle) ? Math.Round(Math.Clamp(ConeAngle, MinConeAngle, MaxConeAngle), 2) : DefaultConeAngle;
+	}
+
+	/// <inheritdoc/>
+	public override OpticalPart Clone() => ShallowClone<MetaAxiconPart>();
+}
+
+/// <summary>One layer of an <see cref="InterferenceFilterPart"/>'s stack: a thickness along the axis and an index.</summary>
+public sealed class FilterLayer : ObservableObject
+{
+	/// <summary>Default <see cref="Thickness"/> in pixels.</summary>
+	public const double DefaultThickness = 2.0;
+	/// <summary>Default <see cref="RefractiveIndex"/>.</summary>
+	public const double DefaultIndex = 1.5;
+	/// <summary>Largest <see cref="Thickness"/> in pixels.</summary>
+	public const double MaxThickness = 1000.0;
+
+	private double _thickness = DefaultThickness;
+	private double _refractiveIndex = DefaultIndex;
+
+	/// <summary>Thickness of the layer along the part's axis in pixels, in steps of 0.01; a fractional boundary is a mixed index at its pixel (the painter samples 4 × 4).</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultThickness)]
+	[Range(0.0, MaxThickness)]
+	[Category("Layer")]
+	[Description("Thickness of the layer in pixels, in steps of 0.01. A quarter-wave layer is λ / (4 n) pixels thick; a boundary inside a pixel gives that pixel a mixed index.")]
+	public double Thickness
+	{
+		get => _thickness;
+		set => SetProperty(ref _thickness, value);
+	}
+
+	/// <summary>Refractive index of the layer, 1.00 to 2.55 in steps of 0.01.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultIndex)]
+	[Range(OpticalPart.MinIndex, OpticalPart.MaxIndex)]
+	[Category("Layer")]
+	[DisplayName("Refractive index")]
+	[Description("Refractive index of the layer, 1.00 to 2.55 in steps of 0.01.")]
+	public double RefractiveIndex
+	{
+		get => _refractiveIndex;
+		set => SetProperty(ref _refractiveIndex, value);
+	}
+
+	/// <summary>The thickness guarded as the painter takes it: finite, 0 to <see cref="MaxThickness"/>.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double GuardedThickness => double.IsFinite(Thickness) ? Math.Clamp(Thickness, 0.0, MaxThickness) : 0.0;
+
+	/// <summary>Clamps the thickness into 0..<see cref="MaxThickness"/> at 0.01 and the index into the part range.</summary>
+	public void Normalize()
+	{
+		Thickness = Math.Round(GuardedThickness, 2);
+		RefractiveIndex = double.IsFinite(RefractiveIndex) ? Math.Round(Math.Clamp(RefractiveIndex, OpticalPart.MinIndex, OpticalPart.MaxIndex), 2) : DefaultIndex;
+	}
+
+	/// <summary>A copy with the same values and no change subscribers.</summary>
+	public FilterLayer Clone() => new() { Thickness = Thickness, RefractiveIndex = RefractiveIndex };
+
+	/// <summary>The values, for display.</summary>
+	public override string ToString() => $"{Thickness} px, n {RefractiveIndex}";
+}
+
+/// <summary>
+/// An interference filter (the user's request, 2026-11-07): a carrier plate of <see cref="Length"/> along the axis and
+/// <see cref="Width"/> across, the material and absorption of a <see cref="ShapePart"/>, with a stack of
+/// <see cref="Layers"/> on its front face (−x', toward a source on the left), outside the plate, so the plate stays as
+/// sized and the part grows by the stack (the user's choice). The first layer is the outermost, the one a wave from the
+/// left meets first, the last lies on the plate. The part's centre is the plate's. A reflector (<see cref="ShapePart.Mirror"/>)
+/// makes the plate a mirror and leaves the layers glass in front of it (the user's choice: a coated mirror). The plate's
+/// AR coating lies on its back alone, the face away from the layers (<see cref="CoatedPart.BackCoated"/>; the front and
+/// side flags are not used). A new filter gets a quarter-wave stack (<see cref="PrepareNew"/>).
+/// </summary>
+public sealed class InterferenceFilterPart : ShapePart
+{
+	/// <summary>Default <see cref="Length"/> in pixels.</summary>
+	public const int DefaultLength = 50;
+	/// <summary>Default <see cref="Width"/> in pixels.</summary>
+	public const int DefaultWidth = 500;
+	/// <summary>The wavelength in pixels a new filter's stack is cut for.</summary>
+	public const double DefaultStackWavelength = 16.0;
+	/// <summary>Layer pairs of a new filter's stack.</summary>
+	public const int DefaultPairs = 5;
+	/// <summary>The low index of a new filter's stack.</summary>
+	public const double DefaultLowIndex = 1.5;
+	/// <summary>The high index of a new filter's stack.</summary>
+	public const double DefaultHighIndex = 2.0;
+
+	private int _length = DefaultLength;
+	private int _width = DefaultWidth;
+	private ObservableCollection<FilterLayer> _layers = [];
+	private HashSet<FilterLayer> _watched = [];
+
+	/// <summary>A filter without layers: a file's layers or <see cref="PrepareNew"/>'s stack fill it.</summary>
+	public InterferenceFilterPart()
+	{
+		_layers.CollectionChanged += OnLayersChanged;
+	}
+
+	/// <inheritdoc/>
+	public override string NameStem => "Interference filter";
+
+	/// <summary>Extent of the carrier plate along the axis in pixels, without the stack.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultLength)]
+	[Range(1, int.MaxValue)]
+	[Category("Shape")]
+	[Description("Thickness of the carrier plate along the axis in pixels; the layer stack lies on its front, outside it.")]
+	public int Length
+	{
+		get => _length;
+		set => SetProperty(ref _length, value);
+	}
+
+	/// <summary>Extent of the plate and the stack across the axis in pixels.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultWidth)]
+	[Range(1, int.MaxValue)]
+	[Category("Shape")]
+	[Description("Width of the plate and its layers across the axis in pixels.")]
+	public int Width
+	{
+		get => _width;
+		set => SetProperty(ref _width, value);
+	}
+
+	/// <summary>The layers on the plate's front, the outermost first; the order is the order a wave from the left meets them.</summary>
+	[XmlElement("Layer")]
+	[Category("Layers")]
+	[Description("The layers on the plate's front, the outermost first. Each has its thickness in pixels and its refractive index.")]
+	public ObservableCollection<FilterLayer> Layers
+	{
+		get => _layers;
+		set
+		{
+			ObservableCollection<FilterLayer> old = _layers;
+			if (SetProperty(ref _layers, value))
+			{
+				if (old != null)
+				{
+					old.CollectionChanged -= OnLayersChanged;
+				}
+				foreach (FilterLayer layer in _watched)
+				{
+					layer.PropertyChanged -= OnLayerChanged;
+				}
+				_watched.Clear();
+				if (value != null)
+				{
+					value.CollectionChanged += OnLayersChanged;
+					foreach (FilterLayer layer in value)
+					{
+						Watch(layer);
+					}
+				}
+				OnPropertyChanged(nameof(StackThickness));
+			}
+		}
+	}
+
+	private void Watch(FilterLayer layer)
+	{
+		if (_watched.Add(layer))
+		{
+			layer.PropertyChanged += OnLayerChanged;
+		}
+	}
+
+	/// <summary>A layer came or went: the layers are watched for their thickness, which the stack's readout follows.</summary>
+	private void OnLayersChanged(object? sender, NotifyCollectionChangedEventArgs e)
+	{
+		foreach (FilterLayer layer in _watched.Where(layer => !_layers.Contains(layer)).ToList())
+		{
+			layer.PropertyChanged -= OnLayerChanged;
+			_watched.Remove(layer);
+		}
+		foreach (FilterLayer layer in _layers)
+		{
+			Watch(layer);
+		}
+		OnPropertyChanged(nameof(StackThickness));
+	}
+
+	private void OnLayerChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName == nameof(FilterLayer.Thickness))
+		{
+			OnPropertyChanged(nameof(StackThickness));
+		}
+	}
+
+	/// <summary>The stack's thickness in pixels: the sum of the layers' (guarded) thicknesses.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public double StackThickness => Layers.Sum(layer => layer.GuardedThickness);
+
+	/// <summary>
+	/// A new filter's stack (the user's choices, 2026-11-07): quarter-wave layers for <see cref="DefaultStackWavelength"/>,
+	/// λ / (4 n) thick at 0.01, the usual design that begins and ends with the high index: <see cref="DefaultPairs"/> pairs
+	/// of high then low index from the outside in, and one more high-index layer on the plate, eleven layers in all: by
+	/// thin-film theory about 92 % reflected at the design wavelength on a plate of 1.50 in air, where the earlier ten
+	/// with the low index outermost gave about 70 %.
+	/// </summary>
+	public override void PrepareNew()
+	{
+		for (int pair = 0; pair < DefaultPairs; pair++)
+		{
+			Layers.Add(QuarterWave(DefaultHighIndex));
+			Layers.Add(QuarterWave(DefaultLowIndex));
+		}
+		Layers.Add(QuarterWave(DefaultHighIndex));
+	}
+
+	/// <summary>A quarter-wave layer of index <paramref name="index"/> for <see cref="DefaultStackWavelength"/>.</summary>
+	private static FilterLayer QuarterWave(double index) =>
+		new() { RefractiveIndex = index, Thickness = Math.Round(DefaultStackWavelength / (4.0 * index), 2) };
+
+	/// <inheritdoc/>
+	public override double AxisReach => Math.Max(1, Length) / 2.0 + StackThickness;
+
+	/// <summary>The whole part's outline, the stack's outer face to the plate's back: a rectangle.</summary>
+	public override (double X, double Y)[] Vertices()
+	{
+		double back = Math.Max(1, Length) / 2.0;
+		double front = -back - StackThickness;
+		double w = Math.Max(1, Width) / 2.0;
+		return [(front, -w), (back, -w), (back, w), (front, w)];
+	}
+
+	/// <inheritdoc/>
+	public override void Normalize()
+	{
+		base.Normalize();
+		Length = Math.Max(1, Length);
+		Width = Math.Max(1, Width);
+		Layers ??= [];
+		foreach (FilterLayer layer in Layers)
+		{
+			layer.Normalize();
+		}
+	}
+
+	/// <inheritdoc/>
+	public override OpticalPart Clone()
+	{
+		var copy = ShallowClone<InterferenceFilterPart>();
+		// the memberwise copy shares the original's set of watched layers: a fresh set, then the new list through the
+		// setter, which watches it (the setter's unsubscribing from the shared list removes the copy's handler, never the original's)
+		copy._watched = [];
+		copy.Layers = new ObservableCollection<FilterLayer>(Layers.Select(layer => layer.Clone()));
+		return copy;
+	}
+}
+
+/// <summary>
+/// A simple 2D diffraction grating (the user's request, 2026-11-07): a lattice of round dots, <see cref="Columns"/> along
+/// the axis by <see cref="Rows"/> across, <see cref="ColumnSpacing"/> and <see cref="RowSpacing"/> apart, each dot
+/// <see cref="Diameter"/> pixels across, at most half the smaller spacing; nothing between the dots and no carrier (the
+/// user's choices). The lattice is the composite source's: an odd count keeps the middle dot on the part's position, an
+/// even one straddles it. The dots are of one material, that of a <see cref="ShapePart"/> (a mirror, or glass with an
+/// index and absorption; a new grating is a mirror, <see cref="PrepareNew"/>); the coating of <see cref="CoatedPart"/>
+/// is not used (too small). A new grating is one column of 31 rows, 16 px apart, 2 px dots: a line grating across the
+/// axis, which a wave from the left diffracts at.
+/// </summary>
+public sealed class SimpleGratingPart : ShapePart
+{
+	/// <summary>Default <see cref="Columns"/>.</summary>
+	public const int DefaultColumns = 1;
+	/// <summary>Default <see cref="Rows"/>.</summary>
+	public const int DefaultRows = 31;
+	/// <summary>Default <see cref="ColumnSpacing"/> and <see cref="RowSpacing"/> in pixels.</summary>
+	public const int DefaultSpacing = 16;
+	/// <summary>Smallest spacing in pixels: room for a dot of a pixel.</summary>
+	public const int MinSpacing = 2;
+	/// <summary>Default <see cref="Diameter"/> in pixels.</summary>
+	public const int DefaultDiameter = 2;
+
+	private int _columns = DefaultColumns;
+	private int _rows = DefaultRows;
+	private int _columnSpacing = DefaultSpacing;
+	private int _rowSpacing = DefaultSpacing;
+	private int _diameter = DefaultDiameter;
+
+	/// <inheritdoc/>
+	public override string NameStem => "Grating";
+
+	/// <summary>Number of dots along the axis; odd counts keep the middle dot on the part's position.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultColumns)]
+	[Range(1, int.MaxValue)]
+	[Category("Lattice")]
+	[Description("Number of dots along the axis. Odd counts keep the middle dot on the part's position.")]
+	public int Columns
+	{
+		get => _columns;
+		set => SetProperty(ref _columns, value);
+	}
+
+	/// <summary>Number of dots across the axis.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultRows)]
+	[Range(1, int.MaxValue)]
+	[Category("Lattice")]
+	[Description("Number of dots across the axis. Odd counts keep the middle dot on the part's position.")]
+	public int Rows
+	{
+		get => _rows;
+		set => SetProperty(ref _rows, value);
+	}
+
+	/// <summary>Distance between neighbouring columns along the axis in pixels; the largest dot is half of the smaller spacing.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultSpacing)]
+	[Range(MinSpacing, int.MaxValue)]
+	[Category("Lattice")]
+	[DisplayName("Column spacing")]
+	[Description("Distance between neighbouring columns along the axis in pixels: the grating's period in that direction. The dots can be at most half the smaller spacing across.")]
+	public int ColumnSpacing
+	{
+		get => _columnSpacing;
+		set
+		{
+			if (SetProperty(ref _columnSpacing, value))
+			{
+				OnPropertyChanged(nameof(MaxDiameter));
+			}
+		}
+	}
+
+	/// <summary>Distance between neighbouring rows across the axis in pixels.</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultSpacing)]
+	[Range(MinSpacing, int.MaxValue)]
+	[Category("Lattice")]
+	[DisplayName("Row spacing")]
+	[Description("Distance between neighbouring rows across the axis in pixels: the grating's period in that direction. The dots can be at most half the smaller spacing across.")]
+	public int RowSpacing
+	{
+		get => _rowSpacing;
+		set
+		{
+			if (SetProperty(ref _rowSpacing, value))
+			{
+				OnPropertyChanged(nameof(MaxDiameter));
+			}
+		}
+	}
+
+	/// <summary>Diameter of each dot in pixels, 1 to <see cref="MaxDiameter"/> (half the smaller spacing; a bound that depends on the spacings, so no <c>[Range]</c>).</summary>
+	[XmlAttribute]
+	[DefaultValue(DefaultDiameter)]
+	[Category("Lattice")]
+	[Description("Diameter of each dot in pixels, at most half the smaller spacing. A dot of 2 pixels on a whole-pixel position covers a square of 2 × 2 pixels; a mirror dot under 2 pixels covers no pixel centre and paints nothing.")]
+	public int Diameter
+	{
+		get => _diameter;
+		set => SetProperty(ref _diameter, value);
+	}
+
+	/// <summary>The largest <see cref="Diameter"/>: half the smaller spacing, 1 at least (the user's rule, 2026-11-07).</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public int MaxDiameter => Math.Max(1, Math.Min(Spacing(ColumnSpacing), Spacing(RowSpacing)) / 2);
+
+	/// <summary>The diameter as the painter takes it: 1 to <see cref="MaxDiameter"/>.</summary>
+	[XmlIgnore]
+	[Browsable(false)]
+	public int GuardedDiameter => Math.Clamp(Diameter, 1, MaxDiameter);
+
+	/// <summary>A spacing guarded to <see cref="MinSpacing"/> or more.</summary>
+	public static int Spacing(int spacing) => Math.Max(MinSpacing, spacing);
+
+	/// <summary>The dot centres in the part frame, column by column: (i − (columns − 1) / 2) × column spacing along the axis, the rows likewise across.</summary>
+	public (double X, double Y)[] Points()
+	{
+		int columns = Math.Max(1, Columns), rows = Math.Max(1, Rows);
+		double sx = Spacing(ColumnSpacing), sy = Spacing(RowSpacing);
+		var points = new (double X, double Y)[columns * rows];
+		for (int i = 0; i < columns; i++)
+		{
+			for (int j = 0; j < rows; j++)
+			{
+				points[i * rows + j] = ((i - (columns - 1) / 2.0) * sx, (j - (rows - 1) / 2.0) * sy);
+			}
+		}
+		return points;
+	}
+
+	/// <summary>A new grating is a mirror: dots that reflect everything, the plainest grating (the user's choice, 2026-11-07).</summary>
+	public override void PrepareNew() => Mirror = true;
+
+	/// <summary>The box around the lattice, the dots' radius included: the outline the overlay draws and the reach of the rotation handle.</summary>
+	public override (double X, double Y)[] Vertices()
+	{
+		double r = GuardedDiameter / 2.0;
+		double l = (Math.Max(1, Columns) - 1) / 2.0 * Spacing(ColumnSpacing) + r;
+		double w = (Math.Max(1, Rows) - 1) / 2.0 * Spacing(RowSpacing) + r;
+		return [(-l, -w), (l, -w), (l, w), (-l, w)];
+	}
+
+	/// <inheritdoc/>
+	public override void Normalize()
+	{
+		base.Normalize();
+		Columns = Math.Max(1, Columns);
+		Rows = Math.Max(1, Rows);
+		ColumnSpacing = Spacing(ColumnSpacing);
+		RowSpacing = Spacing(RowSpacing);
+		Diameter = GuardedDiameter;
+	}
+
+	/// <inheritdoc/>
+	public override OpticalPart Clone() => ShallowClone<SimpleGratingPart>();
 }
 
 /// <summary>How the two ends of a <see cref="FiberPart"/> are cut (2026-10-22, the user's request; the ends were round from the distance test before).</summary>
@@ -2632,10 +4326,10 @@ public sealed class ZonePlatePart : OpticalPart, IFrequencyDesigned
 {
 	/// <summary>Default <see cref="Diameter"/> in pixels.</summary>
 	public const int DefaultDiameter = 800;
-	/// <summary>Default <see cref="Thickness"/> in pixels: two wavelengths at the default frequency, room for the rise on both faces (see <see cref="BlockAbsorption"/>).</summary>
-	public const int DefaultThickness = 64;
-	/// <summary>Default <see cref="Coating"/> in pixels: a wavelength at the default frequency (see <see cref="BlockAbsorption"/>).</summary>
-	public const int DefaultCoating = 32;
+	/// <summary>Default <see cref="Thickness"/> in pixels: a wavelength at the default frequency (the user's choice, 2026-11-08; 64 before, two wavelengths with the rise on both faces, see <see cref="BlockAbsorption"/>).</summary>
+	public const int DefaultThickness = 32;
+	/// <summary>Default <see cref="Coating"/> in pixels: no rise (the user's choice, 2026-11-08; a wavelength, 32, before, see <see cref="BlockAbsorption"/>).</summary>
+	public const int DefaultCoating = 0;
 	/// <summary>Default <see cref="DesignFrequency"/>: level 50, a wavelength of 32 px at the default solver settings, as the logic gates.</summary>
 	public const double DefaultFrequency = 50.0;
 	/// <summary>Default <see cref="FocalLength"/> in pixels.</summary>

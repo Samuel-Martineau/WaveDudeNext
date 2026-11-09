@@ -23,7 +23,8 @@ namespace WaveDudeNext.WPF.Converters;
 
 /// <summary>
 /// The edge thickness of a lens part as text ("5.6 px"), computed on a throw-away part so the model's own rule
-/// (<see cref="LensPart.FitRadii"/>) decides. Inputs: the diameter, the centre thickness, R1, R2; re-evaluated on each edit.
+/// (<see cref="LensPart.FitRadii(int, int, double, double, int)"/>) decides. Inputs: the diameter, the centre thickness, R1, R2
+/// the zone count and the zones' division (a Fresnel lens's; 1 and equal width for a lens); re-evaluated on each edit.
 /// </summary>
 public sealed class LensEdgeConverter : IMultiValueConverter
 {
@@ -34,7 +35,11 @@ public sealed class LensEdgeConverter : IMultiValueConverter
 		{
 			return null;
 		}
-		var probe = new LensPart { Diameter = diameter, Thickness = thickness, R1 = r1, R2 = r2 };
+		int zones = values.Length > 4 && values[4] is int count ? count : 1;
+		ZoneDivision division = values.Length > 5 && values[5] is ZoneDivision how ? how : ZoneDivision.EqualWidth;
+		LensPart probe = zones > 1
+			? new FresnelLensPart { Diameter = diameter, Thickness = thickness, R1 = r1, R2 = r2, Zones = zones, Division = division }
+			: new LensPart { Diameter = diameter, Thickness = thickness, R1 = r1, R2 = r2 };
 		return string.Format(culture, "{0:0.#} px", probe.EdgeThickness);
 	}
 

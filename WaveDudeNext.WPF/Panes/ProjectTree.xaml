@@ -35,6 +35,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<converters:IsTypeConverter x:Key="IsType" />
 		<converters:PartIconConverter x:Key="PartIcon" />
 		<converters:LensIconConverter x:Key="LensIcon" />
+		<converters:ProbeIconConverter x:Key="ProbeIcon" />
 
 		<StreamGeometry x:Key="PlusGeometry">M4,0 L4,8 M0,4 L8,4</StreamGeometry>
 		<StreamGeometry x:Key="MinusGeometry">M0,4 L8,4</StreamGeometry>
@@ -113,10 +114,24 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<x:Array x:Key="PartMenuEntries" x:Shared="False" Type="{x:Type FrameworkElement}">
 			<!-- each entry's tooltip is the kind's description (2026-10-29, the user's choice), the Kind.<Type> string a part's form shows too -->
 			<MenuItem Header="{DynamicResource MenuAddLens}" ToolTip="{DynamicResource Kind.LensPart}" controls:MenuIcon.Drawing="Lens" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:LensPart}" AutomationProperties.AutomationId="AddPart:Lens" />
+			<MenuItem Header="{DynamicResource MenuAddFresnelLens}" ToolTip="{DynamicResource Kind.FresnelLensPart}" controls:MenuIcon.Drawing="FresnelLens" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:FresnelLensPart}" AutomationProperties.AutomationId="AddPart:FresnelLens" />
 			<MenuItem Header="{DynamicResource MenuAddFiber}" ToolTip="{DynamicResource Kind.FiberPart}" controls:MenuIcon.Drawing="Fiber" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:FiberPart}" AutomationProperties.AutomationId="AddPart:Fiber" />
 			<MenuItem Header="{DynamicResource MenuAddBraggReflector}" ToolTip="{DynamicResource Kind.BraggReflectorPart}" controls:MenuIcon.Drawing="BraggReflector" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:BraggReflectorPart}" AutomationProperties.AutomationId="AddPart:BraggReflector" />
 			<MenuItem Header="{DynamicResource MenuAddGrinLens}" ToolTip="{DynamicResource Kind.GrinLensPart}" controls:MenuIcon.Drawing="GrinLens" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:GrinLensPart}" AutomationProperties.AutomationId="AddPart:GrinLens" />
 			<MenuItem Header="{DynamicResource MenuAddZonePlate}" ToolTip="{DynamicResource Kind.ZonePlatePart}" controls:MenuIcon.Drawing="ZonePlate" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:ZonePlatePart}" AutomationProperties.AutomationId="AddPart:ZonePlate" />
+			<MenuItem Header="{DynamicResource MenuAddDiffusor}" ToolTip="{DynamicResource Kind.DiffusorPart}" controls:MenuIcon.Drawing="Diffusor" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:DiffusorPart}" AutomationProperties.AutomationId="AddPart:Diffusor" />
+			<MenuItem Header="{DynamicResource MenuAddInterferenceFilter}" ToolTip="{DynamicResource Kind.InterferenceFilterPart}" controls:MenuIcon.Drawing="InterferenceFilter" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:InterferenceFilterPart}" AutomationProperties.AutomationId="AddPart:InterferenceFilter" />
+			<!-- diffraction gratings, a submenu among the optics (2026-11-07, the user's request): the simple 2D grating -->
+			<MenuItem Header="{DynamicResource MenuAddDiffractionGratings}" controls:MenuIcon.Drawing="DiffractionGratings" AutomationProperties.AutomationId="AddPart:DiffractionGratings">
+				<MenuItem Header="{DynamicResource MenuAddSimpleGrating}" ToolTip="{DynamicResource Kind.SimpleGratingPart}" controls:MenuIcon.Drawing="SimpleGrating" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:SimpleGratingPart}" AutomationProperties.AutomationId="AddPart:SimpleGrating" />
+				<MenuItem Header="{DynamicResource MenuAddFacettedGrating}" ToolTip="{DynamicResource Kind.FacettedGratingPart}" controls:MenuIcon.Drawing="FacettedGrating" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:FacettedGratingPart}" AutomationProperties.AutomationId="AddPart:FacettedGrating" />
+			</MenuItem>
+			<!-- meta surfaces, a submenu among the optics (2026-11-08, the user's request): the meta lens -->
+			<MenuItem Header="{DynamicResource MenuAddMetaSurfaces}" controls:MenuIcon.Drawing="MetaSurfaces" AutomationProperties.AutomationId="AddPart:MetaSurfaces">
+				<MenuItem Header="{DynamicResource MenuAddMetaLens}" ToolTip="{DynamicResource Kind.MetaLensPart}" controls:MenuIcon.Drawing="MetaLens" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:MetaLensPart}" AutomationProperties.AutomationId="AddPart:MetaLens" />
+				<MenuItem Header="{DynamicResource MenuAddMetaPrism}" ToolTip="{DynamicResource Kind.MetaPrismPart}" controls:MenuIcon.Drawing="MetaPrism" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:MetaPrismPart}" AutomationProperties.AutomationId="AddPart:MetaPrism" />
+				<MenuItem Header="{DynamicResource MenuAddMetaAxicon}" ToolTip="{DynamicResource Kind.MetaAxiconPart}" controls:MenuIcon.Drawing="MetaAxicon" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:MetaAxiconPart}" AutomationProperties.AutomationId="AddPart:MetaAxicon" />
+			</MenuItem>
 			<Separator />
 			<MenuItem Header="{DynamicResource MenuAddPolygon}" ToolTip="{DynamicResource Kind.PolygonPart}" controls:MenuIcon.Drawing="Polygon" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:PolygonPart}" AutomationProperties.AutomationId="AddPart:Polygon" />
 			<MenuItem Header="{DynamicResource MenuAddRectangle}" ToolTip="{DynamicResource Kind.RectanglePart}" controls:MenuIcon.Drawing="Rectangle" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:RectanglePart}" AutomationProperties.AutomationId="AddPart:Rectangle" />
@@ -131,6 +146,24 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<MenuItem Header="{DynamicResource MenuAddOrGate}" ToolTip="{DynamicResource Kind.OrGatePart}" controls:MenuIcon.Drawing="OrGate" Command="{x:Static commands:ProjectCommands.AddPart}" CommandParameter="{x:Type model:OrGatePart}" AutomationProperties.AutomationId="AddPart:OrGate" />
 			</MenuItem>
 		</x:Array>
+		<!-- the probe entries (2026-11-07, the user's request): a standard probe, and the probabilistic detectors in a submenu;
+		     each entry adds its kind, the detector as the parameter, its tooltip the kind's description. Not shared, as the parts' -->
+		<x:Array x:Key="ProbeMenuEntries" x:Shared="False" Type="{x:Type FrameworkElement}">
+			<MenuItem Header="{DynamicResource MenuAddStandardProbe}" ToolTip="{DynamicResource Detector.Standard}" controls:MenuIcon.Drawing="Probe" Command="{x:Static commands:ProjectCommands.AddProbe}" CommandParameter="{x:Static model:ProbeDetector.Standard}" AutomationProperties.AutomationId="AddProbe:Standard" />
+			<MenuItem Header="{DynamicResource MenuAddProbabilistic}" controls:MenuIcon.Drawing="CountingDetector" AutomationProperties.AutomationId="AddProbe:Probabilistic">
+				<MenuItem Header="{DynamicResource MenuAddCountingDetector}" ToolTip="{DynamicResource Detector.Counting}" controls:MenuIcon.Drawing="CountingDetector" Command="{x:Static commands:ProjectCommands.AddProbe}" CommandParameter="{x:Static model:ProbeDetector.Counting}" AutomationProperties.AutomationId="AddProbe:Counting" />
+				<MenuItem Header="{DynamicResource MenuAddImagingDetector}" ToolTip="{DynamicResource Detector.Imaging}" controls:MenuIcon.Drawing="ImagingDetector" Command="{x:Static commands:ProjectCommands.AddProbe}" CommandParameter="{x:Static model:ProbeDetector.Imaging}" AutomationProperties.AutomationId="AddProbe:Imaging" />
+			</MenuItem>
+		</x:Array>
+		<!-- the menu of probe kinds: the "+ Probe" button and the Probes folder's plus open it (AddProbe without a parameter opens
+		     the invoking element's context menu), as the parts' menu below -->
+		<ContextMenu x:Key="ProbeKindMenu" x:Shared="False" local:ProjectTree.MenuEntries="{StaticResource ProbeMenuEntries}">
+			<ContextMenu.Resources>
+				<Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource {x:Type MenuItem}}">
+					<Setter Property="CommandTarget" Value="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+				</Style>
+			</ContextMenu.Resources>
+		</ContextMenu>
 		<!-- the menu of part kinds: the "+ Part" button and the Parts folder's plus open it (AddPart without a parameter opens
 		     the invoking element's context menu). One instance per button -->
 		<ContextMenu x:Key="PartKindMenu" x:Shared="False" local:ProjectTree.MenuEntries="{StaticResource PartMenuEntries}">
@@ -158,10 +191,11 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 					</StackPanel>
 				</Button>
 				<Button Style="{StaticResource TextButton}" ToolTip="{DynamicResource TipAddProbe}" AutomationProperties.Name="{DynamicResource TipAddProbe}"
-				        Command="{x:Static commands:ProjectCommands.AddProbe}" AutomationProperties.AutomationId="ToolAddProbe">
+				        Command="{x:Static commands:ProjectCommands.AddProbe}" ContextMenu="{StaticResource ProbeKindMenu}" AutomationProperties.AutomationId="ToolAddProbe">
 					<StackPanel Orientation="Horizontal">
 						<controls:IconView Drawing="Probe" PlusBadge="True" Margin="0,0,4,0" VerticalAlignment="Center" />
 						<TextBlock Text="{DynamicResource ToolAddProbe}" VerticalAlignment="Center" />
+						<Path Data="{StaticResource DropDownGeometry}" Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource Self}}" Margin="5,0,0,0" VerticalAlignment="Center" />
 					</StackPanel>
 				</Button>
 				<Button Style="{StaticResource TextButton}" ToolTip="{DynamicResource TipAddPart}" AutomationProperties.Name="{DynamicResource TipAddPart}"
@@ -221,7 +255,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 								</ContextMenu.Resources>
 								<MenuItem Header="{DynamicResource MenuProjectAddSource}" Command="{x:Static commands:ProjectCommands.AddSource}" controls:MenuIcon.Glyph="&#xE710;" />
 								<MenuItem Header="{DynamicResource MenuProjectAddPart}" local:ProjectTree.MenuEntries="{StaticResource PartMenuEntries}" controls:MenuIcon.Glyph="&#xE710;" />
-								<MenuItem Header="{DynamicResource MenuProjectAddProbe}" Command="{x:Static commands:ProjectCommands.AddProbe}" controls:MenuIcon.Glyph="&#xE710;" />
+								<MenuItem Header="{DynamicResource MenuProjectAddProbe}" local:ProjectTree.MenuEntries="{StaticResource ProbeMenuEntries}" controls:MenuIcon.Glyph="&#xE710;" />
 								<Separator />
 								<MenuItem Header="{DynamicResource MenuProjectToggleSelected}" controls:MenuIcon.Glyph="&#xE762;" Command="{x:Static commands:ProjectCommands.ToggleSelected}" InputGestureText="Ins" AutomationProperties.AutomationId="ContextToggleSelected" />
 								<MenuItem Header="{DynamicResource MenuProjectSelectAll}" Command="{x:Static commands:ProjectCommands.SelectAll}" InputGestureText="Ctrl+A" AutomationProperties.AutomationId="ContextSelectAll" controls:MenuIcon.Glyph="&#xE8B3;" />
@@ -293,7 +327,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 					</StackPanel>
 				</DataTemplate>
 
-				<!-- folder row: name and an add button; the Parts folder's button carries the menu of kinds, which Add opens -->
+				<!-- folder row: name and an add button; the Parts and Probes folders' buttons carry their menus of kinds, which Add opens -->
 				<HierarchicalDataTemplate DataType="{x:Type converters:NamedCollection}" ItemsSource="{Binding Items}">
 					<DockPanel>
 						<Button DockPanel.Dock="Right" Content="{StaticResource PlusGeometry}"
@@ -303,6 +337,9 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 									<Style.Triggers>
 										<DataTrigger Binding="{Binding Key}" Value="TreeParts">
 											<Setter Property="ContextMenu" Value="{StaticResource PartKindMenu}" />
+										</DataTrigger>
+										<DataTrigger Binding="{Binding Key}" Value="TreeProbes">
+											<Setter Property="ContextMenu" Value="{StaticResource ProbeKindMenu}" />
 										</DataTrigger>
 									</Style.Triggers>
 								</Style>
@@ -367,6 +404,10 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 						     type stay untouched -->
 						<ContentControl DockPanel.Dock="Left" Content="{Binding}" Focusable="False" IsTabStop="False" Margin="0,0,4,0" VerticalAlignment="Center">
 							<ContentControl.Resources>
+								<!-- a Fresnel lens derives from the lens but shows its own drawing (the more derived type's template wins) -->
+								<DataTemplate DataType="{x:Type model:FresnelLensPart}">
+									<controls:IconView Drawing="FresnelLens" />
+								</DataTemplate>
 								<DataTemplate DataType="{x:Type model:LensPart}">
 									<controls:IconView>
 										<controls:IconView.Drawing>
@@ -412,7 +453,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 						<CheckBox DockPanel.Dock="Left" Focusable="False" IsTabStop="False" MinHeight="0" Margin="0,0,4,0" VerticalAlignment="Center"
 						          IsChecked="{Binding Active}" ToolTip="{DynamicResource TipProbeActive}"
 						          AutomationProperties.Name="{DynamicResource TipProbeActive}" AutomationProperties.AutomationId="{Binding Name, StringFormat='Enabled:{0}'}" />
-						<controls:IconView DockPanel.Dock="Left" Drawing="Probe" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<!-- the probe's icon by what it is: a detector shows its own (2026-11-07) -->
+						<controls:IconView DockPanel.Dock="Left" Drawing="{Binding Detector, Converter={StaticResource ProbeIcon}}" Margin="0,0,4,0" VerticalAlignment="Center" />
 						<TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
 					</DockPanel>
 				</DataTemplate>

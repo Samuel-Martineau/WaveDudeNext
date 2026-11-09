@@ -263,7 +263,7 @@ public static class ProbeGraph
 	/// <param name="yMax">Receives the upper y limit, always greater than <paramref name="yMin"/>.</param>
 	public static void ComputeRanges(Probe probe, in ProbeGraphData data, int totalSteps, out double xMin, out double xMax, out double yMin, out double yMax)
 	{
-		if (probe.Kind == ProbeKind.Line)
+		if (probe.ShowsProfile)
 		{
 			ProfileRanges(probe, data, out xMin, out xMax, out yMin, out yMax);
 		}
@@ -605,7 +605,8 @@ public static class ProbeGraph
 		float titleHeight = style.LineHeight + 2 * EdgePad;
 		// a line probe (a profile of an instant) has nothing meaningful to show before the start step is reached,
 		// so it stays blank until then; a point probe (a series) is trimmed instead, see SeriesRanges
-		bool isLine = probe.Kind == ProbeKind.Line;
+		// (a counting detector is a line that gives a series, see Probe.ShowsProfile)
+		bool isLine = probe.ShowsProfile;
 		bool started = probe.StartAfter <= 0 || data.StepsSampled >= probe.StartAfter;
 		ProbeGraphData shown = isLine && !started ? default : data;
 		// a point probe's own range/autoscale sees the real data (it is trimmed by "start after step" inside

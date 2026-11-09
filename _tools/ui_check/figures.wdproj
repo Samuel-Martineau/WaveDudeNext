@@ -33,8 +33,23 @@
 	<AndGate Name="AND gate 1" X="540" Y="250" />
 	<OrGate Name="OR gate 1" X="540" Y="330" />
 	<ZonePlate Name="Zone plate 1" X="700" Y="250" />
+	<Diffusor Name="Diffusor 1" X="200" Y="440" FrontCoated="false" SidesCoated="false" Length="20" Width="100" />
+	<InterferenceFilter Name="Interference filter 1" X="770" Y="140" SidesCoated="false" FrontCoated="false" Length="10" Width="100">
+		<Layer Thickness="2.67" />
+		<Layer Thickness="2" RefractiveIndex="2" />
+		<Layer Thickness="2.67" />
+		<Layer Thickness="2" RefractiveIndex="2" />
+	</InterferenceFilter>
+	<SimpleGrating Name="Grating 1" X="100" Y="60" Mirror="true" Columns="3" Rows="3" />
+	<FacettedGrating Name="Facetted grating 1" X="330" Y="460" FrontCoated="false" SidesCoated="false" Length="16" Width="100" />
+	<MetaLens Name="Meta lens 1" X="460" Y="460" SidesCoated="false" Length="12" Width="100" FocalLength="200" Height="16" />
+	<MetaPrism Name="Meta prism 1" X="600" Y="470" SidesCoated="false" Length="12" Width="100" Height="16" />
+	<MetaAxicon Name="Meta axicon 1" X="740" Y="470" SidesCoated="false" Length="12" Width="100" Height="16" />
+	<FresnelLens Name="Fresnel lens 1" X="760" Y="380" Diameter="100" Thickness="12" R1="150" R2="-150" />
 	<Probe Name="Probe 1" AX="500" AY="160" BoxX="500" BoxY="160" />
 	<Probe Name="Probe 2" Layer="Intensity" Measurement="Value" Kind="Line" AX="200" AY="60" BX="600" BY="60" BoxX="200" BoxY="60" YScale="Logarithmic" />
+	<Probe Name="Detector 1" Layer="Intensity" Measurement="IntegratedValue" Kind="Line" AX="650" AY="200" BX="650" BY="300" BoxX="650" BoxY="200" Detector="Counting" />
+	<Probe Name="Detector 2" Layer="Intensity" Measurement="IntegratedValue" Kind="Line" AX="700" AY="200" BX="700" BY="300" BoxX="700" BoxY="200" Detector="Imaging" Sensitivity="50" />
 	<ColorScheme Name="Scheme 1">
 		<Stop At="0" Color="#000000" />
 		<Stop At="0.125" Color="#202020" />
