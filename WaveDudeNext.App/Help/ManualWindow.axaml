@@ -1,0 +1,63 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:help="using:WaveDudeNext.App.Help"
+        x:Class="WaveDudeNext.App.Help.ManualWindow"
+        Title="{DynamicResource ManualTitle}" Icon="/Assets/wavedudenext.ico"
+        Width="1200" Height="820" MinWidth="480" MinHeight="300"
+        WindowStartupLocation="CenterScreen"
+        AutomationProperties.AutomationId="ManualWindow">
+	<!-- Help > Manual (upstream, 2026-10-30, the user's request and choices): MANUAL.md rendered at run time, beside a
+	     contents tree of its chapters and sections by heading level, every branch open, the title no row (the title bar
+	     names the manual). The window opens with the text at its top and the first chapter taken; a row taken by a click
+	     or the arrows goes to its heading, a click on the taken row or Enter goes there again, Enter moving the focus
+	     into the text; Tab reaches the tree, the splitter (the arrows move it) and the text; Esc closes. Owned by the
+	     main window (the user's choice): not modal, but minimised and closed with it -->
+	<Window.Styles>
+		<StyleInclude Source="avares://WaveDudeNext.App/Themes/Dialogs.axaml" />
+	</Window.Styles>
+	<Grid>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="260" MinWidth="120" />
+			<ColumnDefinition Width="Auto" />
+			<ColumnDefinition Width="*" MinWidth="200" />
+		</Grid.ColumnDefinitions>
+
+		<TreeView x:Name="contents" Grid.Column="0" AutomationProperties.Name="{DynamicResource ManualContents}" AutomationProperties.AutomationId="ManualContents">
+			<TreeView.ItemTemplate>
+				<TreeDataTemplate x:DataType="help:ManualHeading" ItemsSource="{Binding Children}">
+					<TextBlock Text="{Binding Text}" VerticalAlignment="Center" />
+				</TreeDataTemplate>
+			</TreeView.ItemTemplate>
+		</TreeView>
+
+		<!-- the splitter: a tab stop, the arrows move it -->
+		<GridSplitter Grid.Column="1" Width="4" Focusable="True" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" KeyboardIncrement="10"
+		              ToolTip.Tip="{DynamicResource TipManualSplitter}"
+		              AutomationProperties.Name="{DynamicResource TipManualSplitter}" AutomationProperties.AutomationId="ManualSplitter" />
+
+		<!-- the text: selectable, scrolled by the keys when it has the focus; its links come back to the window (code-behind) -->
+		<ScrollViewer x:Name="documentView" Grid.Column="2" Focusable="True" Background="{DynamicResource DocumentBackground}"
+		              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+		              AutomationProperties.AutomationId="ManualText" />
+	</Grid>
+</Window>

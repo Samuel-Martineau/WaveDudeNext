@@ -1,0 +1,70 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.FiberPathView"
+             x:DataType="model:FiberPart">
+	<!-- the node list of a fibre's path (the data context is the part): one block per node with the node's X and Y, the
+	     Smooth flag and a remove button on the first row, the in- and out-handle offsets on the rows below (relative to
+	     the node, before rotation), and an add button under the list -->
+	<StackPanel>
+		<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionNodes}" />
+		<TextBlock Classes="FormHint" Text="{DynamicResource HintFiberNodes}" />
+		<Grid Margin="0,0,0,2" ColumnDefinitions="36,*,*,Auto">
+			<TextBlock Grid.Column="1" Classes="FormLabel" Text="{meta:Label model:FiberNode.X}" Margin="2,0" />
+			<TextBlock Grid.Column="2" Classes="FormLabel" Text="{meta:Label model:FiberNode.Y}" Margin="2,0" />
+		</Grid>
+		<ItemsControl ItemsSource="{Binding Nodes}" Focusable="False">
+			<ItemsControl.ItemTemplate>
+				<DataTemplate x:DataType="model:FiberNode">
+					<Grid Margin="0,0,0,6" ColumnDefinitions="36,*,*,Auto" RowDefinitions="Auto,Auto,Auto">
+						<TextBlock Grid.Row="0" Grid.Column="0" Classes="FormLabel" Text="{DynamicResource LabelNodePoint}" />
+						<controls:NumberBox Grid.Row="0" Grid.Column="1" Margin="0,0,2,2" Text="{Binding X, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{DynamicResource Hint.FiberNode.X}" />
+						<controls:NumberBox Grid.Row="0" Grid.Column="2" Margin="2,0,0,2" Text="{Binding Y, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{DynamicResource Hint.FiberNode.Y}" />
+						<StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal">
+							<CheckBox Margin="6,0,0,2" VerticalAlignment="Center" IsChecked="{Binding Smooth}" ToolTip.Tip="{DynamicResource Hint.FiberNode.Smooth}"
+							          Content="{DynamicResource Label.FiberNode.Smooth}" />
+							<Button Theme="{DynamicResource RemovePointButton}" ToolTip.Tip="{DynamicResource TipRemoveNode}" AutomationProperties.Name="{DynamicResource TipRemoveNode}"
+							        Click="OnRemoveNode" />
+						</StackPanel>
+						<TextBlock Grid.Row="1" Grid.Column="0" Classes="FormLabel" Text="{DynamicResource LabelNodeIn}" />
+						<controls:NumberBox Grid.Row="1" Grid.Column="1" Margin="0,0,2,2" Text="{Binding InX, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{DynamicResource Hint.FiberNode.InX}" />
+						<controls:NumberBox Grid.Row="1" Grid.Column="2" Margin="2,0,0,2" Text="{Binding InY, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{DynamicResource Hint.FiberNode.InY}" />
+						<TextBlock Grid.Row="2" Grid.Column="0" Classes="FormLabel" Text="{DynamicResource LabelNodeOut}" />
+						<controls:NumberBox Grid.Row="2" Grid.Column="1" Margin="0,0,2,0" Text="{Binding OutX, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{DynamicResource Hint.FiberNode.OutX}" />
+						<controls:NumberBox Grid.Row="2" Grid.Column="2" Margin="2,0,0,0" Text="{Binding OutY, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{DynamicResource Hint.FiberNode.OutY}" />
+					</Grid>
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+		<StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+			<Button Padding="8,2" Margin="0,2,6,0" Content="{DynamicResource ButtonAddNode}" ToolTip.Tip="{DynamicResource TipAddNode}"
+			        Click="OnAddNode" AutomationProperties.AutomationId="PartAddNode" />
+		</StackPanel>
+	</StackPanel>
+</UserControl>

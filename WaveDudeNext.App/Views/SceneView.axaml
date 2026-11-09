@@ -1,0 +1,133 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:localization="using:WaveDudeNext.App.Localization"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:model="using:WaveDudeNext.Model"
+             x:Class="WaveDudeNext.App.Views.SceneView"
+             x:DataType="model:Scene">
+	<UserControl.Resources>
+		<converters:ImageInfoConverter x:Key="ImageInfo" />
+		<converters:EnumBooleanConverter x:Key="EnumBoolean" />
+	</UserControl.Resources>
+
+	<!-- the size applies to a blank canvas; the image rows (name, file, embedded size) show for an image scene and are gone
+	     for a canvas (upstream, after the path of an image no longer in use kept showing) -->
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionCanvas}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.Mode}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:SceneMode}"
+				          SelectedItem="{Binding Mode}" ToolTip.Tip="{meta:Hint model:Scene.Mode}" AutomationProperties.AutomationId="SceneMode" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.Image}"
+				           IsVisible="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SceneMode.Image}}" />
+				<!-- the name of the embedded image (or a legacy path) and three buttons (upstream's design): "…" picks a file and
+				     embeds it, the save glyph writes the embedded image to a file and changes nothing in the project, and the X
+				     removes the image, leaving a blank canvas of the image's size. A grid in visual order, so Tab walks the name,
+				     then "…", save, X -->
+				<Grid ColumnDefinitions="*,Auto,Auto,Auto"
+				      IsVisible="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SceneMode.Image}}">
+					<TextBox Text="{Binding Image}" ToolTip.Tip="{meta:Hint model:Scene.Image}" AutomationProperties.AutomationId="SceneImage" />
+					<Button Grid.Column="1" Margin="4,0,0,0" Padding="8,0" MinHeight="22" Content="…" ToolTip.Tip="{DynamicResource TipBrowseSceneImage}"
+					        AutomationProperties.Name="{DynamicResource TipBrowseSceneImage}" AutomationProperties.AutomationId="SceneBrowse"
+					        Command="{Binding $parent[panes:PropertiesPane].Commands.BrowseSceneImage}" />
+					<Button Grid.Column="2" Margin="4,0,0,0" Padding="5,0" MinHeight="22" ToolTip.Tip="{DynamicResource TipSaveSceneImage}"
+					        AutomationProperties.Name="{DynamicResource TipSaveSceneImage}" AutomationProperties.AutomationId="SceneSaveImage"
+					        Command="{Binding $parent[panes:PropertiesPane].Commands.SaveSceneImage}">
+						<Path Data="{StaticResource SaveGeometry}" Width="13" Height="13" Stretch="Uniform" StrokeThickness="1"
+						      Stroke="{Binding $parent[Button].Foreground}" />
+					</Button>
+					<Button Grid.Column="3" Margin="4,0,0,0" Padding="7,0" MinHeight="22" ToolTip.Tip="{DynamicResource TipRemoveSceneImage}"
+					        AutomationProperties.Name="{DynamicResource TipRemoveSceneImage}" AutomationProperties.AutomationId="SceneRemoveImage"
+					        Command="{Binding $parent[panes:PropertiesPane].Commands.RemoveSceneImage}">
+						<Path Data="{StaticResource CloseGeometry}" Width="8" Height="8" Stretch="Uniform" Fill="{Binding $parent[Button].Foreground}" />
+					</Button>
+				</Grid>
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.ImagePath}"
+				           IsVisible="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SceneMode.Image}}" />
+				<!-- the path and, when the file is not on disk, a note (the window checks; the embedded image is what is simulated) -->
+				<DockPanel IsVisible="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SceneMode.Image}}">
+					<TextBlock DockPanel.Dock="Right" Margin="4,0,0,0" VerticalAlignment="Center" Text="{DynamicResource SceneImageNotFound}"
+					           IsVisible="{Binding $parent[panes:PropertiesPane].SceneImageFileMissing}"
+					           AutomationProperties.AutomationId="SceneImageNotFound" />
+					<TextBlock VerticalAlignment="Center" Text="{Binding ImagePath}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{meta:Hint model:Scene.ImagePath}"
+					           AutomationProperties.AutomationId="SceneImagePath" />
+				</DockPanel>
+
+				<TextBlock Classes="FormLabel" Text="{DynamicResource LabelEmbeddedImage}"
+				           IsVisible="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SceneMode.Image}}" />
+				<TextBlock VerticalAlignment="Center"
+				           ToolTip.Tip="{DynamicResource TipEmbeddedImage}" AutomationProperties.AutomationId="SceneImageInfo"
+				           IsVisible="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SceneMode.Image}}">
+					<TextBlock.Text>
+						<!-- the language, for "(unreadable)"; upstream's stayed in the old language until the image changed -->
+						<MultiBinding Converter="{StaticResource ImageInfo}">
+							<Binding Path="ImageData" />
+							<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
+						</MultiBinding>
+					</TextBlock.Text>
+				</TextBlock>
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.Width}" />
+				<controls:NumberBox Text="{Binding Width, UpdateSourceTrigger=LostFocus}" Minimum="8" Maximum="16384" ToolTip.Tip="{meta:Hint model:Scene.Width}"
+				                    IsEnabled="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SceneMode.Canvas}}"
+				                    AutomationProperties.AutomationId="SceneWidth" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.Height}" />
+				<controls:NumberBox Text="{Binding Height, UpdateSourceTrigger=LostFocus}" Minimum="8" Maximum="16384" ToolTip.Tip="{meta:Hint model:Scene.Height}"
+				                    IsEnabled="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SceneMode.Canvas}}"
+				                    AutomationProperties.AutomationId="SceneHeight" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.Edges}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:EdgeMode}"
+				          SelectedItem="{Binding Edges}" ToolTip.Tip="{meta:Hint model:Scene.Edges}" AutomationProperties.AutomationId="SceneEdges" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.DampingEdge}" />
+				<controls:NumberBox Text="{Binding DampingEdge, UpdateSourceTrigger=LostFocus}" Minimum="-8192" Maximum="8192"
+				                    ToolTip.Tip="{meta:Hint model:Scene.DampingEdge}" AutomationProperties.AutomationId="SceneDampingEdge" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.RefractiveIndex}" />
+				<controls:NumberBox Text="{Binding RefractiveIndex, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="2.55" Increment="0.01"
+				                    ToolTip.Tip="{meta:Hint model:Scene.RefractiveIndex}" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionImageSources}" />
+			<controls:FormPanel>
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Scene.ImageSources}"
+				          IsChecked="{Binding ImageSources}" ToolTip.Tip="{meta:Hint model:Scene.ImageSources}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Scene.ImageSourceScale}" />
+				<controls:NumberBox Text="{Binding ImageSourceScale, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="1000" Increment="0.1"
+				                    IsEnabled="{Binding ImageSources}" ToolTip.Tip="{meta:Hint model:Scene.ImageSourceScale}" />
+
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Scene.ObjectSources}"
+				          IsChecked="{Binding ObjectSources}" ToolTip.Tip="{meta:Hint model:Scene.ObjectSources}" />
+			</controls:FormPanel>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

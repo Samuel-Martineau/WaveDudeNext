@@ -1,0 +1,110 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- What only the dialogs and the help windows (MessageWindow, MemoryWarningWindow, AboutWindow, ManualWindow) need, which
+     include this file themselves: the message disc, the form section header, the links, the manual's open branches,
+     the rendered Markdown's quote bar and rule. The window, buttons, check boxes, text boxes, trees and splitters take
+     the application's control themes (Themes/Controls.axaml, Editors.axaml), as upstream's dialogs take its App.xaml
+     ones; every colour is a DynamicResource of Themes/Dark.axaml or Light.axaml. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<Style Selector="SelectableTextBlock">
+		<Setter Property="SelectionBrush" Value="{DynamicResource Accent}" />
+	</Style>
+
+	<!-- the 32 px disc beside a message ("!" or "?"), the glyph bold at 20 px -->
+	<Style Selector="TextBlock.disc">
+		<Setter Property="FontSize" Value="20" />
+		<Setter Property="FontWeight" Value="Bold" />
+		<Setter Property="HorizontalAlignment" Value="Center" />
+		<Setter Property="VerticalAlignment" Value="Center" />
+	</Style>
+
+	<!-- a form section header: SemiBold over a 1 px ControlBorder underline (upstream's FormSection) -->
+	<Style Selector="Border.section">
+		<Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+		<Setter Property="BorderThickness" Value="0,0,0,1" />
+		<Setter Property="Padding" Value="0,0,0,2" />
+		<Setter Property="Margin" Value="0,14,0,6" />
+	</Style>
+	<Style Selector="Border.section > TextBlock">
+		<Setter Property="FontWeight" Value="SemiBold" />
+	</Style>
+
+	<!-- a link: Accent text without a box, underlined on hover or keyboard focus (upstream's Hyperlink); a Button so
+	     that Tab reaches it and Enter or Space follows it. The application's button theme draws its box in the
+	     PART_ContentPresenter, which these rules clear. -->
+	<Style Selector="Button.link">
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="BorderThickness" Value="0" />
+		<Setter Property="Padding" Value="0" />
+		<Setter Property="MinHeight" Value="0" />
+		<Setter Property="MinWidth" Value="0" />
+		<Setter Property="Foreground" Value="{DynamicResource Accent}" />
+		<Setter Property="Cursor" Value="Hand" />
+		<Setter Property="VerticalAlignment" Value="Center" />
+	</Style>
+	<Style Selector="Button.link /template/ ContentPresenter#PART_ContentPresenter">
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="BorderBrush" Value="Transparent" />
+		<Setter Property="Foreground" Value="{DynamicResource Accent}" />
+	</Style>
+	<Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="BorderBrush" Value="Transparent" />
+		<Setter Property="Foreground" Value="{DynamicResource Accent}" />
+	</Style>
+	<Style Selector="Button.link:pressed /template/ ContentPresenter#PART_ContentPresenter">
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="BorderBrush" Value="Transparent" />
+		<Setter Property="Foreground" Value="{DynamicResource Accent}" />
+	</Style>
+	<Style Selector="Button.link:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+		<Setter Property="BorderBrush" Value="Transparent" />
+	</Style>
+	<Style Selector="Button.link TextBlock">
+		<Setter Property="Foreground" Value="{DynamicResource Accent}" />
+	</Style>
+	<Style Selector="Button.link:pointerover TextBlock">
+		<Setter Property="TextDecorations" Value="Underline" />
+	</Style>
+	<Style Selector="Button.link:focus-visible TextBlock">
+		<Setter Property="TextDecorations" Value="Underline" />
+	</Style>
+
+	<!-- the manual's contents tree: every branch open -->
+	<Style Selector="TreeViewItem">
+		<Setter Property="IsExpanded" Value="True" />
+	</Style>
+
+	<!-- the rendered Markdown: a block quote's bar and a rule in ControlBorder -->
+	<Style Selector="Border.quote">
+		<Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+		<Setter Property="BorderThickness" Value="3,0,0,0" />
+		<Setter Property="Padding" Value="10,0,0,0" />
+		<Setter Property="Margin" Value="0,0,0,10" />
+	</Style>
+	<Style Selector="Border.rule">
+		<Setter Property="Background" Value="{DynamicResource ControlBorder}" />
+		<Setter Property="Height" Value="1" />
+		<Setter Property="Margin" Value="0,6,0,14" />
+	</Style>
+</Styles>

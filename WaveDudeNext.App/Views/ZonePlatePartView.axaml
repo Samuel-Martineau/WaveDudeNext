@@ -1,0 +1,112 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.ZonePlatePartView"
+             x:DataType="model:ZonePlatePart">
+	<UserControl.Resources>
+		<converters:ZonePlateConverter x:Key="Plate" />
+	</UserControl.Resources>
+
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<views:PartCommonView />
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionDesign}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:ZonePlatePart.DesignFrequency}" />
+				<controls:NumberBox Text="{Binding DesignFrequency, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="255" DragStep="0.1" Decimals="2"
+				                    ToolTip.Tip="{meta:Hint model:ZonePlatePart.DesignFrequency}" AutomationProperties.AutomationId="PartDesignFrequency" />
+
+				<!-- read-only: the wavelength the frequency gives with the project's frequency scale -->
+				<TextBlock Classes="FormLabel" Text="{DynamicResource LabelWavelength}" />
+				<TextBlock Classes="FormReadout" ToolTip.Tip="{DynamicResource TipGateWavelength}" AutomationProperties.AutomationId="PartWavelength">
+					<TextBlock.Text>
+						<MultiBinding Converter="{StaticResource Plate}" ConverterParameter="Wavelength">
+							<Binding />
+							<Binding Path="Wavelength" />
+						</MultiBinding>
+					</TextBlock.Text>
+				</TextBlock>
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:ZonePlatePart.FocalLength}" />
+				<controls:NumberBox Text="{Binding FocalLength, UpdateSourceTrigger=LostFocus}" Minimum="1" Increment="10" ToolTip.Tip="{meta:Hint model:ZonePlatePart.FocalLength}" AutomationProperties.AutomationId="PartFocalLength" />
+
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:ZonePlatePart.Inverse}"
+				          IsChecked="{Binding Inverse}" ToolTip.Tip="{meta:Hint model:ZonePlatePart.Inverse}" AutomationProperties.AutomationId="PartInverse" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionShape}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:ZonePlatePart.Diameter}" />
+				<controls:NumberBox Text="{Binding Diameter, UpdateSourceTrigger=LostFocus}" Minimum="2" Increment="10" ToolTip.Tip="{meta:Hint model:ZonePlatePart.Diameter}" AutomationProperties.AutomationId="PartDiameter" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:ZonePlatePart.Thickness}" />
+				<controls:NumberBox Text="{Binding Thickness, UpdateSourceTrigger=LostFocus}" Minimum="1" ToolTip.Tip="{meta:Hint model:ZonePlatePart.Thickness}" AutomationProperties.AutomationId="PartThickness" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:ZonePlatePart.Coating}" />
+				<controls:NumberBox Text="{Binding Coating, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="400" ToolTip.Tip="{meta:Hint model:ZonePlatePart.Coating}" AutomationProperties.AutomationId="PartCoating" />
+
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:ZonePlatePart.Mount}"
+				          IsChecked="{Binding Mount}" ToolTip.Tip="{meta:Hint model:ZonePlatePart.Mount}" AutomationProperties.AutomationId="PartMount" />
+
+				<!-- the mount's width, only while there is a mount -->
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:ZonePlatePart.MountWidth}" />
+				<controls:NumberBox Text="{Binding MountWidth, UpdateSourceTrigger=LostFocus}" Minimum="1" Increment="10" IsEnabled="{Binding Mount}"
+				                    ToolTip.Tip="{meta:Hint model:ZonePlatePart.MountWidth}" AutomationProperties.AutomationId="PartMountWidth" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionZones}" />
+			<controls:FormPanel ToolTip.Tip="{DynamicResource TipZones}">
+				<TextBlock Classes="FormLabel" Text="{DynamicResource LabelZoneCount}" />
+				<TextBlock Classes="FormReadout" AutomationProperties.AutomationId="PartZoneCount">
+					<TextBlock.Text>
+						<MultiBinding Converter="{StaticResource Plate}" ConverterParameter="Zones">
+							<Binding />
+							<Binding Path="ZoneCount" />
+							<Binding Path="Diameter" />
+							<Binding Path="FocalLength" />
+						</MultiBinding>
+					</TextBlock.Text>
+				</TextBlock>
+
+				<TextBlock Classes="FormLabel" Text="{DynamicResource LabelOuterZone}" />
+				<TextBlock Classes="FormReadout" AutomationProperties.AutomationId="PartOuterZone">
+					<TextBlock.Text>
+						<MultiBinding Converter="{StaticResource Plate}" ConverterParameter="OuterZone">
+							<Binding />
+							<Binding Path="ZoneCount" />
+							<Binding Path="Diameter" />
+							<Binding Path="FocalLength" />
+						</MultiBinding>
+					</TextBlock.Text>
+				</TextBlock>
+			</controls:FormPanel>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

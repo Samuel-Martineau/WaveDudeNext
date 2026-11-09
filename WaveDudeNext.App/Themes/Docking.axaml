@@ -1,0 +1,228 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- The dock chrome: the control theme of a pane (docking:DockGroupControl, upstream Controls.xaml:836-911), its tab strip
+     (DockToolTabStripStyle, 766-826), the 16x16 title bar buttons (DockHeaderButtonStyle, 718-739), the dotted grip
+     (57-66) and the splitters between panes (668-678). Every colour is a DynamicResource from the variant tables
+     (Themes/Dark.axaml, Light.axaml), so the theme switch recolours the panes live. Square everywhere, 1 px borders, no
+     shadows, as upstream. Merged by App.axaml; a test window merges it itself. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:docking="using:WaveDudeNext.App.Docking">
+
+	<!-- the glyphs of the two title bar buttons (upstream Controls.xaml:54-55) -->
+	<StreamGeometry x:Key="DockCloseGeometry">M0,1 L1,0 L4,3 L7,0 L8,1 L5,4 L8,7 L7,8 L4,5 L1,8 L0,7 L3,4 Z</StreamGeometry>
+	<StreamGeometry x:Key="DockDropDownGeometry">M0,0 L8,0 L4,4 Z</StreamGeometry>
+
+	<!-- the grip beside the title: a 4 px tile with two 1 px dots, in the drag-handle colour of the pane's state -->
+	<DrawingBrush x:Key="DockGripInactiveBrush" TileMode="Tile" DestinationRect="0,0,4,4" SourceRect="0,0,4,4"
+	              AlignmentX="Left" AlignmentY="Top" Stretch="None">
+		<DrawingBrush.Drawing>
+			<GeometryDrawing Brush="{DynamicResource TitleBarDragHandleInactive}" Geometry="M0,0 L1,0 L1,1 L0,1 Z M2,2 L3,2 L3,3 L2,3 Z" />
+		</DrawingBrush.Drawing>
+	</DrawingBrush>
+	<DrawingBrush x:Key="DockGripActiveBrush" TileMode="Tile" DestinationRect="0,0,4,4" SourceRect="0,0,4,4"
+	              AlignmentX="Left" AlignmentY="Top" Stretch="None">
+		<DrawingBrush.Drawing>
+			<GeometryDrawing Brush="{DynamicResource TitleBarDragHandleActive}" Geometry="M0,0 L1,0 L1,1 L0,1 Z M2,2 L3,2 L3,3 L2,3 Z" />
+		</DrawingBrush.Drawing>
+	</DrawingBrush>
+
+	<!-- 16x16 glyph button for pane title bars: Background is its hover colour, Content the geometry. A tab stop with the
+	     accent border on keyboard focus (upstream's is mouse only; the port's rule is keyboard first). -->
+	<ControlTheme x:Key="DockHeaderButtonTheme" TargetType="Button">
+		<Setter Property="Width" Value="16" />
+		<Setter Property="Height" Value="16" />
+		<Setter Property="Margin" Value="1,0" />
+		<Setter Property="Padding" Value="0" />
+		<Setter Property="Template">
+			<ControlTemplate>
+				<Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+					<Path Data="{TemplateBinding Content}" Fill="{TemplateBinding Foreground}"
+					      HorizontalAlignment="Center" VerticalAlignment="Center" />
+				</Border>
+			</ControlTemplate>
+		</Setter>
+		<Style Selector="^:pointerover /template/ Border#Bd">
+			<Setter Property="Background" Value="{TemplateBinding Background}" />
+		</Style>
+		<Style Selector="^:focus-visible /template/ Border#Bd">
+			<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+		</Style>
+	</ControlTheme>
+
+	<!-- a tab of the strip: 23 px high, as a tree row, a toolbar button and a menu entry are, its text centred the same way
+	     (4 px above, 3 and the border's 1 below) and 10 px from the tab's edge, the side border included (upstream,
+	     2026-11-06); a 1,0,1,1 border in the tool window border colour when selected -->
+	<ControlTheme x:Key="DockToolTabTheme" TargetType="ListBoxItem">
+		<Setter Property="Foreground" Value="{DynamicResource ToolTabForeground}" />
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="BorderBrush" Value="Transparent" />
+		<Setter Property="BorderThickness" Value="1,0,1,1" />
+		<Setter Property="Padding" Value="9,4,9,3" />
+		<Setter Property="MinHeight" Value="23" />
+		<Setter Property="Template">
+			<ControlTemplate>
+				<Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+				        BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+					<ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+					                  VerticalAlignment="Center" />
+				</Border>
+			</ControlTemplate>
+		</Setter>
+		<Style Selector="^:pointerover">
+			<Setter Property="Foreground" Value="{DynamicResource ToolTabHoverForeground}" />
+		</Style>
+		<Style Selector="^:selected">
+			<Setter Property="Background" Value="{DynamicResource ToolTabSelectedBackground}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource ToolWindowBorder}" />
+			<Setter Property="Foreground" Value="{DynamicResource ToolTabSelectedForeground}" />
+		</Style>
+		<Style Selector="^:focus-visible">
+			<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+		</Style>
+	</ControlTheme>
+
+	<!-- the tab strip at the bottom of a pane: a horizontal list box without scroll bars -->
+	<ControlTheme x:Key="DockToolTabStripTheme" TargetType="ListBox">
+		<Setter Property="Background" Value="{DynamicResource ToolTabBackground}" />
+		<Setter Property="BorderThickness" Value="0" />
+		<Setter Property="Padding" Value="0" />
+		<Setter Property="ItemContainerTheme" Value="{StaticResource DockToolTabTheme}" />
+		<Setter Property="ItemsPanel">
+			<ItemsPanelTemplate>
+				<StackPanel Orientation="Horizontal" />
+			</ItemsPanelTemplate>
+		</Setter>
+		<Setter Property="ItemTemplate">
+			<DataTemplate x:DataType="docking:DockItem">
+				<TextBlock Text="{Binding Title}" />
+			</DataTemplate>
+		</Setter>
+		<Setter Property="Template">
+			<ControlTemplate>
+				<Border Background="{TemplateBinding Background}">
+					<ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+				</Border>
+			</ControlTemplate>
+		</Setter>
+	</ControlTheme>
+
+	<!-- the splitter between two panes or a pane and the document: flat, no preview, the hover and focus colours of
+	     upstream's manual window splitter (ButtonHover, Accent); the host applies it by key -->
+	<ControlTheme x:Key="DockSplitterTheme" TargetType="GridSplitter">
+		<Setter Property="Background" Value="{DynamicResource SplitterBackground}" />
+		<Setter Property="ShowsPreview" Value="False" />
+		<Setter Property="Template">
+			<ControlTemplate>
+				<Border Background="{TemplateBinding Background}" />
+			</ControlTemplate>
+		</Setter>
+		<Style Selector="^:pointerover">
+			<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+		</Style>
+		<Style Selector="^:focus-visible">
+			<Setter Property="Background" Value="{DynamicResource Accent}" />
+		</Style>
+	</ControlTheme>
+
+	<!-- the pane: a 1 px tool window border around a 21 px title bar (title, grip, position menu, close), the active item's
+	     content and, below, the tab strip when the group holds more than one item. The inactive colours are the
+	     template's; the IsActive styles switch them to the TitleBarActive* set. -->
+	<ControlTheme x:Key="{x:Type docking:DockGroupControl}" TargetType="docking:DockGroupControl">
+		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+		<Setter Property="Background" Value="{DynamicResource ToolWindowBackground}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource ToolWindowBorder}" />
+		<Setter Property="BorderThickness" Value="1" />
+		<Setter Property="Template">
+			<ControlTemplate>
+				<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+				        BorderThickness="{TemplateBinding BorderThickness}">
+					<DockPanel>
+						<Border x:Name="PART_TitleBar" DockPanel.Dock="Top" Height="21"
+						        Background="{DynamicResource TitleBarInactiveBackground}">
+							<DockPanel Margin="5,0,2,0">
+								<StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+									<Button x:Name="PART_MenuButton" Theme="{StaticResource DockHeaderButtonTheme}"
+									        Content="{StaticResource DockDropDownGeometry}"
+									        ToolTip.Tip="{DynamicResource DockWindowPosition}"
+									        AutomationProperties.Name="{DynamicResource DockWindowPosition}"
+									        Foreground="{DynamicResource TitleBarInactiveForeground}"
+									        Background="{DynamicResource TitleBarButtonHoverInactive}">
+										<Button.ContextMenu>
+											<!-- the code behind gives the entries their commands: a side moves the active item, Close hides it -->
+											<ContextMenu Placement="Bottom">
+												<MenuItem Header="{DynamicResource DockMoveLeft}" CommandParameter="{x:Static docking:DockSide.Left}" />
+												<MenuItem Header="{DynamicResource DockMoveRight}" CommandParameter="{x:Static docking:DockSide.Right}" />
+												<MenuItem Header="{DynamicResource DockMoveTop}" CommandParameter="{x:Static docking:DockSide.Top}" />
+												<MenuItem Header="{DynamicResource DockMoveBottom}" CommandParameter="{x:Static docking:DockSide.Bottom}" />
+												<Separator />
+												<MenuItem Header="{DynamicResource DockCloseMenu}" />
+											</ContextMenu>
+										</Button.ContextMenu>
+									</Button>
+									<Button x:Name="PART_CloseButton" Theme="{StaticResource DockHeaderButtonTheme}"
+									        Content="{StaticResource DockCloseGeometry}"
+									        ToolTip.Tip="{DynamicResource DockClose}"
+									        AutomationProperties.Name="{DynamicResource DockClose}"
+									        Foreground="{DynamicResource TitleBarInactiveForeground}"
+									        Background="{DynamicResource TitleBarButtonHoverInactive}" />
+								</StackPanel>
+								<!-- a Label, not a TextBlock: a TextBlock has no automation peer, while a Label is a control with one; the
+								     code behind sets its automation id to DockTitle:<pane id> -->
+								<Label x:Name="PART_Title" DockPanel.Dock="Left" Content="{TemplateBinding Title}"
+								       VerticalAlignment="Center" Padding="0"
+								       Foreground="{DynamicResource TitleBarInactiveForeground}" />
+								<Rectangle x:Name="PART_Grip" Height="5" Margin="6,0,4,0" VerticalAlignment="Center"
+								           Fill="{StaticResource DockGripInactiveBrush}" />
+							</DockPanel>
+						</Border>
+						<ListBox x:Name="PART_Tabs" DockPanel.Dock="Bottom" Theme="{StaticResource DockToolTabStripTheme}" />
+						<ContentPresenter x:Name="PART_Content" Content="{TemplateBinding ActiveContent}" />
+					</DockPanel>
+				</Border>
+			</ControlTemplate>
+		</Setter>
+		<Style Selector="^[IsActive=True] /template/ Border#PART_TitleBar">
+			<Setter Property="Background" Value="{DynamicResource TitleBarActiveBackground}" />
+		</Style>
+		<Style Selector="^[IsActive=True] /template/ Label#PART_Title">
+			<Setter Property="Foreground" Value="{DynamicResource TitleBarActiveForeground}" />
+		</Style>
+		<Style Selector="^[IsActive=True] /template/ Button#PART_MenuButton">
+			<Setter Property="Foreground" Value="{DynamicResource TitleBarActiveForeground}" />
+			<Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverActive}" />
+		</Style>
+		<Style Selector="^[IsActive=True] /template/ Button#PART_CloseButton">
+			<Setter Property="Foreground" Value="{DynamicResource TitleBarActiveForeground}" />
+			<Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverActive}" />
+		</Style>
+		<Style Selector="^[IsActive=True] /template/ Rectangle#PART_Grip">
+			<Setter Property="Fill" Value="{StaticResource DockGripActiveBrush}" />
+		</Style>
+		<Style Selector="^[HasTabs=False] /template/ ListBox#PART_Tabs">
+			<Setter Property="IsVisible" Value="False" />
+		</Style>
+		<Style Selector="^[CanCloseActive=False] /template/ Button#PART_CloseButton">
+			<Setter Property="IsVisible" Value="False" />
+		</Style>
+	</ControlTheme>
+
+</ResourceDictionary>

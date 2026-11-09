@@ -1,0 +1,142 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.ProbeView"
+             x:DataType="model:Probe">
+	<UserControl.Resources>
+		<converters:MeasurementsForLayerConverter x:Key="MeasurementsForLayer" />
+		<converters:EnumBooleanConverter x:Key="EnumBoolean" />
+	</UserControl.Resources>
+
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionGeneral}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.Name}" />
+				<TextBox Text="{Binding Name}" ToolTip.Tip="{meta:Hint model:Probe.Name}" AutomationProperties.AutomationId="ProbeName" />
+
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Probe.Active}"
+				          IsChecked="{Binding Active}" ToolTip.Tip="{meta:Hint model:Probe.Active}" AutomationProperties.AutomationId="ProbeActive" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.StartAfter}" />
+				<controls:NumberBox Text="{Binding StartAfter, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Probe.StartAfter}" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionMeasurement}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.Layer}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ProbeLayer}"
+				          SelectedItem="{Binding Layer}" ToolTip.Tip="{meta:Hint model:Probe.Layer}" AutomationProperties.AutomationId="ProbeLayer" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.Measurement}" />
+				<!-- only the measurements the layer offers: amplitude for the field, value / integrated value for the intensity -->
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{Binding Layer, Converter={StaticResource MeasurementsForLayer}}"
+				          SelectedItem="{Binding Measurement}" ToolTip.Tip="{meta:Hint model:Probe.Measurement}" AutomationProperties.AutomationId="ProbeMeasurement" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.Kind}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ProbeKind}"
+				          SelectedItem="{Binding Kind}" ToolTip.Tip="{meta:Hint model:Probe.Kind}" AutomationProperties.AutomationId="ProbeKind" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionPosition}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.AX}" />
+				<controls:NumberBox Text="{Binding AX, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Probe.AX}" AutomationProperties.AutomationId="ProbeAX" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.AY}" />
+				<controls:NumberBox Text="{Binding AY, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Probe.AY}" AutomationProperties.AutomationId="ProbeAY" />
+
+				<!-- point B only applies to a line probe -->
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.BX}" />
+				<controls:NumberBox Text="{Binding BX, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Probe.BX}"
+				                    IsEnabled="{Binding Kind, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:ProbeKind.Line}}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.BY}" />
+				<controls:NumberBox Text="{Binding BY, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Probe.BY}"
+				                    IsEnabled="{Binding Kind, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:ProbeKind.Line}}" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionGraph}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.BoxSize}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ProbeBoxSize}"
+				          SelectedItem="{Binding BoxSize}" ToolTip.Tip="{meta:Hint model:Probe.BoxSize}" AutomationProperties.AutomationId="ProbeBoxSize" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.BoxX}" />
+				<controls:NumberBox Text="{Binding BoxX, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Probe.BoxX}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.BoxY}" />
+				<controls:NumberBox Text="{Binding BoxY, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Probe.BoxY}" />
+
+				<!-- the box width and height only apply to a custom box size (set by dragging the box's corner, too) -->
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.BoxWidth}" />
+				<controls:NumberBox Text="{Binding BoxWidth, UpdateSourceTrigger=LostFocus}" Minimum="60" Maximum="4096" Increment="10" ToolTip.Tip="{meta:Hint model:Probe.BoxWidth}"
+				                    IsEnabled="{Binding BoxSize, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:ProbeBoxSize.Custom}}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.BoxHeight}" />
+				<controls:NumberBox Text="{Binding BoxHeight, UpdateSourceTrigger=LostFocus}" Minimum="30" Maximum="4096" Increment="10" ToolTip.Tip="{meta:Hint model:Probe.BoxHeight}"
+				                    IsEnabled="{Binding BoxSize, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:ProbeBoxSize.Custom}}" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionAxes}" />
+			<controls:FormPanel>
+				<!-- the step axis only applies to a point probe -->
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.ScaleMode}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ProbeScaleMode}"
+				          SelectedItem="{Binding ScaleMode}" ToolTip.Tip="{meta:Hint model:Probe.ScaleMode}"
+				          IsEnabled="{Binding Kind, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:ProbeKind.Point}}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.Window}" />
+				<controls:NumberBox Text="{Binding Window, UpdateSourceTrigger=LostFocus}" Minimum="10" Maximum="1000000" Increment="10" ToolTip.Tip="{meta:Hint model:Probe.Window}" />
+
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Probe.AutoScaleX}"
+				          IsChecked="{Binding AutoScaleX}" ToolTip.Tip="{meta:Hint model:Probe.AutoScaleX}"
+				          IsEnabled="{Binding Kind, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:ProbeKind.Point}}" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Probe.AutoScaleY}"
+				          IsChecked="{Binding AutoScaleY}" ToolTip.Tip="{meta:Hint model:Probe.AutoScaleY}" />
+
+				<!-- a logarithmic value axis only on the intensity layer (the field's amplitude changes sign), the decades only with it -->
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.YScale}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:ProbeValueScale}"
+				          SelectedItem="{Binding YScale}" ToolTip.Tip="{meta:Hint model:Probe.YScale}" AutomationProperties.AutomationId="ProbeYScale"
+				          IsEnabled="{Binding Layer, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:ProbeLayer.Intensity}}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.Decades}" />
+				<controls:NumberBox Text="{Binding Decades, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="12" ToolTip.Tip="{meta:Hint model:Probe.Decades}"
+				                    IsEnabled="{Binding IsLogarithmic}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.YMin}" />
+				<controls:NumberBox Text="{Binding YMin, UpdateSourceTrigger=LostFocus}" Increment="0.1" ToolTip.Tip="{meta:Hint model:Probe.YMin}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Probe.YMax}" />
+				<controls:NumberBox Text="{Binding YMax, UpdateSourceTrigger=LostFocus}" Increment="0.1" ToolTip.Tip="{meta:Hint model:Probe.YMax}" />
+			</controls:FormPanel>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

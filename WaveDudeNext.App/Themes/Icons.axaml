@@ -1,0 +1,142 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- The application's 16 px icons: upstream's Themes/Controls.xaml:243-329 copied path for path, as StreamGeometry
+     resources that Controls/IconView.cs draws (the project tree's rows, folders and toolbar, the Add part menu's kinds,
+     the View and Simulation menus). Every line is 1 px wide on half pixels, so it is crisp at 100 %, with the ink in rows
+     and columns 0 to 14: an odd 15, which centres in the 23 px rows and buttons as the text does. Where part of an icon is
+     solid, a second geometry named Icon<name>Fill holds it. IconView loads this dictionary itself, so the geometries need
+     no entry in App.axaml; an application-level copy would be found first.
+     The last four are the port's own (ADR 0002: the icon font is not available): upstream drew Scene, Simulation, Display
+     and the colour-schemes folder with Segoe glyphs U+EB9F, U+E916, U+E7F4 and U+E790; here a picture frame, a stopwatch,
+     a monitor and a palette, on the same 15 px grid. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<!-- the pictures' handle glyphs (PreviewPane.xaml) as 16 px icons for the tree's rows and folders and the tree's toolbar
+	     (IconView Drawing="Source", "Probe", "Part"), drawn for the pixel grid (2026-10-23; the handle glyphs scaled to 0.8 had
+	     put ticks and edges between pixels, grey and heavier than the text): 1 px lines on half pixels around the pixel (7, 7), the ink in rows and columns
+	     0 to 14, an odd 15 so it centres in the 23 px toolbar buttons and tree rows as the text does; the probe's square is
+	     7 px, which weighs as much as the 9 px ring and leaves the corner free for the plus of an add button (IconPlusBadge) -->
+	<StreamGeometry x:Key="IconSource">M3.5,7.5 A4,4 0 1 1 11.5,7.5 A4,4 0 1 1 3.5,7.5 M7.5,0 V2 M7.5,13 V15 M0,7.5 H2 M13,7.5 H15</StreamGeometry>
+	<StreamGeometry x:Key="IconProbe">M4.5,4.5 H10.5 V10.5 H4.5 Z M7.5,0 V2 M7.5,13 V15 M0,7.5 H2 M13,7.5 H15</StreamGeometry>
+	<!-- a counting detector: pulses over a baseline, a photomultiplier's trace (2026-11-07) -->
+	<StreamGeometry x:Key="IconCountingDetector">M0,12.5 H15 M2.5,12.5 V5 M5.5,12.5 V9 M8.5,12.5 V1 M11.5,12.5 V7 M13.5,12.5 V10</StreamGeometry>
+	<!-- an imaging detector: counts stacked along a line into a bell -->
+	<StreamGeometry x:Key="IconImagingDetector">M0,14.5 H15 M2.5,14.5 V11 M4.5,14.5 V7 M6.5,14.5 V2 M8.5,14.5 V1 M10.5,14.5 V5 M12.5,14.5 V10</StreamGeometry>
+	<StreamGeometry x:Key="IconPart">M3.5,7.5 A4,4 0 1 1 11.5,7.5 A4,4 0 1 1 3.5,7.5 M5.5,7.5 A2,2 0 1 1 9.5,7.5 A2,2 0 1 1 5.5,7.5 M7.5,0 V2 M7.5,13 V15 M0,7.5 H2 M13,7.5 H15</StreamGeometry>
+	<!-- the plus of an add command over an icon (IconView PlusBadge): 5 px in the bottom-right corner, inside the 15 px ink,
+	     a pixel clear of the ring, the square and the ticks; stroked in the accent colour, in the text colour where the
+	     accent is the background (a pressed button) or the text is greyed (a disabled one) -->
+	<StreamGeometry x:Key="IconPlusBadge">M12.5,10 V15 M10,12.5 H15</StreamGeometry>
+	<!-- the project root: a wave on its canvas -->
+	<StreamGeometry x:Key="IconProject">M1.5,2.5 H14.5 V13.5 H1.5 Z M3,8 C4.5,4.5 6.5,4.5 8,8 C9.5,11.5 11.5,11.5 13,8</StreamGeometry>
+
+	<!-- the app's own menu icons (2026-10-23) for entries the icon font has no glyph for: 16 px line drawings, stroked at
+	     1 px on half pixels so the lines are crisp at 100 %, a Fill geometry for the solid parts -->
+	<!-- the kind's symbol in the Add part menu (2026-10-29, the user's design): a biconvex lens and, to its right, a concave
+	     mirror, a flat back and a hollow front, thick at the ends -->
+	<StreamGeometry x:Key="IconLens">M4,1.5 C7.5,4.5 7.5,11.5 4,14.5 C0.5,11.5 0.5,4.5 4,1.5 Z M13.5,1.5 V14.5 H10.5 C12.5,11.5 12.5,4.5 10.5,1.5 Z</StreamGeometry>
+	<!-- a part's row shows its own profile, each surface convex, flat or concave by its radius (2026-10-29, the user's design),
+	     the shapes about 5 to 7 px wide around x = 8: the biconvex lens is the pointed one of old, its arcs meeting at the ends;
+	     a flat surface against a convex one makes a D; the meniscus is a crescent of even thickness; a concave surface bows in
+	     from a rim set out, so a biconcave lens is thick at the rim and thin in the middle; the rims are joined along the top
+	     and the bottom -->
+	<StreamGeometry x:Key="IconLensConvexConvex">M8,1.5 C4.5,4.5 4.5,11.5 8,14.5 C11.5,11.5 11.5,4.5 8,1.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconLensConvexFlat">M10.5,1.5 C3.5,4.5 3.5,11.5 10.5,14.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconLensConvexConcave">M8,1.5 C3.5,4.5 3.5,11.5 8,14.5 L11,14.5 C7.5,11.5 7.5,4.5 11,1.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconLensFlatConvex">M5.5,1.5 V14.5 C12.5,11.5 12.5,4.5 5.5,1.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconLensFlatFlat">M5.5,1.5 V14.5 H10.5 V1.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconLensFlatConcave">M5.5,1.5 V14.5 H11.5 C9,11.5 9,4.5 11.5,1.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconLensConcaveConvex">M5,1.5 C8.5,4.5 8.5,11.5 5,14.5 L8,14.5 C12.5,11.5 12.5,4.5 8,1.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconLensConcaveFlat">M4.5,1.5 C7,4.5 7,11.5 4.5,14.5 H10.5 V1.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconLensConcaveConcave">M4.5,1.5 C6.5,4.5 6.5,11.5 4.5,14.5 L11.5,14.5 C9.5,11.5 9.5,4.5 11.5,1.5 Z</StreamGeometry>
+	<!-- a plate whose left face is cut into zones: two sawteeth either side of the axis, the right face flat -->
+	<StreamGeometry x:Key="IconFresnelLens">M11.5,1.5 H6.5 L4.5,4.5 H6 L4.5,8 L6,11.5 H4.5 L6.5,14.5 H11.5 Z</StreamGeometry>
+	<!-- an S-bent fibre -->
+	<StreamGeometry x:Key="IconFiber">M1,13.5 C7,13.5 9,5.5 15,5.5 M1,10.5 C7,10.5 9,2.5 15,2.5</StreamGeometry>
+	<!-- alternating layers -->
+	<StreamGeometry x:Key="IconBraggReflectorFill">M2,2 H4 V14 H2 Z M6,2 H8 V14 H6 Z M10,2 H12 V14 H10 Z</StreamGeometry>
+	<!-- a block whose lines thicken toward the axis -->
+	<StreamGeometry x:Key="IconGrinLens">M2.5,2.5 H13.5 V13.5 H2.5 Z M2.5,8 H13.5 M4,6 H12 M4,10 H12 M6,4.5 H10 M6,11.5 H10</StreamGeometry>
+	<!-- a plate, open in the middle, its blocks narrowing outwards -->
+	<StreamGeometry x:Key="IconZonePlateFill">M6,3 H10 V6 H6 Z M6,10 H10 V13 H6 Z M6,0.5 H10 V1.75 H6 Z M6,14.25 H10 V15.5 H6 Z</StreamGeometry>
+	<!-- a plate whose left face is rippled -->
+	<StreamGeometry x:Key="IconDiffuser">M12.5,1.5 V14.5 H5.5 L3.5,13 L6.5,11 L3.5,9 L6.5,7 L3.5,5 L6.5,3 L5.5,1.5 Z</StreamGeometry>
+	<!-- a plate with thin layers on its left face -->
+	<StreamGeometry x:Key="IconInterferenceFilter">M7.5,1.5 H13.5 V14.5 H7.5 Z M2.5,1.5 V14.5 M4.5,1.5 V14.5 M6.5,1.5 V14.5 M2.5,1.5 H7.5 M2.5,14.5 H7.5</StreamGeometry>
+	<!-- a column of dots: a line grating -->
+	<StreamGeometry x:Key="IconDiffractionGratingsFill">M7,0 H9 V2 H7 Z M7,4 H9 V6 H7 Z M7,8 H9 V10 H7 Z M7,12 H9 V14 H7 Z</StreamGeometry>
+	<!-- a plate with equal posts on its left face: a meta surface -->
+	<StreamGeometry x:Key="IconMetaSurfaces">M10.5,1.5 V14.5 H13.5 V1.5 Z M6.5,2.5 H10.5 V3.5 H6.5 Z M6.5,5.5 H10.5 V6.5 H6.5 Z M6.5,8.5 H10.5 V9.5 H6.5 Z M6.5,11.5 H10.5 V12.5 H6.5 Z</StreamGeometry>
+	<!-- a plate with posts longest at the middle: a meta lens -->
+	<StreamGeometry x:Key="IconMetaLens">M10.5,1.5 V14.5 H13.5 V1.5 Z M8.5,2.5 H10.5 V3.5 H8.5 Z M6.5,5.5 H10.5 V6.5 H6.5 Z M4.5,8.5 H10.5 V9.5 H4.5 Z M6.5,11.5 H10.5 V12.5 H6.5 Z</StreamGeometry>
+	<!-- a plate with posts growing from one end to the other: a meta prism -->
+	<StreamGeometry x:Key="IconMetaPrism">M10.5,1.5 V14.5 H13.5 V1.5 Z M8.5,2.5 H10.5 V3.5 H8.5 Z M7.5,5.5 H10.5 V6.5 H7.5 Z M6,8.5 H10.5 V9.5 H6 Z M4.5,11.5 H10.5 V12.5 H4.5 Z</StreamGeometry>
+	<!-- a plate with posts growing straight toward the middle: a meta axicon -->
+	<StreamGeometry x:Key="IconMetaAxicon">M10.5,1.5 V14.5 H13.5 V1.5 Z M7.5,1.5 H10.5 V2.5 H7.5 Z M6,4.5 H10.5 V5.5 H6 Z M4.5,7.5 H10.5 V8.5 H4.5 Z M6,10.5 H10.5 V11.5 H6 Z M7.5,13.5 H10.5 V14.5 H7.5 Z</StreamGeometry>
+	<!-- a plate whose left face is a sawtooth: three facets -->
+	<StreamGeometry x:Key="IconFacettedGrating">M12.5,1.5 H7.5 L4.5,5 H7.5 L4.5,8.5 H7.5 L4.5,12 H7.5 V14.5 H12.5 Z</StreamGeometry>
+	<!-- a lattice of dots -->
+	<StreamGeometry x:Key="IconSimpleGratingFill">M2,2 H4 V4 H2 Z M7,2 H9 V4 H7 Z M12,2 H14 V4 H12 Z M2,7 H4 V9 H2 Z M7,7 H9 V9 H7 Z M12,7 H14 V9 H12 Z M2,12 H4 V14 H2 Z M7,12 H9 V14 H7 Z M12,12 H14 V14 H12 Z</StreamGeometry>
+	<!-- a hexagon -->
+	<StreamGeometry x:Key="IconPolygon">M5,2.5 L11,2.5 L14,8 L11,13.5 L5,13.5 L2,8 Z</StreamGeometry>
+	<!-- a rectangle -->
+	<StreamGeometry x:Key="IconRectangle">M2.5,4.5 H13.5 V11.5 H2.5 Z</StreamGeometry>
+	<!-- an ellipse -->
+	<StreamGeometry x:Key="IconEllipse">M2,8 A6,4.5 0 1 1 14,8 A6,4.5 0 1 1 2,8 Z</StreamGeometry>
+	<!-- a triangle -->
+	<StreamGeometry x:Key="IconTriangle">M8,2.5 L14,13.5 L2,13.5 Z</StreamGeometry>
+	<!-- a free outline -->
+	<StreamGeometry x:Key="IconOutline">M2.5,12.5 L5,3.5 L9.5,6.5 L13.5,2.5 L12.5,13.5 Z</StreamGeometry>
+	<!-- a gate with its inputs and output -->
+	<StreamGeometry x:Key="IconOpticalLogic">M2.5,3.5 H8 A4.5,4.5 0 0 1 8,12.5 H2.5 Z M0,6 H2.5 M0,10 H2.5 M12.5,8 H16</StreamGeometry>
+	<!-- the ANSI XOR symbol -->
+	<StreamGeometry x:Key="IconXorGate">M4,3.5 Q7,8 4,12.5 Q11,12.5 13.5,8 Q11,3.5 4,3.5 Z M2,3.5 Q5,8 2,12.5 M13.5,8 H16</StreamGeometry>
+	<!-- the ANSI AND symbol -->
+	<StreamGeometry x:Key="IconAndGate">M2.5,3.5 H8 A4.5,4.5 0 0 1 8,12.5 H2.5 Z M12.5,8 H16</StreamGeometry>
+	<!-- the ANSI OR symbol -->
+	<StreamGeometry x:Key="IconOrGate">M2.5,3.5 Q5.5,8 2.5,12.5 Q10,12.5 13.5,8 Q10,3.5 2.5,3.5 Z M13.5,8 H16</StreamGeometry>
+	<!-- a half-filled circle, the usual automatic contrast -->
+	<StreamGeometry x:Key="IconAutoBrightness">M8,2.5 A5.5,5.5 0 1 1 8,13.5 A5.5,5.5 0 1 1 8,2.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconAutoBrightnessFill">M8,2.5 A5.5,5.5 0 0 1 8,13.5 Z</StreamGeometry>
+	<!-- a pixel grid -->
+	<StreamGeometry x:Key="IconPreviewResolution">M2.5,2.5 H13.5 V13.5 H2.5 Z M6.5,2.5 V13.5 M10.5,2.5 V13.5 M2.5,6.5 H13.5 M2.5,10.5 H13.5</StreamGeometry>
+	<!-- a strip of frames -->
+	<StreamGeometry x:Key="IconPreviewFrames">M1.5,3.5 H14.5 V12.5 H1.5 Z M5.5,3.5 V12.5 M10.5,3.5 V12.5</StreamGeometry>
+	<!-- a quantisation staircase, the bit depth -->
+	<StreamGeometry x:Key="IconPreviewSamples">M1.5,14.5 V11.5 H4.5 V8.5 H7.5 V5.5 H10.5 V2.5 H14.5</StreamGeometry>
+	<!-- a checkerboard in a frame, the dither -->
+	<StreamGeometry x:Key="IconPreviewDither">M2.5,2.5 H13.5 V13.5 H2.5 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconPreviewDitherFill">M3,3 h2.5 v2.5 h-2.5 Z M8,3 h2.5 v2.5 h-2.5 Z M5.5,5.5 h2.5 v2.5 h-2.5 Z M10.5,5.5 h2.5 v2.5 h-2.5 Z M3,8 h2.5 v2.5 h-2.5 Z M8,8 h2.5 v2.5 h-2.5 Z M5.5,10.5 h2.5 v2.5 h-2.5 Z M10.5,10.5 h2.5 v2.5 h-2.5 Z</StreamGeometry>
+	<!-- a memory module -->
+	<StreamGeometry x:Key="IconFrameMemory">M2.5,4.5 H13.5 V11.5 H2.5 Z M4.5,11.5 V14 M7,11.5 V14 M9,11.5 V14 M11.5,11.5 V14 M5,7 H11 V9 H5 Z</StreamGeometry>
+
+	<!-- the port's own, for the rows upstream gave icon-font glyphs -->
+	<!-- the scene: a picture in its frame, a sun and a skyline (upstream U+EB9F) -->
+	<StreamGeometry x:Key="IconScene">M1.5,2.5 H14.5 V13.5 H1.5 Z M4.5,5.5 A1,1 0 1 1 6.5,5.5 A1,1 0 1 1 4.5,5.5 M2.5,12 L6,8.5 L8.5,11 L11,7.5 L13.5,10.5</StreamGeometry>
+	<!-- the simulation: a stopwatch, its hand on the first steps (upstream U+E916) -->
+	<StreamGeometry x:Key="IconSimulation">M2.5,8.5 A5,5 0 1 1 12.5,8.5 A5,5 0 1 1 2.5,8.5 M6,1.5 H9 M7.5,1.5 V3.5 M7.5,8.5 L10,6</StreamGeometry>
+	<!-- the display: a monitor on its foot (upstream U+E7F4) -->
+	<StreamGeometry x:Key="IconDisplay">M1.5,2.5 H14.5 V11.5 H1.5 Z M7.5,11.5 V14.5 M4.5,14.5 H10.5</StreamGeometry>
+	<!-- the colour schemes folder: a palette with three paint wells (upstream U+E790) -->
+	<StreamGeometry x:Key="IconColorSchemes">M2,8 A6,5.5 0 1 1 14,8 A6,5.5 0 1 1 2,8 Z</StreamGeometry>
+	<StreamGeometry x:Key="IconColorSchemesFill">M5,6 h2 v2 h-2 Z M8,4 h2 v2 h-2 Z M10,8 h2 v2 h-2 Z</StreamGeometry>
+</ResourceDictionary>

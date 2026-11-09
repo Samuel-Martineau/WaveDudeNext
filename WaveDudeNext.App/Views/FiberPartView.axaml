@@ -1,0 +1,86 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.FiberPartView"
+             x:DataType="model:FiberPart">
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<views:PartCommonView />
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionCore}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:FiberPart.CoreIndex}" />
+				<controls:NumberBox Text="{Binding CoreIndex, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="2.55" Increment="0.01" ToolTip.Tip="{meta:Hint model:FiberPart.CoreIndex}" AutomationProperties.AutomationId="PartCoreIndex" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:FiberPart.CoreDiameter}" />
+				<controls:NumberBox Text="{Binding CoreDiameter, UpdateSourceTrigger=LostFocus}" Minimum="2" ToolTip.Tip="{meta:Hint model:FiberPart.CoreDiameter}" AutomationProperties.AutomationId="PartCoreDiameter" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionCladding}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:FiberPart.CladdingIndex}" />
+				<controls:NumberBox Text="{Binding CladdingIndex, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="2.55" Increment="0.01" ToolTip.Tip="{meta:Hint model:FiberPart.CladdingIndex}" AutomationProperties.AutomationId="PartCladdingIndex" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:FiberPart.CladdingThickness}" />
+				<controls:NumberBox Text="{Binding CladdingThickness, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:FiberPart.CladdingThickness}" AutomationProperties.AutomationId="PartCladdingThickness" />
+
+				<!-- the cladding's absorbing band, a hump in its outer part -->
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:FiberPart.Absorption}" />
+				<controls:NumberBox Text="{Binding Absorption, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="255" Increment="5" ToolTip.Tip="{meta:Hint model:FiberPart.Absorption}" AutomationProperties.AutomationId="PartAbsorption" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:FiberPart.AbsorptionRamp}" />
+				<controls:NumberBox Text="{Binding AbsorptionRamp, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="400" ToolTip.Tip="{meta:Hint model:FiberPart.AbsorptionRamp}" AutomationProperties.AutomationId="PartAbsorptionRamp" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:FiberPart.Coating}" />
+				<controls:NumberBox Text="{Binding Coating, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="50" ToolTip.Tip="{meta:Hint model:FiberPart.Coating}" AutomationProperties.AutomationId="PartCoating" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:CoatedPart.CoatingProfile}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:CoatingProfile}" SelectedItem="{Binding CoatingProfile}"
+				          ToolTip.Tip="{meta:Hint model:CoatedPart.CoatingProfile}" AutomationProperties.AutomationId="PartCoatingProfile" />
+
+				<!-- the faces: the start face is the front, the end face the back, the tube the sides -->
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.FrontCoated}"
+				          IsChecked="{Binding FrontCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.FrontCoated}" AutomationProperties.AutomationId="PartFrontCoated" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.BackCoated}"
+				          IsChecked="{Binding BackCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.BackCoated}" AutomationProperties.AutomationId="PartBackCoated" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.SidesCoated}"
+				          IsChecked="{Binding SidesCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.SidesCoated}" AutomationProperties.AutomationId="PartSidesCoated" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionShape}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:FiberPart.Ends}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:FiberEnds}"
+				          SelectedItem="{Binding Ends}" ToolTip.Tip="{meta:Hint model:FiberPart.Ends}" AutomationProperties.AutomationId="PartEnds" />
+			</controls:FormPanel>
+
+			<views:FiberPathView />
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

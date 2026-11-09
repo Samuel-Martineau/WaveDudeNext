@@ -1,0 +1,50 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:model="using:WaveDudeNext.Model"
+             x:Class="WaveDudeNext.App.Views.ProjectView"
+             x:DataType="model:Project">
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionGeneral}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Project.Version}" />
+				<TextBlock Classes="FormValue" Text="{Binding Version}" ToolTip.Tip="{meta:Hint model:Project.Version}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Project.Seed}" />
+				<DockPanel>
+					<Button DockPanel.Dock="Right" Margin="6,0,0,0" Content="{DynamicResource ButtonNewSeed}" Click="OnReseed"
+					        AutomationProperties.AutomationId="ProjectNewSeed" />
+					<controls:NumberBox Text="{Binding Seed, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{meta:Hint model:Project.Seed}" />
+				</DockPanel>
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Project.Description}" VerticalAlignment="Top" Margin="0,4,0,0" />
+				<!-- free text, written on every keystroke as upstream did -->
+				<TextBox Text="{Binding Description}" ToolTip.Tip="{meta:Hint model:Project.Description}"
+				         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60" VerticalContentAlignment="Top"
+				         ScrollViewer.VerticalScrollBarVisibility="Auto" />
+			</controls:FormPanel>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

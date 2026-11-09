@@ -1,0 +1,70 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.GrinLensPartView"
+             x:DataType="model:GrinLensPart">
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<views:PartCommonView />
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionMaterial}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:GrinLensPart.CentreIndex}" />
+				<controls:NumberBox Text="{Binding CentreIndex, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="2.55" Increment="0.01" ToolTip.Tip="{meta:Hint model:GrinLensPart.CentreIndex}" AutomationProperties.AutomationId="PartCentreIndex" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:GrinLensPart.EdgeIndex}" />
+				<controls:NumberBox Text="{Binding EdgeIndex, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="2.55" Increment="0.01" ToolTip.Tip="{meta:Hint model:GrinLensPart.EdgeIndex}" AutomationProperties.AutomationId="PartEdgeIndex" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:GrinLensPart.Coating}" />
+				<controls:NumberBox Text="{Binding Coating, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="50" ToolTip.Tip="{meta:Hint model:GrinLensPart.Coating}" AutomationProperties.AutomationId="PartCoating" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:CoatedPart.CoatingProfile}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:CoatingProfile}" SelectedItem="{Binding CoatingProfile}"
+				          ToolTip.Tip="{meta:Hint model:CoatedPart.CoatingProfile}" AutomationProperties.AutomationId="PartCoatingProfile" />
+
+				<!-- the faces by their outward normal: the end faces across the axis are front and back, the long sides the sides -->
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.FrontCoated}"
+				          IsChecked="{Binding FrontCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.FrontCoated}" AutomationProperties.AutomationId="PartFrontCoated" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.BackCoated}"
+				          IsChecked="{Binding BackCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.BackCoated}" AutomationProperties.AutomationId="PartBackCoated" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.SidesCoated}"
+				          IsChecked="{Binding SidesCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.SidesCoated}" AutomationProperties.AutomationId="PartSidesCoated" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionShape}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:GrinLensPart.Length}" />
+				<controls:NumberBox Text="{Binding Length, UpdateSourceTrigger=LostFocus}" Minimum="1" Increment="10" ToolTip.Tip="{meta:Hint model:GrinLensPart.Length}" AutomationProperties.AutomationId="PartLength" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:GrinLensPart.Diameter}" />
+				<controls:NumberBox Text="{Binding Diameter, UpdateSourceTrigger=LostFocus}" Minimum="2" Increment="10" ToolTip.Tip="{meta:Hint model:GrinLensPart.Diameter}" AutomationProperties.AutomationId="PartDiameter" />
+			</controls:FormPanel>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

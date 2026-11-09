@@ -1,0 +1,128 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- The light colour table: upstream's Themes/Light.xaml (Visual Studio light values), the same 92 keys as Dark.axaml. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	<!-- window -->
+	<SolidColorBrush x:Key="WindowBackground" Color="#FFEEEEF2" />
+	<SolidColorBrush x:Key="WindowForeground" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="GrayText" Color="#FFA2A4A5" />
+	<SolidColorBrush x:Key="ControlBorder" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="ControlShadow" Color="#40000000" />
+	<SolidColorBrush x:Key="Accent" Color="#FF007ACC" />
+	<!-- menus -->
+	<SolidColorBrush x:Key="MenuBackground" Color="#FFEEEEF2" />
+	<SolidColorBrush x:Key="MenuForeground" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="MenuPopupBackground" Color="#FFF6F6F6" />
+	<SolidColorBrush x:Key="MenuPopupBorder" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="MenuItemHover" Color="#FFC9DEF5" />
+	<SolidColorBrush x:Key="MenuItemHoverForeground" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="MenuHeaderOpen" Color="#FFC9DEF5" />
+	<SolidColorBrush x:Key="MenuSeparator" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="MenuGlyph" Color="#FF717171" />
+	<SolidColorBrush x:Key="MenuGlyphHover" Color="#FF007ACC" />
+	<!-- status bar -->
+	<SolidColorBrush x:Key="StatusBarBackground" Color="#FF007ACC" />
+	<SolidColorBrush x:Key="StatusBarForeground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="StatusBarWarnForeground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="StatusBarWarnBackground" Color="#FFCA5100" />
+	<SolidColorBrush x:Key="StatusBarErrorForeground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="StatusBarErrorBackground" Color="#FFB4211D" />
+	<!-- tool windows and their title bars -->
+	<SolidColorBrush x:Key="ToolWindowBackground" Color="#FFF5F5F5" />
+	<SolidColorBrush x:Key="ToolWindowBorder" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="TitleBarActiveBackground" Color="#FF007ACC" />
+	<SolidColorBrush x:Key="TitleBarActiveForeground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="TitleBarInactiveBackground" Color="#FFEEEEF2" />
+	<SolidColorBrush x:Key="TitleBarInactiveForeground" Color="#FF444444" />
+	<SolidColorBrush x:Key="TitleBarDragHandleActive" Color="#FF59A8DE" />
+	<SolidColorBrush x:Key="TitleBarDragHandleInactive" Color="#FF999999" />
+	<SolidColorBrush x:Key="TitleBarButtonHoverActive" Color="#FF1C97EA" />
+	<SolidColorBrush x:Key="TitleBarButtonHoverInactive" Color="#FFF7F7F9" />
+	<!-- tool tabs -->
+	<SolidColorBrush x:Key="ToolTabBackground" Color="#FFEEEEF2" />
+	<SolidColorBrush x:Key="ToolTabForeground" Color="#FF444444" />
+	<SolidColorBrush x:Key="ToolTabSelectedBackground" Color="#FFF5F5F5" />
+	<SolidColorBrush x:Key="ToolTabSelectedForeground" Color="#FF0E70C0" />
+	<SolidColorBrush x:Key="ToolTabHoverForeground" Color="#FF1C97EA" />
+	<!-- document tabs and the document area -->
+	<SolidColorBrush x:Key="DocTabBackground" Color="#FFEEEEF2" />
+	<SolidColorBrush x:Key="DocTabInactiveBackground" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="DocTabInactiveForeground" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="DocTabSelectedBackground" Color="#FF007ACC" />
+	<SolidColorBrush x:Key="DocTabSelectedForeground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="DocTabHotBackground" Color="#FF1C97EA" />
+	<SolidColorBrush x:Key="DocTabHotForeground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="DocumentBackground" Color="#FFFFFFFF" />
+	<!-- tree -->
+	<SolidColorBrush x:Key="TreeViewBackground" Color="#FFF5F5F5" />
+	<SolidColorBrush x:Key="TreeViewForeground" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="TreeViewItemHover" Color="#FFE5E5E5" />
+	<SolidColorBrush x:Key="TreeViewItemSelected" Color="#FF3399FF" />
+	<SolidColorBrush x:Key="TreeViewItemSelectedForeground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="TreeViewItemSelectedInactive" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="TreeViewItemSelectedInactiveForeground" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="TreeViewGlyph" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="TreeViewGlyphHover" Color="#FF007ACC" />
+	<!-- scroll bars -->
+	<SolidColorBrush x:Key="ScrollBarBackground" Color="#FFE8E8EC" />
+	<SolidColorBrush x:Key="ScrollBarThumb" Color="#FFC2C3C9" />
+	<SolidColorBrush x:Key="ScrollBarThumbHover" Color="#FF686868" />
+	<SolidColorBrush x:Key="ScrollBarThumbPressed" Color="#FF5B5B5B" />
+	<SolidColorBrush x:Key="ScrollBarArrow" Color="#FF868999" />
+	<SolidColorBrush x:Key="ScrollBarArrowHover" Color="#FF1C97EA" />
+	<SolidColorBrush x:Key="ScrollBarArrowPressed" Color="#FF007ACC" />
+	<!-- splitters and the docking drop indicators -->
+	<SolidColorBrush x:Key="SplitterBackground" Color="#FFEEEEF2" />
+	<SolidColorBrush x:Key="DropIndicatorBackground" Color="#FFF6F6F6" />
+	<SolidColorBrush x:Key="DropIndicatorBorder" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="DropIndicatorGlyph" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="DropIndicatorHot" Color="#FF007ACC" />
+	<SolidColorBrush x:Key="DropPreviewFill" Color="#60007ACC" />
+	<SolidColorBrush x:Key="DropPreviewBorder" Color="#FF007ACC" />
+	<!-- buttons and tooltips -->
+	<SolidColorBrush x:Key="ButtonBackground" Color="#FFECECF0" />
+	<SolidColorBrush x:Key="ButtonBorder" Color="#FFACACAC" />
+	<SolidColorBrush x:Key="ButtonHover" Color="#FFC9DEF5" />
+	<SolidColorBrush x:Key="ButtonPressed" Color="#FF007ACC" />
+	<SolidColorBrush x:Key="ToolTipBackground" Color="#FFF6F6F6" />
+	<SolidColorBrush x:Key="ToolTipBorder" Color="#FFCCCEDB" />
+	<!-- editors -->
+	<SolidColorBrush x:Key="TextBoxBackground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="TextBoxBorder" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="TextBoxHoverBorder" Color="#FFA0A0A8" />
+	<SolidColorBrush x:Key="ComboBoxBackground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="ComboBoxBorder" Color="#FFCCCEDB" />
+	<SolidColorBrush x:Key="ComboBoxHover" Color="#FFE6E7ED" />
+	<SolidColorBrush x:Key="ComboBoxListBackground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="ComboBoxItemHover" Color="#FF3399FF" />
+	<SolidColorBrush x:Key="ComboBoxItemHoverForeground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="ComboBoxGlyph" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="CheckBoxBackground" Color="#FFFFFFFF" />
+	<SolidColorBrush x:Key="CheckBoxBorder" Color="#FF9A9A9E" />
+	<!-- log levels in the Messages pane -->
+	<SolidColorBrush x:Key="LogTrace" Color="#FF8A8A8A" />
+	<SolidColorBrush x:Key="LogDebug" Color="#FF6E6E6E" />
+	<SolidColorBrush x:Key="LogInfo" Color="#FF1E1E1E" />
+	<SolidColorBrush x:Key="LogWarn" Color="#FFBF8700" />
+	<SolidColorBrush x:Key="LogError" Color="#FFC50500" />
+	<SolidColorBrush x:Key="LogFatal" Color="#FFA00000" />
+</ResourceDictionary>

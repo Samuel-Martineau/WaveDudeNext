@@ -1,0 +1,119 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- Lists in the tool-window look, upstream's Themes/Lists.xaml: a ListBox on ToolWindowBackground without a border,
+     rows with Padding 2,1, hover TreeViewItemHover, the selection TreeViewItemSelected with white text while the list
+     holds the keyboard focus and TreeViewItemSelectedInactive otherwise; a header row built of Border.columnHeader cells
+     (GrayText, a 1 px ControlBorder at the right and the bottom, Padding 4,2), since Avalonia has no GridView. The
+     ControlThemes replace Fluent's for ListBox and ListBoxItem outright (see Controls.axaml); the part names are the ones
+     ListBox looks up (PART_ScrollViewer, PART_ItemsPresenter). -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	<Styles.Resources>
+		<ResourceDictionary>
+			<ControlTheme x:Key="{x:Type ListBox}" TargetType="ListBox">
+				<Setter Property="Background" Value="{DynamicResource ToolWindowBackground}" />
+				<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+				<Setter Property="BorderThickness" Value="0" />
+				<Setter Property="Padding" Value="0" />
+				<Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+				<Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+				<Setter Property="ScrollViewer.IsScrollChainingEnabled" Value="True" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border ClipToBounds="{TemplateBinding ClipToBounds}" Background="{TemplateBinding Background}"
+						        BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+							<ScrollViewer Name="PART_ScrollViewer" AllowAutoHide="False"
+							              HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+							              VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}"
+							              IsScrollChainingEnabled="{TemplateBinding (ScrollViewer.IsScrollChainingEnabled)}"
+							              IsScrollInertiaEnabled="{TemplateBinding (ScrollViewer.IsScrollInertiaEnabled)}"
+							              IsDeferredScrollingEnabled="{TemplateBinding (ScrollViewer.IsDeferredScrollingEnabled)}"
+							              BringIntoViewOnFocusChange="{TemplateBinding (ScrollViewer.BringIntoViewOnFocusChange)}">
+								<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Margin="{TemplateBinding Padding}" />
+							</ScrollViewer>
+						</Border>
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<!-- a row: the 1 px border is there in every state, transparent until the row has the keyboard focus, so that
+			     nothing moves when the Accent appears -->
+			<ControlTheme x:Key="{x:Type ListBoxItem}" TargetType="ListBoxItem">
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+				<Setter Property="Padding" Value="2,1" />
+				<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+				<Setter Property="VerticalContentAlignment" Value="Center" />
+				<Setter Property="FocusAdorner" Value="{x:Null}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1"
+						        Padding="{TemplateBinding Padding}">
+							<ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+							                  ContentTemplate="{TemplateBinding ContentTemplate}"
+							                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+							                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:pointerover /template/ Border#PART_LayoutRoot">
+					<Setter Property="Background" Value="{DynamicResource TreeViewItemHover}" />
+				</Style>
+				<Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+					<Setter Property="Background" Value="{DynamicResource TreeViewItemSelectedInactive}" />
+				</Style>
+				<Style Selector="^:selected">
+					<Setter Property="Foreground" Value="{DynamicResource TreeViewItemSelectedInactiveForeground}" />
+				</Style>
+				<Style Selector="^:focus-visible /template/ Border#PART_LayoutRoot">
+					<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+				</Style>
+				<Style Selector="^:disabled">
+					<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				</Style>
+			</ControlTheme>
+		</ResourceDictionary>
+	</Styles.Resources>
+
+	<!-- the selected row while the list holds the keyboard focus: TreeViewItemSelected with white text (upstream's
+	     IsSelectionActive); a plain style outranks the theme's inactive colours -->
+	<Style Selector="ListBox:focus-within ListBoxItem:selected /template/ Border#PART_LayoutRoot">
+		<Setter Property="Background" Value="{DynamicResource TreeViewItemSelected}" />
+	</Style>
+	<Style Selector="ListBox:focus-within ListBoxItem:selected">
+		<Setter Property="Foreground" Value="{DynamicResource TreeViewItemSelectedForeground}" />
+	</Style>
+
+	<!-- a header cell (upstream GridViewColumnHeader): ToolWindowBackground, GrayText, a 1 px ControlBorder at the right and
+	     the bottom, Padding 4,2, ButtonHover under the pointer -->
+	<Style Selector="Border.columnHeader">
+		<Setter Property="Background" Value="{DynamicResource ToolWindowBackground}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+		<Setter Property="BorderThickness" Value="0,0,1,1" />
+		<Setter Property="Padding" Value="4,2" />
+	</Style>
+	<Style Selector="Border.columnHeader:pointerover">
+		<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+	</Style>
+	<Style Selector="Border.columnHeader TextBlock, TextBlock.columnHeader">
+		<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+	</Style>
+</Styles>

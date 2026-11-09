@@ -1,0 +1,108 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="WaveDudeNext.App.Panes.PreviewPane"
+             Focusable="True"
+             Background="{DynamicResource DocumentBackground}">
+	<!-- The document in the centre, as upstream's PreviewPane.xaml: the two picture cells (built in code, see the
+	     code-behind's BuildCell: header strip with brightness box and Auto, the edge line, the picture, the outline, the
+	     overlay host for the scene handles, the probe graph overlay, the busy layer) in a 3 x 3 grid with a splitter, the
+	     timeline host above the transport bar, and the transport bar. No bindings: the pane is its own view, as upstream's
+	     code-behind was; the dynamic texts are the string table's keys through DynamicResource. -->
+	<UserControl.Styles>
+		<StyleInclude Source="avares://WaveDudeNext.App/Themes/Preview.axaml" />
+	</UserControl.Styles>
+
+	<DockPanel>
+		<!-- transport bar: run and pause run, play and pause, frame steps, in/out/clear, loop, live, the frame and step
+		     readout; on the right the speed, the show toggles and the split radios. The tab order is TabIndex, left to right -->
+		<Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource ToolWindowBorder}" BorderThickness="0,1,0,0" Padding="4,3">
+			<DockPanel KeyboardNavigation.TabNavigation="Local">
+				<!-- an explicit "run the simulation" next to Play (Play alone starts one only when needed); while a run is in
+				     progress the same button is Stop: glyph, command and tooltip are set in code from Run.IsActive. Its id stays
+				     PreviewRun; a harness tells the two apart by the name -->
+				<Button x:Name="runButton" DockPanel.Dock="Left" TabIndex="0" Theme="{StaticResource TransportButton}"
+				        Content="{StaticResource RunGeometry}" AutomationProperties.AutomationId="PreviewRun" />
+				<Button x:Name="pauseRunButton" DockPanel.Dock="Left" TabIndex="1" Theme="{StaticResource TransportButton}"
+				        Content="{StaticResource PauseRunGeometry}" AutomationProperties.AutomationId="PreviewPauseRun" />
+				<Rectangle DockPanel.Dock="Left" Width="1" Margin="4,2" Fill="{DynamicResource ToolWindowBorder}" />
+				<Button x:Name="playButton" DockPanel.Dock="Left" TabIndex="2" Theme="{StaticResource TransportButton}" Content="{StaticResource PlayGeometry}"
+				        ToolTip.Tip="{DynamicResource TipPreviewPlay}" AutomationProperties.Name="{DynamicResource TipPreviewPlay}" AutomationProperties.AutomationId="PreviewPlay" />
+				<Button x:Name="pauseButton" DockPanel.Dock="Left" TabIndex="3" Theme="{StaticResource TransportButton}" Content="{StaticResource PauseGeometry}"
+				        ToolTip.Tip="{DynamicResource TipPreviewPause}" AutomationProperties.Name="{DynamicResource TipPreviewPause}" AutomationProperties.AutomationId="PreviewPause" />
+				<Rectangle DockPanel.Dock="Left" Width="1" Margin="4,2" Fill="{DynamicResource ToolWindowBorder}" />
+				<Button x:Name="stepBackButton" DockPanel.Dock="Left" TabIndex="4" Theme="{StaticResource TransportButton}" Content="{StaticResource StepBackGeometry}"
+				        ToolTip.Tip="{DynamicResource TipPreviewStepBack}" AutomationProperties.Name="{DynamicResource TipPreviewStepBack}" AutomationProperties.AutomationId="PreviewStepBack" />
+				<Button x:Name="stepForwardButton" DockPanel.Dock="Left" TabIndex="5" Theme="{StaticResource TransportButton}" Content="{StaticResource StepForwardGeometry}"
+				        ToolTip.Tip="{DynamicResource TipPreviewStepForward}" AutomationProperties.Name="{DynamicResource TipPreviewStepForward}" AutomationProperties.AutomationId="PreviewStepForward" />
+				<Rectangle DockPanel.Dock="Left" Width="1" Margin="4,2" Fill="{DynamicResource ToolWindowBorder}" />
+				<Button x:Name="setInButton" DockPanel.Dock="Left" TabIndex="6" Theme="{StaticResource TransportButton}" Content="{StaticResource SetInGeometry}"
+				        ToolTip.Tip="{DynamicResource TipPreviewSetIn}" AutomationProperties.Name="{DynamicResource TipPreviewSetIn}" AutomationProperties.AutomationId="PreviewSetIn" />
+				<Button x:Name="setOutButton" DockPanel.Dock="Left" TabIndex="7" Theme="{StaticResource TransportButton}" Content="{StaticResource SetOutGeometry}"
+				        ToolTip.Tip="{DynamicResource TipPreviewSetOut}" AutomationProperties.Name="{DynamicResource TipPreviewSetOut}" AutomationProperties.AutomationId="PreviewSetOut" />
+				<Button x:Name="clearRangeButton" DockPanel.Dock="Left" TabIndex="8" Theme="{StaticResource TransportButton}" Content="{StaticResource ClearRangeGeometry}"
+				        ToolTip.Tip="{DynamicResource TipPreviewClearRange}" AutomationProperties.Name="{DynamicResource TipPreviewClearRange}" AutomationProperties.AutomationId="PreviewClearRange" />
+				<ToggleButton x:Name="loopToggle" DockPanel.Dock="Left" TabIndex="9" Theme="{StaticResource TransportToggle}" Content="{StaticResource LoopGeometry}"
+				              ToolTip.Tip="{DynamicResource TipPreviewLoop}" AutomationProperties.Name="{DynamicResource TipPreviewLoop}" AutomationProperties.AutomationId="PreviewLoop" />
+				<ToggleButton x:Name="liveToggle" DockPanel.Dock="Left" TabIndex="10" Theme="{StaticResource TransportToggle}" Content="{StaticResource LiveGeometry}" IsEnabled="False"
+				              ToolTip.Tip="{DynamicResource TipPreviewLive}" AutomationProperties.Name="{DynamicResource TipPreviewLive}" AutomationProperties.AutomationId="PreviewLive" />
+				<Rectangle DockPanel.Dock="Left" Width="1" Margin="4,2" Fill="{DynamicResource ToolWindowBorder}" />
+
+				<!-- right-docked items: the first declared is the rightmost. The split radios are one tab stop, the checked
+				     one; the arrow keys move to the neighbour and check it, in code -->
+				<StackPanel x:Name="splitGroup" DockPanel.Dock="Right" Orientation="Horizontal" TabIndex="14">
+					<RadioButton x:Name="sideBySideRadio" Theme="{StaticResource TransportRadio}" Content="{StaticResource SideBySideGeometry}" GroupName="Split" IsChecked="True"
+					             ToolTip.Tip="{DynamicResource TipPreviewSideBySide}" AutomationProperties.Name="{DynamicResource TipPreviewSideBySide}" AutomationProperties.AutomationId="PreviewSideBySide" />
+					<RadioButton x:Name="stackedRadio" Theme="{StaticResource TransportRadio}" Content="{StaticResource StackedGeometry}" GroupName="Split" IsTabStop="False"
+					             ToolTip.Tip="{DynamicResource TipPreviewStacked}" AutomationProperties.Name="{DynamicResource TipPreviewStacked}" AutomationProperties.AutomationId="PreviewStacked" />
+				</StackPanel>
+				<!-- show or hide each picture (the layer's Preview setting) -->
+				<ToggleButton x:Name="showIntensityToggle" DockPanel.Dock="Right" TabIndex="13" Theme="{StaticResource TransportToggle}" Content="{StaticResource IntensityGeometry}" IsChecked="True"
+				              ToolTip.Tip="{DynamicResource TipPreviewShowIntensity}" AutomationProperties.Name="{DynamicResource TipPreviewShowIntensity}" AutomationProperties.AutomationId="PreviewShowIntensity" />
+				<ToggleButton x:Name="showFieldToggle" DockPanel.Dock="Right" TabIndex="12" Theme="{StaticResource TransportToggle}" Content="{StaticResource FieldGeometry}" IsChecked="True"
+				              ToolTip.Tip="{DynamicResource TipPreviewShowField}" AutomationProperties.Name="{DynamicResource TipPreviewShowField}" AutomationProperties.AutomationId="PreviewShowField" />
+				<Rectangle DockPanel.Dock="Right" Width="1" Margin="4,2" Fill="{DynamicResource ToolWindowBorder}" />
+				<ComboBox x:Name="speedBox" DockPanel.Dock="Right" TabIndex="11" Width="64" IsEditable="True"
+				          ToolTip.Tip="{DynamicResource TipPreviewSpeed}" AutomationProperties.Name="{DynamicResource LabelPreviewSpeed}" AutomationProperties.AutomationId="PreviewSpeed" />
+				<TextBlock DockPanel.Dock="Right" Margin="8,0,4,0" VerticalAlignment="Center" Text="{DynamicResource LabelPreviewSpeed}" />
+
+				<!-- readout: "frame / last" and, dimmer, the simulation step of that frame -->
+				<TextBlock x:Name="frameReadout" DockPanel.Dock="Left" Margin="4,0" VerticalAlignment="Center"
+				           ToolTip.Tip="{DynamicResource TipPreviewFrame}" AutomationProperties.AutomationId="PreviewFrame" />
+				<TextBlock x:Name="stepReadout" DockPanel.Dock="Left" VerticalAlignment="Center" Foreground="{DynamicResource GrayText}"
+				           ToolTip.Tip="{DynamicResource TipPreviewStep}" AutomationProperties.AutomationId="PreviewStep" />
+				<Rectangle Fill="Transparent" />
+			</DockPanel>
+		</Border>
+
+		<!-- the time axis, full width above the transport bar: the window places the TimelineBar here -->
+		<ContentControl x:Name="timelineHost" DockPanel.Dock="Bottom" />
+
+		<!-- the two pictures, side by side (columns 0 and 2) or stacked (rows 0 and 2), with a splitter in the middle
+		     definition. The unused dimension is bridged by spanning all three of its definitions, so a drag in one
+		     orientation survives a switch to the other. A click here focuses the pane so that Space works. -->
+		<Grid x:Name="pictures" Margin="4" Background="Transparent" ColumnDefinitions="*,Auto,*" RowDefinitions="*,Auto,*">
+			<GridSplitter x:Name="pictureSplitter" Theme="{StaticResource PictureSplitter}" KeyboardIncrement="10" ResizeBehavior="PreviousAndNext"
+			              ToolTip.Tip="{DynamicResource TipPreviewSplitter}" AutomationProperties.Name="{DynamicResource TipPreviewSplitter}" AutomationProperties.AutomationId="PreviewSplitter" />
+		</Grid>
+	</DockPanel>
+</UserControl>

@@ -1,0 +1,141 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- The Messages pane, after upstream's Panes/MessagesPane.xaml. The pane is its own DataContext (set in the
+     constructor), so the bindings compile against MessagesPane and LevelFilter. The toolbar is declared left to right,
+     levels first, so the Tab order is the visual order: Trace .. Fatal, Search, Regex, Auto-scroll, Clear, then the
+     list. The list is a ListBox with a four-column row template and a header row above it in place of WPF's
+     GridView; a filtered collection (Visible) stands in for the CollectionView filter Avalonia does not have. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:logging="using:WaveDudeNext.App.Logging"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             x:Class="WaveDudeNext.App.Panes.MessagesPane"
+             x:DataType="panes:MessagesPane"
+             Background="{DynamicResource ToolWindowBackground}">
+
+	<UserControl.Styles>
+		<StyleInclude Source="avares://WaveDudeNext.App/Themes/Messages.axaml" />
+	</UserControl.Styles>
+
+	<DockPanel>
+		<!-- toolbar: level filters, search, regex, auto-scroll, clear -->
+		<Border DockPanel.Dock="Top" BorderBrush="{DynamicResource ToolWindowBorder}" BorderThickness="0,0,0,1" Padding="2,1">
+			<Grid ColumnDefinitions="*,Auto">
+				<ItemsControl ItemsSource="{Binding Levels}">
+					<ItemsControl.ItemsPanel>
+						<ItemsPanelTemplate>
+							<StackPanel Orientation="Horizontal" />
+						</ItemsPanelTemplate>
+					</ItemsControl.ItemsPanel>
+					<ItemsControl.ItemTemplate>
+						<DataTemplate x:DataType="panes:LevelFilter">
+							<!-- one toggle per level, "Level (count)" -->
+							<ToggleButton Theme="{StaticResource MessagesToolToggle}"
+							              IsChecked="{Binding IsVisible, Mode=TwoWay}"
+							              Content="{Binding Caption}"
+							              ToolTip.Tip="{DynamicResource TipMessagesLevel}"
+							              AutomationProperties.AutomationId="{Binding AutomationId}" />
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+				<StackPanel Grid.Column="1" Orientation="Horizontal">
+					<TextBox x:Name="searchBox" Classes="messages" Width="180" Margin="6,0,0,0"
+					         Text="{Binding SearchText, Mode=TwoWay}"
+					         PlaceholderText="{DynamicResource MessagesSearchHint}"
+					         AutomationProperties.Name="{DynamicResource MessagesSearchHint}"
+					         AutomationProperties.AutomationId="MessagesSearch" />
+					<CheckBox Theme="{StaticResource MessagesCheckBox}" Margin="6,0"
+					          Content="{DynamicResource MessagesRegex}"
+					          ToolTip.Tip="{DynamicResource TipMessagesRegex}"
+					          IsChecked="{Binding UseRegex, Mode=TwoWay}"
+					          AutomationProperties.AutomationId="MessagesRegex" />
+					<ToggleButton Theme="{StaticResource MessagesToolToggle}"
+					              Content="{DynamicResource MessagesAutoScroll}"
+					              ToolTip.Tip="{DynamicResource TipMessagesAutoScroll}"
+					              IsChecked="{Binding AutoScroll, Mode=TwoWay}"
+					              AutomationProperties.AutomationId="MessagesAutoScroll" />
+					<Button Theme="{StaticResource MessagesToolButton}"
+					        Command="{Binding ClearCommand}"
+					        ToolTip.Tip="{DynamicResource TipMessagesClear}"
+					        AutomationProperties.Name="{DynamicResource TipMessagesClear}"
+					        AutomationProperties.AutomationId="MessagesClear">
+						<Path Data="{StaticResource MessagesClearGeometry}" Stroke="{DynamicResource WindowForeground}" StrokeThickness="1.2"
+						      HorizontalAlignment="Center" VerticalAlignment="Center" />
+					</Button>
+				</StackPanel>
+			</Grid>
+		</Border>
+
+		<!-- the column headers, the same widths as the rows: Time 90, Level 55, Source 130, Message the rest -->
+		<Grid DockPanel.Dock="Top" ColumnDefinitions="90,55,130,*">
+			<Border Classes="messagesHeader">
+				<TextBlock Text="{DynamicResource MessagesColumnTime}" />
+			</Border>
+			<Border Grid.Column="1" Classes="messagesHeader">
+				<TextBlock Text="{DynamicResource MessagesColumnLevel}" />
+			</Border>
+			<Border Grid.Column="2" Classes="messagesHeader">
+				<TextBlock Text="{DynamicResource MessagesColumnLogger}" />
+			</Border>
+			<Border Grid.Column="3" Classes="messagesHeader filler">
+				<TextBlock Text="{DynamicResource MessagesColumnMessage}" />
+			</Border>
+		</Grid>
+
+		<!-- the rows: extended selection (Shift and Ctrl), virtualised, coloured per level by the row theme -->
+		<ListBox x:Name="list" Classes="messages"
+		         ItemsSource="{Binding Visible}"
+		         SelectionMode="Multiple"
+		         ItemContainerTheme="{StaticResource MessagesRow}"
+		         Background="{DynamicResource ToolWindowBackground}"
+		         BorderThickness="0" CornerRadius="0" Padding="0"
+		         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+		         AutomationProperties.AutomationId="MessagesList">
+			<ListBox.KeyBindings>
+				<KeyBinding Gesture="Ctrl+C" Command="{Binding CopyCommand}" />
+			</ListBox.KeyBindings>
+			<ListBox.ContextMenu>
+				<ContextMenu>
+					<MenuItem Header="{DynamicResource MessagesCopy}" Command="{Binding CopyCommand}" InputGesture="Ctrl+C" />
+					<MenuItem Header="{DynamicResource MessagesCopyAll}" Command="{Binding CopyAllCommand}" />
+					<Separator />
+					<MenuItem Header="{DynamicResource MessagesClear}" Command="{Binding ClearCommand}" />
+				</ContextMenu>
+			</ListBox.ContextMenu>
+			<ListBox.ItemsPanel>
+				<ItemsPanelTemplate>
+					<VirtualizingStackPanel />
+				</ItemsPanelTemplate>
+			</ListBox.ItemsPanel>
+			<ListBox.ItemTemplate>
+				<DataTemplate x:DataType="logging:LogEntry">
+					<!-- the exception is the row's tooltip (null shows none); the logger's full name is its cell's -->
+					<Grid ColumnDefinitions="90,55,130,*" ToolTip.Tip="{Binding Exception}">
+						<TextBlock Margin="2,0" Text="{Binding Time, StringFormat='{}{0:HH:mm:ss.fff}'}" />
+						<TextBlock Grid.Column="1" Margin="2,0" Text="{Binding LevelName}" />
+						<TextBlock Grid.Column="2" Margin="2,0" Text="{Binding LoggerShort}" ToolTip.Tip="{Binding Logger}" TextTrimming="CharacterEllipsis" />
+						<TextBlock Grid.Column="3" Margin="2,0" Text="{Binding Message}" TextTrimming="CharacterEllipsis" />
+					</Grid>
+				</DataTemplate>
+			</ListBox.ItemTemplate>
+		</ListBox>
+	</DockPanel>
+</UserControl>

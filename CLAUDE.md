@@ -1056,7 +1056,7 @@ Recommended: keep its controls, panes, forms, themes, docking, manual renderer, 
 window from master's WPF window on the models rather than adapt its own; open for his word: the git form (one commit or the
 history, which carries a second copy of the 0.1.3 tree), the credit, what else to take (the CLI, the Linux packaging, the
 ffmpeg MP4 pipe, the OpenCL loader name and `/proc/meminfo` into the library), the look on Windows (Inter instead of Segoe
-UI, no menu glyphs, dark default, antialiased lines at a fractional zoom, no jump list, taskbar progress or title-bar
+UI, settled the same evening: see below; no menu glyphs, dark default, antialiased lines at a fractional zoom, no jump list, taskbar progress or title-bar
 click-through), `Avalonia.Controls.ColorPicker` (referenced, apparently unused). **The string tables stay as they are**
 (2026-11-09, the user's choice: each is 902 `s:String` entries and nothing else, `WaveDudeNext.UI` reads no string, and the
 port's conversion was three text substitutions): WPF loads them natively as now, and the Avalonia project converts the same
@@ -1096,6 +1096,62 @@ by hand). For the Avalonia head: its export dialogs must keep a second export fr
 platform's picker does not block the window (`Exporter` guards a second export only once it waits or writes), and the
 warning's choice changes the quality settings inside the start, which `PreviewQualityChanged` treats as an edit whose end
 a command brings, so that head's edit boundaries must end it when the dialog closes.
+**The Avalonia head is `WaveDudeNext.App`** (2026-11-09, the user's choice of name over `WaveDudeNext.AvaloniaUI` and
+`WaveDudeNext.Avalonia`, whose namespace would shadow the framework's; the port's own name, so its 157 files kept their
+namespace). Its first step: the port's leaves imported as they are, the window a frame. Taken: `Controls`, `Converters`,
+`Docking` (its `DockLayout.cs` dropped for the UI library's layout classes, `DockHost` converting `Orientation` ↔
+`LayoutDirection` at save and load), `Help` (the run-time Markdown renderer and the SVG figures), `Dialogs`, `Markup`,
+`Localization`, `Logging`, `Panes`, `Rendering`, `Theming` (its `AppTheme` dropped for the UI library's), `Themes`, `Views`,
+`Commands` (`AppCommands`, `RelayCommand`), `NamedCollection`, `App.axaml`, `Program`, `app.manifest`, the icon; the
+platform companion's painters as `Platform/` with **`SkiaFrameDecorators : IFrameDecorators`** and its decoder as
+**`SkiaImageDecoder : IImageDecoder`**. Not taken: the port's window (3,800 lines of 0.1.3 logic), its `Settings`,
+`ColorSchemeCatalog`, `Examples`, string tables, tests, CLI, packaging, the ffmpeg MP4 sink, the OpenCL loader name and
+`/proc/meminfo` (the last two belong in the library when Linux comes), `Avalonia.Controls.ColorPicker` (referenced, unused).
+Packages: Avalonia 12.1.5 with Desktop and Fluent, SkiaSharp 3.119.4, NLog. **The text is the platform's default font**
+(2026-11-09, the user's rule: the same font as the WPF app on Windows): no bundled font, `FontFamily.Default` everywhere,
+which Avalonia resolves to Segoe UI on Windows and to the system's UI font elsewhere; the port's `Avalonia.Fonts.Inter` and
+its `WithInterFont()` are gone (Inter's wider glyphs against Segoe UI's, seen in two captures of the menu bar). **The text is
+rendered as the WPF head renders it** (the same evening, the user's report that the antialiasing looked poor): subpixel
+antialiasing, strong hinting and the baseline on the pixel grid, WPF's Display mode, set by `Theming/TextRendering.Apply`
+on every window `WindowZoom.Attach` gets, from where the inherited value reaches the window's popups; Avalonia 12 exposes
+the three as `TextOptions.Set…` methods, not as properties a style's setter can name (the XAML compiler refused them).
+Seen in captures of the app's own windows: crisper strokes with the subpixel fringes, in the menus too. Settled with it:
+**the menu bar's dropdowns are placed against the header itself** (`PlacementTarget="{Binding $parent[MenuItem]}"`; the
+popup's parent is the panel inside the header's padding, which had put the menu 7 px right and 4 px up into the header:
+measured 610,359 under a header at 603..635 × 339..363, now 603,363), **the "+ Part" flyout drops left-aligned under its
+button** (`PlacementMode.BottomEdgeAlignedLeft`; Avalonia centres a flyout by default: 699 under a button at 746, now
+746), and **a flyout's presenter and a context menu have `FontSize` 12** (a flyout's presenter is a root of its own and
+took Fluent's 14 px; the user's report on the Part menu). The window handles F10 as the port's did (`menu.Open()`).
+**The menu of part kinds is the WPF head's** (the same evening, the user's report that the eight kinds of 2026-11-07/08
+were missing): `ProjectTree`'s kind tables carry them in `PartMenuEntries`' order with the Diffraction gratings and Meta
+surfaces submenus among the optics (`Submenu`, which the Optical logic submenu uses too), and `Themes/Icons.axaml` has
+the twelve geometries the WPF theme had gained (the eight kinds, the two submenus, the two detectors), copied as they
+are, since the path markup is the same in both frameworks; the tree's row icon is the class name without "Part", so
+the rows of the new kinds find theirs. The entries' commands come with the models. **A probe captures the app's own
+windows with PrintWindow, never the screen** (2026-11-09: a capture through
+`CopyFromScreen` at the app's rectangle caught another window the user had over it, deleted unread; a popup is a window
+of its own, found by enumerating the process's visible windows, since UI Automation files none of them under the root).
+**Every file of the project
+carries the repository's header with a third "Based on" line, "Mark <mark@pab-ai.com>, author of the Avalonia port"**
+(the user's choice, as the author asked to be named): an `.editorconfig` section `[WaveDudeNext.App/**.cs]` holds that
+template, so IDE0073 enforces it there as the root template elsewhere; the markup files carry it as the WPF ones do.
+**The string tables are converted at build**: `Build/StringTables.targets` with the inline task `StringTables.cs` turns
+`WaveDudeNext.WPF/Strings/Strings.*.xaml` into `obj/.../Strings/Strings.*.axaml` (three substitutions: the default
+namespace, the System namespace, `s:String` → `x:String`), added as `AvaloniaXaml` with the Link `Strings/…` before
+Avalonia gathers its resources, so `avares://WaveDudeNext.App/Strings/Strings.EN.axaml` is compiled in and the language
+switch swaps it; the output folder is named inside the targets, since a property of the imported file is evaluated
+before the SDK sets `IntermediateOutputPath` (the first build wrote the tables into the project folder). The window
+(`MainWindow.axaml`): the port's menus (texts through `DynamicResource`, no commands yet), the dock host with its three
+items, the preview document and the default arrangement in the markup as the WPF window has them (`x:Name` on a
+`DockItem` is refused by Avalonia's compiler, the items are found by `Id`), the status bar; its code restores and saves
+the dock layout and the placement through the UI library's `Settings` (`WindowMode`) and attaches the zoom. The panes
+are unbound and the menus do nothing yet; a project file argument is logged, not opened. Proven: the solution builds with
+0 warnings; a start on the user's settings file came up with his dock layout, the three panes, the pictures and
+"Ready" from the string table, closed on WM_CLOSE and saved the settings, the log clean; the capture is under `%TEMP%`.
+UI Automation found no menu items in the Avalonia window (Avalonia's peers differ from WPF's); how this head is driven by
+a harness is open (the port's tests use `Avalonia.Headless`). Next: the models wired as the WPF window wires them and the
+panes bound to them, the menus bound to `AppCommands` in the markup, the dialogs behind the five interfaces plus an
+Avalonia `EditBoundaries`; then the new part forms and the detectors' rows; then the tests.
 
 ## People, name, license
 

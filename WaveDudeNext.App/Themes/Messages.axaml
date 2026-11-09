@@ -1,0 +1,266 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- The Messages pane's look: upstream's ToolToggle and Clear button templates (Panes/MessagesPane.xaml), its list
+     styles (Themes/Lists.xaml: ListViewItem, GridViewColumnHeader) and its editors (Themes/Editors.xaml: TextBox,
+     CheckBox) as Avalonia control themes and styles, square and flat with 1 px borders, every colour a DynamicResource
+     from Themes/Dark.axaml or Light.axaml. Loaded by the pane itself (UserControl.Styles), so nothing here reaches
+     the rest of the window; a Styles file rather than a ResourceDictionary because the row colours and the active
+     selection are selector styles, which a dictionary cannot hold. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<Styles.Resources>
+		<ResourceDictionary>
+			<!-- upstream's ClearGeometry: a bin, drawn as a 1.2 px stroke -->
+			<StreamGeometry x:Key="MessagesClearGeometry">M1,2 L9,2 M3,2 L3,9 L7,9 L7,2 M4,0 L6,0</StreamGeometry>
+
+			<!-- Fluent's rounding and placeholder dimming, switched off under the pane: upstream has no corner radius
+			     anywhere and shows the search hint in GrayText at full opacity -->
+			<CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
+			<CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
+			<x:Double x:Key="TextControlPlaceholderOpacity">1</x:Double>
+
+			<!-- the level toggles and Auto-scroll: transparent until checked, the button colours when checked, the
+			     hover colour under the pointer, the accent border for keyboard focus (upstream's ToolToggle) -->
+			<ControlTheme x:Key="MessagesToolToggle" TargetType="ToggleButton">
+				<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="BorderBrush" Value="Transparent" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="Padding" Value="6,1" />
+				<Setter Property="Margin" Value="1,0" />
+				<Setter Property="MinHeight" Value="21" />
+				<Setter Property="VerticalAlignment" Value="Center" />
+				<Setter Property="FocusAdorner" Value="{x:Null}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border x:Name="PART_Border"
+						        Background="{TemplateBinding Background}"
+						        BorderBrush="{TemplateBinding BorderBrush}"
+						        BorderThickness="{TemplateBinding BorderThickness}"
+						        Padding="{TemplateBinding Padding}">
+							<ContentPresenter x:Name="PART_ContentPresenter"
+							                  Content="{TemplateBinding Content}"
+							                  ContentTemplate="{TemplateBinding ContentTemplate}"
+							                  HorizontalAlignment="Center"
+							                  VerticalAlignment="Center"
+							                  RecognizesAccessKey="True" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:checked">
+					<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+					<Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
+					<Setter Property="BorderBrush" Value="{DynamicResource ButtonBorder}" />
+				</Style>
+				<!-- after :checked, so the pointer shows on a checked toggle too (upstream's trigger order) -->
+				<Style Selector="^:pointerover">
+					<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+				</Style>
+				<Style Selector="^:focus-visible">
+					<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+				</Style>
+			</ControlTheme>
+
+			<!-- the Clear button: an 18 px glyph button, hover colour, accent border for keyboard focus -->
+			<ControlTheme x:Key="MessagesToolButton" TargetType="Button">
+				<Setter Property="Width" Value="18" />
+				<Setter Property="Height" Value="18" />
+				<Setter Property="Margin" Value="1,0" />
+				<Setter Property="Padding" Value="0" />
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="BorderBrush" Value="Transparent" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="VerticalAlignment" Value="Center" />
+				<Setter Property="FocusAdorner" Value="{x:Null}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border x:Name="PART_Border"
+						        Background="{TemplateBinding Background}"
+						        BorderBrush="{TemplateBinding BorderBrush}"
+						        BorderThickness="{TemplateBinding BorderThickness}"
+						        Padding="{TemplateBinding Padding}">
+							<ContentPresenter x:Name="PART_ContentPresenter"
+							                  Content="{TemplateBinding Content}"
+							                  ContentTemplate="{TemplateBinding ContentTemplate}"
+							                  HorizontalAlignment="Center"
+							                  VerticalAlignment="Center" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:pointerover">
+					<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+				</Style>
+				<Style Selector="^:focus-visible">
+					<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+				</Style>
+			</ControlTheme>
+
+			<!-- the Regex check box: upstream's 14 px box with a 1.5 px check, accent border on hover and focus -->
+			<ControlTheme x:Key="MessagesCheckBox" TargetType="CheckBox">
+				<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+				<Setter Property="Background" Value="{DynamicResource CheckBoxBackground}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource CheckBoxBorder}" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="MinHeight" Value="21" />
+				<Setter Property="VerticalAlignment" Value="Center" />
+				<Setter Property="FocusAdorner" Value="{x:Null}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Grid ColumnDefinitions="Auto,*" Background="Transparent">
+							<Border x:Name="PART_Box"
+							        Width="14" Height="14"
+							        VerticalAlignment="Center"
+							        Background="{TemplateBinding Background}"
+							        BorderBrush="{TemplateBinding BorderBrush}"
+							        BorderThickness="{TemplateBinding BorderThickness}">
+								<Path x:Name="PART_Glyph"
+								      Data="M2,6.5 L5,9.5 L10.5,3"
+								      Stroke="{TemplateBinding Foreground}"
+								      StrokeThickness="1.5"
+								      IsVisible="False" />
+							</Border>
+							<ContentPresenter x:Name="PART_ContentPresenter"
+							                  Grid.Column="1"
+							                  Margin="5,0,0,0"
+							                  VerticalAlignment="Center"
+							                  Content="{TemplateBinding Content}"
+							                  ContentTemplate="{TemplateBinding ContentTemplate}"
+							                  RecognizesAccessKey="True" />
+						</Grid>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:checked /template/ Path#PART_Glyph">
+					<Setter Property="IsVisible" Value="True" />
+				</Style>
+				<Style Selector="^:pointerover /template/ Border#PART_Box">
+					<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+				</Style>
+				<Style Selector="^:focus-visible /template/ Border#PART_Box">
+					<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+				</Style>
+			</ControlTheme>
+
+			<!-- a row of the list: upstream's ListViewItem, Padding 2,1, hover and inactive-selection backgrounds
+			     (the active selection is the ListBox-scoped style below, since a theme cannot see its host's focus) -->
+			<ControlTheme x:Key="MessagesRow" TargetType="ListBoxItem">
+				<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="Padding" Value="2,1" />
+				<Setter Property="MinHeight" Value="0" />
+				<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+				<Setter Property="VerticalContentAlignment" Value="Center" />
+				<Setter Property="FocusAdorner" Value="{x:Null}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border x:Name="PART_Border"
+						        Background="{TemplateBinding Background}"
+						        Padding="{TemplateBinding Padding}">
+							<ContentPresenter x:Name="PART_ContentPresenter"
+							                  Content="{TemplateBinding Content}"
+							                  ContentTemplate="{TemplateBinding ContentTemplate}"
+							                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+							                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:pointerover">
+					<Setter Property="Background" Value="{DynamicResource TreeViewItemHover}" />
+				</Style>
+				<Style Selector="^:selected">
+					<Setter Property="Background" Value="{DynamicResource TreeViewItemSelectedInactive}" />
+				</Style>
+			</ControlTheme>
+		</ResourceDictionary>
+	</Styles.Resources>
+
+	<!-- the row colours by level (the pane sets the level name as a class on every row), Fatal bold -->
+	<Style Selector="ListBoxItem.Trace">
+		<Setter Property="Foreground" Value="{DynamicResource LogTrace}" />
+	</Style>
+	<Style Selector="ListBoxItem.Debug">
+		<Setter Property="Foreground" Value="{DynamicResource LogDebug}" />
+	</Style>
+	<Style Selector="ListBoxItem.Info">
+		<Setter Property="Foreground" Value="{DynamicResource LogInfo}" />
+	</Style>
+	<Style Selector="ListBoxItem.Warn">
+		<Setter Property="Foreground" Value="{DynamicResource LogWarn}" />
+	</Style>
+	<Style Selector="ListBoxItem.Error">
+		<Setter Property="Foreground" Value="{DynamicResource LogError}" />
+	</Style>
+	<Style Selector="ListBoxItem.Fatal">
+		<Setter Property="Foreground" Value="{DynamicResource LogFatal}" />
+		<Setter Property="FontWeight" Value="Bold" />
+	</Style>
+	<!-- the selected rows of a focused list take the selection colours, as the tree's rows do; last, because a
+	     later style of the same priority wins over the level colours above (upstream's 2026-11-03 fix: Debug's grey
+	     stayed on the accent blue when the trigger order was the other way round) -->
+	<Style Selector="ListBox.messages:focus-within ListBoxItem:selected">
+		<Setter Property="Background" Value="{DynamicResource TreeViewItemSelected}" />
+		<Setter Property="Foreground" Value="{DynamicResource TreeViewItemSelectedForeground}" />
+	</Style>
+
+	<!-- the column header row: upstream's GridViewColumnHeader, GrayText on the tool-window background with a 1 px
+	     ControlBorder below and to the right of every column, Padding 4,2 -->
+	<Style Selector="Border.messagesHeader">
+		<Setter Property="Background" Value="{DynamicResource ToolWindowBackground}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+		<Setter Property="BorderThickness" Value="0,0,1,1" />
+		<Setter Property="Padding" Value="4,2" />
+	</Style>
+	<Style Selector="Border.messagesHeader.filler">
+		<Setter Property="BorderThickness" Value="0,0,0,1" />
+	</Style>
+	<Style Selector="Border.messagesHeader > TextBlock">
+		<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+		<Setter Property="VerticalAlignment" Value="Center" />
+	</Style>
+
+	<!-- the search box: Fluent's TextBox squared and shrunk to upstream's 22 px editor, with upstream's colours;
+	     the hover and focus borders target Fluent's PART_BorderElement, where its own states set theirs -->
+	<Style Selector="TextBox.messages">
+		<Setter Property="CornerRadius" Value="0" />
+		<Setter Property="MinHeight" Value="22" />
+		<Setter Property="Height" Value="22" />
+		<Setter Property="Padding" Value="3,0" />
+		<Setter Property="VerticalContentAlignment" Value="Center" />
+		<Setter Property="Background" Value="{DynamicResource TextBoxBackground}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource TextBoxBorder}" />
+		<Setter Property="BorderThickness" Value="1" />
+		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+		<Setter Property="PlaceholderForeground" Value="{DynamicResource GrayText}" />
+		<Setter Property="SelectionBrush" Value="{DynamicResource Accent}" />
+	</Style>
+	<Style Selector="TextBox.messages:pointerover /template/ Border#PART_BorderElement">
+		<Setter Property="Background" Value="{DynamicResource TextBoxBackground}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorder}" />
+	</Style>
+	<Style Selector="TextBox.messages:focus /template/ Border#PART_BorderElement">
+		<Setter Property="Background" Value="{DynamicResource TextBoxBackground}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+		<Setter Property="BorderThickness" Value="1" />
+	</Style>
+	<Style Selector="TextBox.messages:pointerover, TextBox.messages:focus">
+		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+	</Style>
+</Styles>

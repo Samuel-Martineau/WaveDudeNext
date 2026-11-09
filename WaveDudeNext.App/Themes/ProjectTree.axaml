@@ -1,0 +1,268 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- The project tree's own styles (upstream Themes/Controls.xaml:557-665 and Panes/ProjectTree.xaml:39-109), loaded by the
+     pane alone (Panes/ProjectTree.axaml, UserControl.Styles), so no generic TreeView style lives anywhere else: the keyed
+     control themes for the tree, its rows, the chevron expander, the rows' check box and the three kinds of button, and
+     the class styles for a row's state. Colours are the theme table's (Themes/Dark.axaml, Light.axaml) through
+     DynamicResource; square, 1 px borders, no shadows, as everywhere in the port (ADR 0002). -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:WaveDudeNext.App.Controls"
+        xmlns:converters="using:WaveDudeNext.App.Converters">
+
+	<Styles.Resources>
+		<converters:TreeIdConverter x:Key="TreeId" />
+
+		<!-- the glyphs of the row and toolbar buttons, 8 px, stroked; the move chevrons are the rows' own, smaller than the
+		     10 px ChevronUp/DownGeometry of Themes/Controls.axaml (upstream ProjectTree.xaml:39-42 and Controls.xaml:52-53) -->
+		<StreamGeometry x:Key="PlusGeometry">M4,0 L4,8 M0,4 L8,4</StreamGeometry>
+		<StreamGeometry x:Key="MinusGeometry">M0,4 L8,4</StreamGeometry>
+		<StreamGeometry x:Key="RowUpGeometry">M0,6 L4,2 L8,6</StreamGeometry>
+		<StreamGeometry x:Key="RowDownGeometry">M0,2 L4,6 L8,2</StreamGeometry>
+		<!-- the expander's chevrons (upstream Controls.xaml:51-52); the Part button's drop-down arrow and the check mark are
+		     the application's DropDownGeometry and CheckGeometry (Themes/Controls.axaml), reached by DynamicResource -->
+		<StreamGeometry x:Key="TreeChevronRightGeometry">M0,0 L5,5 L0,10</StreamGeometry>
+		<StreamGeometry x:Key="TreeChevronDownGeometry">M0,0 L5,5 L10,0</StreamGeometry>
+
+		<!-- the tree: no border, 2 px padding, the tool window's colours -->
+		<ControlTheme x:Key="ProjectTreeTheme" TargetType="TreeView">
+			<Setter Property="Background" Value="{DynamicResource TreeViewBackground}" />
+			<Setter Property="Foreground" Value="{DynamicResource TreeViewForeground}" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="2" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+						<ScrollViewer Focusable="False" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="{TemplateBinding Padding}">
+							<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+						</ScrollViewer>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+		</ControlTheme>
+
+		<!-- the expander: a 16 px box with a 5 x 10 chevron, right when closed and down when open, the glyph colour and its
+		     hover colour; a pixel above the middle of the 23 px row, where the 16 px icons beside it round to, so the chevrons
+		     centre on the text (upstream Controls.xaml:577-601) -->
+		<ControlTheme x:Key="ProjectTreeExpanderTheme" TargetType="ToggleButton">
+			<Setter Property="Focusable" Value="False" />
+			<Setter Property="IsTabStop" Value="False" />
+			<Setter Property="Width" Value="16" />
+			<Setter Property="Height" Value="16" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Background="Transparent" Margin="0,0,0,1">
+						<Path Name="Glyph" Data="{StaticResource TreeChevronRightGeometry}" Stroke="{DynamicResource TreeViewGlyph}" StrokeThickness="1"
+						      HorizontalAlignment="Center" VerticalAlignment="Center" Margin="2,0,0,0" />
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:checked /template/ Path#Glyph">
+				<Setter Property="Data" Value="{StaticResource TreeChevronDownGeometry}" />
+				<Setter Property="Margin" Value="0,2,0,0" />
+			</Style>
+			<Style Selector="^:pointerover /template/ Path#Glyph">
+				<Setter Property="Stroke" Value="{DynamicResource TreeViewGlyphHover}" />
+			</Style>
+		</ControlTheme>
+
+		<!-- a row: 23 px high (upstream's 2026-10-23 request for more room), no padding above or below, so the 15 px text line
+		     and the 16 px icons centre on it; the expander in a 16 px column, the children indented by that column; every
+		     row expanded at first. The header Border takes the keyboard focus for the row (Avalonia's template focus target,
+		     as the Fluent theme does) and shows it as the accent border. The automation id is the TreeId rule's, bound to the
+		     node once (a reflection binding: the row's node has no compile-time type). -->
+		<ControlTheme x:Key="ProjectTreeItemTheme" TargetType="TreeViewItem">
+			<Setter Property="Foreground" Value="{DynamicResource TreeViewForeground}" />
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Padding" Value="3,0" />
+			<Setter Property="IsExpanded" Value="True" />
+			<Setter Property="AutomationProperties.AutomationId" Value="{ReflectionBinding Converter={StaticResource TreeId}}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Grid ColumnDefinitions="16,*" RowDefinitions="Auto,*">
+						<ToggleButton Name="PART_ExpandCollapseChevron" Theme="{StaticResource ProjectTreeExpanderTheme}"
+						              IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}" VerticalAlignment="Center" />
+						<Border Name="PART_LayoutRoot" Grid.Column="1" Focusable="True" TemplatedControl.IsTemplateFocusTarget="True"
+						        Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1"
+						        MinHeight="23" Padding="{TemplateBinding Padding}">
+							<ContentPresenter Name="PART_HeaderPresenter" Focusable="False"
+							                  Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+							                  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" />
+						</Border>
+						<ItemsPresenter Name="PART_ItemsPresenter" Grid.Row="1" Grid.Column="1"
+						                IsVisible="{TemplateBinding IsExpanded}" ItemsPanel="{TemplateBinding ItemsPanel}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^ /template/ Border#PART_LayoutRoot:pointerover">
+				<Setter Property="Background" Value="{DynamicResource TreeViewItemHover}" />
+			</Style>
+			<Style Selector="^ /template/ Border#PART_LayoutRoot:focus">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+				<Setter Property="Background" Value="{DynamicResource TreeViewItemSelected}" />
+			</Style>
+			<Style Selector="^:selected">
+				<Setter Property="Foreground" Value="{DynamicResource TreeViewItemSelectedForeground}" />
+			</Style>
+			<Style Selector="^:empty /template/ ToggleButton#PART_ExpandCollapseChevron">
+				<Setter Property="IsVisible" Value="False" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+			</Style>
+		</ControlTheme>
+
+		<!-- the rows' check box (Enabled, Active): a 14 px box with the check mark stroked 1.5, out of the Tab cycle (Space
+		     on the row toggles it); hover and focus an accent border, as upstream's CheckBox (Editors.xaml:131-164) -->
+		<ControlTheme x:Key="RowCheckBox" TargetType="CheckBox">
+			<Setter Property="Focusable" Value="False" />
+			<Setter Property="IsTabStop" Value="False" />
+			<Setter Property="MinWidth" Value="0" />
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="Padding" Value="0" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Name="Box" Width="14" Height="14" Background="{DynamicResource CheckBoxBackground}"
+					        BorderBrush="{DynamicResource CheckBoxBorder}" BorderThickness="1">
+						<Path Name="Glyph" Data="{DynamicResource CheckGeometry}" Stroke="{DynamicResource WindowForeground}" StrokeThickness="1.5"
+						      HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:checked /template/ Path#Glyph">
+				<Setter Property="IsVisible" Value="True" />
+			</Style>
+			<Style Selector="^:pointerover /template/ Border#Box">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:disabled /template/ Border#Box">
+				<Setter Property="Opacity" Value="0.5" />
+			</Style>
+		</ControlTheme>
+
+		<!-- the stroked-glyph button of the rows, out of the Tab cycle (the toolbar and the context menu do the same);
+		     Content is the geometry (upstream ProjectTree.xaml:44-76) -->
+		<ControlTheme x:Key="GlyphButton" TargetType="Button">
+			<Setter Property="Width" Value="18" />
+			<Setter Property="Height" Value="18" />
+			<Setter Property="Margin" Value="1,0" />
+			<Setter Property="Focusable" Value="False" />
+			<Setter Property="IsTabStop" Value="False" />
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderBrush" Value="Transparent" />
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+						<Path Data="{TemplateBinding Content}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.2"
+						      HorizontalAlignment="Center" VerticalAlignment="Center" />
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+			</Style>
+			<Style Selector="^:focus /template/ Border#Bd">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				<Setter Property="Opacity" Value="0.5" />
+			</Style>
+		</ControlTheme>
+		<!-- the toolbar's glyph buttons are in the Tab cycle (upstream 2026-10-15, the keyboard-first rule) -->
+		<ControlTheme x:Key="ToolGlyphButton" TargetType="Button" BasedOn="{StaticResource GlyphButton}">
+			<Setter Property="Focusable" Value="True" />
+			<Setter Property="IsTabStop" Value="True" />
+		</ControlTheme>
+
+		<!-- the toolbar's add buttons (upstream 2026-10-23, the user's choice): flat like the glyph buttons beside them, the
+		     hover background and, with the keyboard focus, the accent border; an icon with the add plus, then the label.
+		     23 px high, the height of the tree's rows, the content one pixel down, where the 16 px icon and the text line
+		     both centre; pressed, the accent fills it and the text turns white -->
+		<ControlTheme x:Key="TextButton" TargetType="Button">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderBrush" Value="Transparent" />
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="Padding" Value="6,1,6,0" />
+			<Setter Property="Margin" Value="1,0" />
+			<Setter Property="Height" Value="23" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+					        Padding="{TemplateBinding Padding}">
+						<ContentPresenter Name="PART_ContentPresenter" Focusable="False"
+						                  Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+						                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+			</Style>
+			<Style Selector="^:focus /template/ Border#Bd">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:pressed /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonPressed}" />
+			</Style>
+			<Style Selector="^:pressed">
+				<Setter Property="Foreground" Value="White" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+			</Style>
+		</ControlTheme>
+	</Styles.Resources>
+
+	<!-- a row whose item is switched off greys its icon and name: both take the text colour the row's panel passes down,
+	     so one setter on the panel does for both; the glyph buttons hold their own colour (upstream's DisabledRow and
+	     InactiveRow styles). The row sets the class from Enabled or Active. -->
+	<Style Selector="DockPanel.row.off">
+		<Setter Property="TextElement.Foreground" Value="{DynamicResource GrayText}" />
+	</Style>
+
+	<!-- a row in the multi-selection beside the current one: the inactive-selection colours; the TreeView's own selection
+	     (the current row) is drawn by the item theme and wins (upstream's IsInSelection trigger). The pane sets the class and
+	     the ItemStatus "InSelection" a harness reads. -->
+	<Style Selector="TreeViewItem.inSelection:not(:selected) /template/ Border#PART_LayoutRoot">
+		<Setter Property="Background" Value="{DynamicResource TreeViewItemSelectedInactive}" />
+	</Style>
+	<Style Selector="TreeViewItem.inSelection:not(:selected)">
+		<Setter Property="Foreground" Value="{DynamicResource TreeViewItemSelectedInactiveForeground}" />
+	</Style>
+
+	<!-- the selected row while the keyboard focus is elsewhere: the inactive colours (upstream's IsSelectionActive trigger);
+	     the pane sets the class from the tree's IsKeyboardFocusWithin -->
+	<Style Selector="TreeView.inactive TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+		<Setter Property="Background" Value="{DynamicResource TreeViewItemSelectedInactive}" />
+	</Style>
+	<Style Selector="TreeView.inactive TreeViewItem:selected">
+		<Setter Property="Foreground" Value="{DynamicResource TreeViewItemSelectedInactiveForeground}" />
+	</Style>
+
+	<!-- the plus badge of an add button's icon takes the text colour where the accent is the background (a pressed button) -->
+	<Style Selector="Button:pressed controls|IconView">
+		<Setter Property="BadgeBrush" Value="{Binding $self.Foreground}" />
+	</Style>
+</Styles>

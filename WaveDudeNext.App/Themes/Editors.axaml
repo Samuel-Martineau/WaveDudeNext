@@ -1,0 +1,648 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- The editors of the property forms, upstream's Themes/Editors.xaml on top of Fluent: text box, number box, check box,
+     combo box (plain, enum, colour scheme), slider, the colour picker and its swatch button, and the form styles
+     (section header, labels, read-outs, the chain toggle, the description toggle, the remove button). Colours come
+     from the theme table (Themes/Dark.axaml, Light.axaml) through DynamicResource; 22 px editors, 1 px square borders,
+     no corner radii, keyboard focus as an Accent border (the user's rule). The Properties pane includes this file in
+     its Styles, so the control themes keyed by type replace Fluent's for everything under the pane; the window may
+     merge it for the whole application later. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:localization="using:WaveDudeNext.App.Localization"
+        xmlns:sys="using:System"
+        xmlns:controls="using:WaveDudeNext.App.Controls"
+        xmlns:converters="using:WaveDudeNext.App.Converters">
+	<Styles.Resources>
+		<!-- glyphs, upstream's Controls.xaml geometries (the generic control styles carry the same keys; the nearest wins) -->
+		<StreamGeometry x:Key="CheckGeometry">M0,4 L3,7 L8,1</StreamGeometry>
+		<StreamGeometry x:Key="ChevronRightGeometry">M0,0 L5,5 L0,10</StreamGeometry>
+		<StreamGeometry x:Key="ChevronDownGeometry">M0,0 L5,5 L10,0</StreamGeometry>
+		<StreamGeometry x:Key="ChevronUpGeometry">M0,5 L5,0 L10,5</StreamGeometry>
+		<StreamGeometry x:Key="CloseGeometry">M0,1 L1,0 L4,3 L7,0 L8,1 L5,4 L8,7 L7,8 L4,5 L1,8 L0,7 L3,4 Z</StreamGeometry>
+		<StreamGeometry x:Key="DropDownGeometry">M0,0 L8,0 L4,4 Z</StreamGeometry>
+		<StreamGeometry x:Key="MinusGeometry">M0,4 L8,4</StreamGeometry>
+		<!-- the save glyph of the scene image row (upstream used the Segoe icon E74E, a floppy disk) -->
+		<StreamGeometry x:Key="SaveGeometry">M0.5,0.5 H9.5 L12.5,3.5 V12.5 H0.5 Z M3,0.5 V4.5 H8.5 V0.5 M3,12.5 V8 H10 V12.5</StreamGeometry>
+		<!-- the chain between two number boxes: two linked rings, parted when off -->
+		<StreamGeometry x:Key="ChainLinkedGeometry">M8,1 h2 a3,3 0 0 1 3,3 v2 a3,3 0 0 1 -3,3 h-2 a3,3 0 0 1 -3,-3 v-2 a3,3 0 0 1 3,-3 z M8,7 h2 a3,3 0 0 1 3,3 v2 a3,3 0 0 1 -3,3 h-2 a3,3 0 0 1 -3,-3 v-2 a3,3 0 0 1 3,-3 z</StreamGeometry>
+		<StreamGeometry x:Key="ChainPartedGeometry">M8,0 h2 a3,3 0 0 1 3,3 v1 a3,3 0 0 1 -3,3 h-2 a3,3 0 0 1 -3,-3 v-1 a3,3 0 0 1 3,-3 z M8,9 h2 a3,3 0 0 1 3,3 v1 a3,3 0 0 1 -3,3 h-2 a3,3 0 0 1 -3,-3 v-1 a3,3 0 0 1 3,-3 z</StreamGeometry>
+
+		<converters:EnumNameConverter x:Key="EnumName" />
+		<converters:ColorSchemeBrushConverter x:Key="ColorSchemeBrush" />
+		<converters:RgbBrushConverter x:Key="RgbBrush" />
+
+		<!-- the text box: 22 px, Padding 3,2, hover and focus on the border; Enter commits and Escape reverts (EditBehavior) -->
+		<ControlTheme x:Key="{x:Type TextBox}" TargetType="TextBox">
+			<Setter Property="Background" Value="{DynamicResource TextBoxBackground}" />
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource TextBoxBorder}" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="Padding" Value="3,2" />
+			<Setter Property="MinHeight" Value="22" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+			<Setter Property="CaretBrush" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="SelectionBrush" Value="{DynamicResource Accent}" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Hidden" />
+			<Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Hidden" />
+			<Setter Property="controls:EditBehavior.CommitOnEnter" Value="True" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Name="PART_BorderElement" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+					        BorderThickness="{TemplateBinding BorderThickness}" MinHeight="{TemplateBinding MinHeight}">
+						<ScrollViewer Name="PART_ScrollViewer" Margin="{TemplateBinding Padding}"
+						              HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+						              VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}"
+						              IsScrollChainingEnabled="{TemplateBinding (ScrollViewer.IsScrollChainingEnabled)}">
+							<TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}"
+							               CaretBlinkInterval="{TemplateBinding CaretBlinkInterval}" CaretIndex="{TemplateBinding CaretIndex}"
+							               SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+							               TextAlignment="{TemplateBinding TextAlignment}" TextWrapping="{TemplateBinding TextWrapping}"
+							               LineHeight="{TemplateBinding LineHeight}" LetterSpacing="{TemplateBinding LetterSpacing}"
+							               PasswordChar="{TemplateBinding PasswordChar}" RevealPassword="{TemplateBinding RevealPassword}"
+							               SelectionBrush="{TemplateBinding SelectionBrush}" SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+							               CaretBrush="{TemplateBinding CaretBrush}"
+							               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+						</ScrollViewer>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ Border#PART_BorderElement">
+				<Setter Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorder}" />
+			</Style>
+			<Style Selector="^:focus-within /template/ Border#PART_BorderElement">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				<Style Selector="^ /template/ Border#PART_BorderElement">
+					<Setter Property="Background" Value="{DynamicResource WindowBackground}" />
+				</Style>
+			</Style>
+		</ControlTheme>
+
+		<!-- NumberBox: the text box plus a column of two small repeat buttons (Up/Down keys, wheel and buttons step the value) -->
+		<ControlTheme x:Key="SpinButton" TargetType="RepeatButton">
+			<Setter Property="Focusable" Value="False" />
+			<Setter Property="Delay" Value="400" />
+			<Setter Property="Interval" Value="60" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border x:Name="Bd" Background="Transparent" Width="14">
+						<Path x:Name="Glyph" Data="{TemplateBinding Content}" Stroke="{DynamicResource ComboBoxGlyph}" StrokeThickness="1"
+						      Width="6" Height="3" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+			</Style>
+			<Style Selector="^:pressed /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonPressed}" />
+			</Style>
+		</ControlTheme>
+		<ControlTheme x:Key="{x:Type controls:NumberBox}" TargetType="controls:NumberBox" BasedOn="{StaticResource {x:Type TextBox}}">
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Name="PART_BorderElement" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+					        BorderThickness="{TemplateBinding BorderThickness}" MinHeight="{TemplateBinding MinHeight}">
+						<Grid ColumnDefinitions="*,Auto">
+							<ScrollViewer Name="PART_ScrollViewer" Margin="{TemplateBinding Padding}" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+								<TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}"
+								               CaretBlinkInterval="{TemplateBinding CaretBlinkInterval}" CaretIndex="{TemplateBinding CaretIndex}"
+								               SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+								               TextAlignment="{TemplateBinding TextAlignment}" TextWrapping="NoWrap"
+								               SelectionBrush="{TemplateBinding SelectionBrush}" SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+								               CaretBrush="{TemplateBinding CaretBrush}"
+								               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+							</ScrollViewer>
+							<!-- the spinner keeps its width while disabled, as WPF's Hidden did, so the text does not jump -->
+							<Grid x:Name="Spinner" Grid.Column="1" RowDefinitions="*,*" Width="14">
+								<RepeatButton Name="PART_Up" Theme="{StaticResource SpinButton}" Content="{StaticResource ChevronUpGeometry}" />
+								<RepeatButton Name="PART_Down" Grid.Row="1" Theme="{StaticResource SpinButton}" Content="{StaticResource ChevronDownGeometry}" />
+							</Grid>
+						</Grid>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:disabled /template/ Grid#Spinner">
+				<Setter Property="Opacity" Value="0" />
+				<Setter Property="IsHitTestVisible" Value="False" />
+			</Style>
+		</ControlTheme>
+
+		<!-- the check box: a 14 px box with the check glyph; hover and focus on the box's border -->
+		<ControlTheme x:Key="{x:Type CheckBox}" TargetType="CheckBox">
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="HorizontalAlignment" Value="Left" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+			<Setter Property="MinHeight" Value="22" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<StackPanel Orientation="Horizontal" VerticalAlignment="Center" Background="Transparent">
+						<Border x:Name="Box" Width="14" Height="14" VerticalAlignment="Center" Background="{DynamicResource CheckBoxBackground}"
+						        BorderBrush="{DynamicResource CheckBoxBorder}" BorderThickness="1">
+							<Path x:Name="Glyph" Data="{StaticResource CheckGeometry}" Stroke="{DynamicResource WindowForeground}"
+							      StrokeThickness="1.5" Stretch="Uniform" Margin="2" IsVisible="False" />
+						</Border>
+						<ContentPresenter x:Name="PART_ContentPresenter" Margin="6,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"
+						                  Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True" />
+					</StackPanel>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:checked /template/ Path#Glyph">
+				<Setter Property="IsVisible" Value="True" />
+			</Style>
+			<Style Selector="^:pointerover /template/ Border#Box">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:focus /template/ Border#Box">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				<Style Selector="^ /template/ Path#Glyph">
+					<Setter Property="Stroke" Value="{DynamicResource GrayText}" />
+				</Style>
+			</Style>
+		</ControlTheme>
+
+		<!-- combo box rows: highlighted under the pointer and under the keyboard -->
+		<ControlTheme x:Key="{x:Type ComboBoxItem}" TargetType="ComboBoxItem">
+			<Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
+			<Setter Property="Padding" Value="6,3" />
+			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<ContentPresenter Name="PART_ContentPresenter" Background="Transparent" Padding="{TemplateBinding Padding}"
+					                  Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+					                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="Center" />
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+				<Setter Property="Background" Value="{DynamicResource ComboBoxItemHover}" />
+				<Setter Property="Foreground" Value="{DynamicResource ComboBoxItemHoverForeground}" />
+			</Style>
+			<Style Selector="^:focus /template/ ContentPresenter#PART_ContentPresenter">
+				<Setter Property="Background" Value="{DynamicResource ComboBoxItemHover}" />
+				<Setter Property="Foreground" Value="{DynamicResource ComboBoxItemHoverForeground}" />
+			</Style>
+		</ControlTheme>
+
+		<!-- the combo box: 22 px, the drop glyph 6 px from the right, the list on ComboBoxListBackground -->
+		<ControlTheme x:Key="{x:Type ComboBox}" TargetType="ComboBox">
+			<Setter Property="Background" Value="{DynamicResource ComboBoxBackground}" />
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource ComboBoxBorder}" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="Padding" Value="4,2" />
+			<Setter Property="MinHeight" Value="22" />
+			<Setter Property="MaxDropDownHeight" Value="300" />
+			<Setter Property="HorizontalAlignment" Value="Stretch" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+			<Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Grid ColumnDefinitions="*,18">
+						<Border x:Name="Background" Grid.ColumnSpan="2" Background="{TemplateBinding Background}"
+						        BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" />
+						<ContentControl x:Name="ContentPresenter" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+						                Margin="{TemplateBinding Padding}" Focusable="False" IsHitTestVisible="False"
+						                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+						                IsVisible="{TemplateBinding IsEditable, Converter={x:Static BoolConverters.Not}}" />
+						<!-- the text box of an editable combo (IsEditable); the drop-down glyph keeps its 18 px on the right -->
+						<TextBox Name="PART_EditableTextBox" Padding="{TemplateBinding Padding}" BorderThickness="0" Background="Transparent" MinHeight="0"
+						         Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Text, Mode=TwoWay}" IsVisible="{TemplateBinding IsEditable}"
+						         VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+						<Path x:Name="DropDownGlyph" Grid.Column="1" Data="{StaticResource DropDownGeometry}" Fill="{DynamicResource ComboBoxGlyph}"
+						      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" IsHitTestVisible="False" />
+						<Popup Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}" MinWidth="{Binding $parent[ComboBox].Bounds.Width}"
+						       MaxHeight="{TemplateBinding MaxDropDownHeight}" PlacementTarget="Background" IsLightDismissEnabled="True"
+						       InheritsTransform="True" WindowManagerAddShadowHint="False">
+							<Border x:Name="PopupBorder" Background="{DynamicResource ComboBoxListBackground}" BorderBrush="{DynamicResource MenuPopupBorder}" BorderThickness="1">
+								<ScrollViewer HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+								              VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}" IsScrollChainingEnabled="False">
+									<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+								</ScrollViewer>
+							</Border>
+						</Popup>
+					</Grid>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ Border#Background">
+				<Setter Property="Background" Value="{DynamicResource ComboBoxHover}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorder}" />
+			</Style>
+			<!-- keyboard focus (on the combo or inside its text box) shows like a focused text box -->
+			<Style Selector="^:focus-within /template/ Border#Background">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:dropdownopen /template/ Border#Background">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				<Style Selector="^ /template/ Path#DropDownGlyph">
+					<Setter Property="Fill" Value="{DynamicResource GrayText}" />
+				</Style>
+			</Style>
+			<Style Selector="^[IsEditable=true]">
+				<Setter Property="IsTabStop" Value="False" />
+				<Setter Property="KeyboardNavigation.TabNavigation" Value="Local" />
+			</Style>
+		</ControlTheme>
+
+		<!-- enum pickers show the values as words ("Smoothed square"); the selection box uses the same template as the rows -->
+		<DataTemplate x:Key="EnumNameTemplate" x:DataType="sys:Enum">
+			<!-- the language is the second input, so the words follow a language switch at once (upstream Editors.xaml:340-343) -->
+			<TextBlock VerticalAlignment="Center">
+				<TextBlock.Text>
+					<MultiBinding Converter="{StaticResource EnumName}">
+						<Binding />
+						<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
+					</MultiBinding>
+				</TextBlock.Text>
+			</TextBlock>
+		</DataTemplate>
+		<ControlTheme x:Key="EnumComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+			<Setter Property="ItemTemplate" Value="{StaticResource EnumNameTemplate}" />
+			<Setter Property="SelectionBoxItemTemplate" Value="{StaticResource EnumNameTemplate}" />
+		</ControlTheme>
+
+		<!-- the colour scheme drop-down: a gradient strip, the name, a grey tag; actions in italics, a missing name greyed -->
+		<DataTemplate x:Key="PickerEntryTemplate" x:DataType="controls:PickerEntry">
+			<DockPanel>
+				<Rectangle DockPanel.Dock="Left" Width="56" Height="12" Margin="0,0,6,0" VerticalAlignment="Center" StrokeThickness="0.5"
+				           Stroke="{DynamicResource TextBoxBorder}" Fill="{Binding Scheme, Converter={StaticResource ColorSchemeBrush}}" IsVisible="{Binding HasScheme}" />
+				<TextBlock DockPanel.Dock="Right" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding Tag}" Foreground="{DynamicResource GrayText}" />
+				<TextBlock VerticalAlignment="Center" Text="{Binding Label}" FontStyle="{Binding FontStyle}" TextTrimming="CharacterEllipsis" Classes.missing="{Binding IsMissing}" />
+			</DockPanel>
+		</DataTemplate>
+		<ControlTheme x:Key="{x:Type controls:ColorSchemePicker}" TargetType="controls:ColorSchemePicker" BasedOn="{StaticResource {x:Type ComboBox}}">
+			<Setter Property="ItemTemplate" Value="{StaticResource PickerEntryTemplate}" />
+			<Setter Property="SelectionBoxItemTemplate" Value="{StaticResource PickerEntryTemplate}" />
+		</ControlTheme>
+
+		<!-- horizontal slider: thin track, flat thumb; a click on the track jumps there -->
+		<ControlTheme x:Key="SliderTrackButton" TargetType="RepeatButton">
+			<Setter Property="Focusable" Value="False" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Background="Transparent" />
+				</ControlTemplate>
+			</Setter>
+		</ControlTheme>
+		<ControlTheme x:Key="SliderThumb" TargetType="Thumb">
+			<Setter Property="Width" Value="10" />
+			<Setter Property="Height" Value="18" />
+			<Setter Property="Focusable" Value="False" />
+			<Setter Property="BorderBrush" Value="{DynamicResource ButtonBorder}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border x:Name="Bd" Background="{DynamicResource ButtonBackground}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" />
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ Border#Bd">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:pressed /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonPressed}" />
+			</Style>
+		</ControlTheme>
+		<ControlTheme x:Key="{x:Type Slider}" TargetType="Slider">
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="MinHeight" Value="22" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Grid Height="18" VerticalAlignment="Center">
+						<Border Height="4" VerticalAlignment="Center" Background="{DynamicResource ScrollBarBackground}"
+						        BorderBrush="{DynamicResource ControlBorder}" BorderThickness="1" />
+						<Track Name="PART_Track" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+						       Value="{TemplateBinding Value, Mode=TwoWay}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}" Orientation="Horizontal">
+							<Track.DecreaseButton>
+								<RepeatButton Name="PART_DecreaseButton" Theme="{StaticResource SliderTrackButton}" />
+							</Track.DecreaseButton>
+							<Track.IncreaseButton>
+								<RepeatButton Name="PART_IncreaseButton" Theme="{StaticResource SliderTrackButton}" />
+							</Track.IncreaseButton>
+							<Thumb Name="thumb" Theme="{StaticResource SliderThumb}" />
+						</Track>
+					</Grid>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:focus /template/ Thumb#thumb">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Opacity" Value="0.5" />
+			</Style>
+		</ControlTheme>
+
+		<!-- the colour picker: the square is the pure hue under a white-to-clear and a clear-to-black overlay, the strip the
+		     hue circle top to bottom; the markers are placed by the control; square and strip take the focus -->
+		<ControlTheme x:Key="{x:Type controls:ColorPicker}" TargetType="controls:ColorPicker">
+			<Setter Property="Focusable" Value="False" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<StackPanel Margin="8">
+						<DockPanel>
+							<Thumb x:Name="PART_Square" DockPanel.Dock="Left" Width="160" Height="160" Focusable="True" FocusAdorner="{x:Null}"
+							       BorderThickness="1" BorderBrush="{DynamicResource TextBoxBorder}" ToolTip.Tip="{DynamicResource TipColorSquare}"
+							       Background="{TemplateBinding HueBrush}" AutomationProperties.AutomationId="ColorSquare">
+								<Thumb.Template>
+									<ControlTemplate>
+										<Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+											<Grid Background="{TemplateBinding Background}">
+												<Rectangle>
+													<Rectangle.Fill>
+														<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+															<GradientStop Color="#FFFFFFFF" Offset="0" />
+															<GradientStop Color="#00FFFFFF" Offset="1" />
+														</LinearGradientBrush>
+													</Rectangle.Fill>
+												</Rectangle>
+												<Rectangle>
+													<Rectangle.Fill>
+														<LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+															<GradientStop Color="#00000000" Offset="0" />
+															<GradientStop Color="#FF000000" Offset="1" />
+														</LinearGradientBrush>
+													</Rectangle.Fill>
+												</Rectangle>
+												<Canvas IsHitTestVisible="False">
+													<Grid x:Name="PART_SquareMarker" Width="13" Height="13">
+														<Ellipse Stroke="Black" StrokeThickness="3" />
+														<Ellipse Stroke="White" StrokeThickness="1.5" Margin="0.75" />
+													</Grid>
+												</Canvas>
+											</Grid>
+										</Border>
+									</ControlTemplate>
+								</Thumb.Template>
+							</Thumb>
+							<Thumb x:Name="PART_HueStrip" Width="20" Height="160" Margin="8,0,0,0" HorizontalAlignment="Left" Focusable="True" FocusAdorner="{x:Null}"
+							       BorderThickness="1" BorderBrush="{DynamicResource TextBoxBorder}" ToolTip.Tip="{DynamicResource TipColorHue}"
+							       AutomationProperties.AutomationId="ColorHue">
+								<Thumb.Template>
+									<ControlTemplate>
+										<Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+											<Grid>
+												<Rectangle>
+													<Rectangle.Fill>
+														<LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+															<GradientStop Color="#FF0000" Offset="0" />
+															<GradientStop Color="#FFFF00" Offset="0.1667" />
+															<GradientStop Color="#00FF00" Offset="0.3333" />
+															<GradientStop Color="#00FFFF" Offset="0.5" />
+															<GradientStop Color="#0000FF" Offset="0.6667" />
+															<GradientStop Color="#FF00FF" Offset="0.8333" />
+															<GradientStop Color="#FF0000" Offset="1" />
+														</LinearGradientBrush>
+													</Rectangle.Fill>
+												</Rectangle>
+												<Canvas IsHitTestVisible="False">
+													<Border x:Name="PART_HueMarker" Width="22" Height="7" Canvas.Left="-2" BorderBrush="White" BorderThickness="1">
+														<Border BorderBrush="Black" BorderThickness="1" />
+													</Border>
+												</Canvas>
+											</Grid>
+										</Border>
+									</ControlTemplate>
+								</Thumb.Template>
+							</Thumb>
+						</DockPanel>
+						<!-- the channels and the hex text are bound by the control -->
+						<DockPanel Margin="0,8,0,0">
+							<TextBlock DockPanel.Dock="Left" Text="R" VerticalAlignment="Center" Margin="0,0,3,0" />
+							<controls:NumberBox x:Name="PART_Red" DockPanel.Dock="Left" Width="56" Minimum="0" Maximum="255" Increment="1"
+							                    ToolTip.Tip="{DynamicResource TipColorChannel}" AutomationProperties.AutomationId="ColorRed" />
+							<TextBlock DockPanel.Dock="Left" Text="G" VerticalAlignment="Center" Margin="8,0,3,0" />
+							<controls:NumberBox x:Name="PART_Green" DockPanel.Dock="Left" Width="56" Minimum="0" Maximum="255" Increment="1"
+							                    ToolTip.Tip="{DynamicResource TipColorChannel}" AutomationProperties.AutomationId="ColorGreen" />
+							<TextBlock DockPanel.Dock="Left" Text="B" VerticalAlignment="Center" Margin="8,0,3,0" />
+							<controls:NumberBox x:Name="PART_Blue" DockPanel.Dock="Left" Width="56" Minimum="0" Maximum="255" Increment="1"
+							                    ToolTip.Tip="{DynamicResource TipColorChannel}" AutomationProperties.AutomationId="ColorBlue" />
+							<TextBox x:Name="PART_Hex" Margin="8,0,0,0" ToolTip.Tip="{DynamicResource TipStopColor}" AutomationProperties.AutomationId="ColorHex" />
+						</DockPanel>
+					</StackPanel>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^ /template/ Thumb#PART_Square:focus">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^ /template/ Thumb#PART_HueStrip:focus">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+		</ControlTheme>
+
+		<!-- the swatch that opens the picker in a popup below it; the popup's open state is the button's checked state -->
+		<ControlTheme x:Key="{x:Type controls:ColorPickerButton}" TargetType="controls:ColorPickerButton">
+			<Setter Property="Width" Value="22" />
+			<Setter Property="Height" Value="18" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Grid>
+						<Border x:Name="Bd" BorderBrush="{DynamicResource TextBoxBorder}" BorderThickness="1"
+						        Background="{TemplateBinding Color, Converter={StaticResource RgbBrush}}" />
+						<Popup x:Name="PART_Popup" Placement="Bottom" IsLightDismissEnabled="True" WindowManagerAddShadowHint="False" InheritsTransform="True">
+							<Border Background="{DynamicResource ComboBoxListBackground}" BorderBrush="{DynamicResource MenuPopupBorder}" BorderThickness="1">
+								<controls:ColorPicker x:Name="PART_Picker" />
+							</Border>
+						</Popup>
+					</Grid>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ Border#Bd">
+				<Setter Property="BorderBrush" Value="{DynamicResource TextBoxHoverBorder}" />
+			</Style>
+			<Style Selector="^:focus /template/ Border#Bd">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+		</ControlTheme>
+
+		<!-- a group header in the Properties pane: the name over a rule across the width, so the groups read apart -->
+		<ControlTheme x:Key="FormSection" TargetType="Label">
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+			<Setter Property="BorderThickness" Value="0,0,0,1" />
+			<Setter Property="Padding" Value="0,0,0,2" />
+			<Setter Property="Margin" Value="0,2,0,6" />
+			<Setter Property="HorizontalAlignment" Value="Stretch" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+					        BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+						<ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+						                  HorizontalAlignment="Left" VerticalAlignment="Center" RecognizesAccessKey="True" />
+					</Border>
+				</ControlTemplate>
+			</Setter>
+		</ControlTheme>
+
+		<!-- the chain between two number boxes that keeps them equal (a rectangle's or ellipse's width and length): a
+		     toggle showing two linked rings, parted when off -->
+		<ControlTheme x:Key="LinkToggle" TargetType="ToggleButton">
+			<Setter Property="Width" Value="22" />
+			<Setter Property="Height" Value="22" />
+			<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+						<Panel>
+							<Path x:Name="Parted" Data="{StaticResource ChainPartedGeometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
+							      Width="18" Height="16" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center" />
+							<Path x:Name="Linked" Data="{StaticResource ChainLinkedGeometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
+							      Width="18" Height="16" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+						</Panel>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:checked">
+				<Setter Property="Foreground" Value="{DynamicResource Accent}" />
+				<Style Selector="^ /template/ Path#Linked">
+					<Setter Property="IsVisible" Value="True" />
+				</Style>
+				<Style Selector="^ /template/ Path#Parted">
+					<Setter Property="IsVisible" Value="False" />
+				</Style>
+			</Style>
+			<Style Selector="^:pointerover /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+			</Style>
+			<Style Selector="^:focus /template/ Border#Bd">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Opacity" Value="0.5" />
+			</Style>
+		</ControlTheme>
+
+		<!-- the header of a part form's description: the section label's look with a chevron at the left that turns to
+		     point down while the text below is open; the focus is the accent on the underline, as on the chain -->
+		<ControlTheme x:Key="DescriptionToggle" TargetType="ToggleButton">
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="HorizontalAlignment" Value="Stretch" />
+			<Setter Property="HorizontalContentAlignment" Value="Left" />
+			<Setter Property="Margin" Value="0,2,0,6" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border x:Name="Bd" Background="Transparent" BorderBrush="{DynamicResource ControlBorder}" BorderThickness="0,0,0,1" Padding="0,0,0,2">
+						<DockPanel>
+							<Path x:Name="Glyph" DockPanel.Dock="Left" Data="{StaticResource ChevronRightGeometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
+							      Width="6" Height="11" Stretch="Uniform" Margin="1,0,7,0" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" RenderTransform="rotate(0deg)">
+								<Path.Transitions>
+									<Transitions>
+										<TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+									</Transitions>
+								</Path.Transitions>
+							</Path>
+							<ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center" RecognizesAccessKey="True" />
+						</DockPanel>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:checked /template/ Path#Glyph">
+				<Setter Property="RenderTransform" Value="rotate(90deg)" />
+			</Style>
+			<Style Selector="^:pointerover /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+			</Style>
+			<Style Selector="^:focus /template/ Border#Bd">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+		</ControlTheme>
+
+		<!-- the remove button of a point, node or stop row; in the Tab cycle, since no key removes a row otherwise -->
+		<ControlTheme x:Key="RemovePointButton" TargetType="Button">
+			<Setter Property="Width" Value="18" />
+			<Setter Property="Height" Value="18" />
+			<Setter Property="Margin" Value="4,0,0,0" />
+			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+			<Setter Property="FocusAdorner" Value="{x:Null}" />
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+						<Path Data="{StaticResource MinusGeometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.2"
+						      HorizontalAlignment="Center" VerticalAlignment="Center" />
+					</Border>
+				</ControlTemplate>
+			</Setter>
+			<Style Selector="^:pointerover /template/ Border#Bd">
+				<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+			</Style>
+			<Style Selector="^:focus /template/ Border#Bd">
+				<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+			</Style>
+			<Style Selector="^:disabled">
+				<Setter Property="Opacity" Value="0.4" />
+			</Style>
+		</ControlTheme>
+	</Styles.Resources>
+
+	<!-- the form's text blocks and the gap under a group: the gap comes after a group's rows, not before its header, so
+	     the first header sits close to the pane's edge -->
+	<Style Selector="controls|FormPanel">
+		<Setter Property="Margin" Value="0,0,0,10" />
+	</Style>
+	<Style Selector="TextBlock.FormLabel">
+		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+		<Setter Property="VerticalAlignment" Value="Center" />
+		<Setter Property="TextTrimming" Value="CharacterEllipsis" />
+	</Style>
+	<!-- a read-only value beside its label (a lens's edge thickness, a gate's layout): bound to every input it depends on, so the text follows them -->
+	<Style Selector="TextBlock.FormReadout">
+		<Setter Property="VerticalAlignment" Value="Center" />
+	</Style>
+	<Style Selector="TextBlock.FormValue">
+		<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+		<Setter Property="VerticalAlignment" Value="Center" />
+		<Setter Property="Margin" Value="4,0" />
+	</Style>
+	<!-- the description's text under its header -->
+	<Style Selector="TextBlock.FormDescription">
+		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+		<Setter Property="TextWrapping" Value="Wrap" />
+		<Setter Property="Margin" Value="0,0,0,10" />
+	</Style>
+	<!-- the grey line above a point or node list saying what the rows are -->
+	<Style Selector="TextBlock.FormHint">
+		<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+		<Setter Property="TextWrapping" Value="Wrap" />
+		<Setter Property="Margin" Value="0,0,0,4" />
+	</Style>
+	<!-- a picker row for a scheme name that no scheme has -->
+	<Style Selector="TextBlock.missing">
+		<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+	</Style>
+</Styles>

@@ -1,0 +1,70 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="WaveDudeNext.App.Dialogs.MemoryWarningWindow"
+        Title="{DynamicResource Title}" Icon="/Assets/wavedudenext.ico"
+        Width="500" SizeToContent="Height" CanResize="False" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        AutomationProperties.AutomationId="MemoryWarningWindow">
+	<!-- the memory warning (upstream, 2026-11-03, the user's design), in the message window's look: the question disc and
+	     the facts (the run's need, the RAM cache's budget), a checkbox that sets the RAM cache size to Auto and three that
+	     each lower the preview quality a notch, pre-ticked with the mildest set that makes the run fit, a line under them
+	     with the ticks' result, "Do not warn me again", then Run (Enter) and Cancel (Esc); every control in the Tab cycle,
+	     the buttons' underlined letters work without Alt -->
+	<Window.Styles>
+		<StyleInclude Source="avares://WaveDudeNext.App/Themes/Dialogs.axaml" />
+	</Window.Styles>
+	<Grid Margin="20,18,20,16" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+		<DockPanel Grid.Row="0">
+			<Panel Width="32" Height="32" Margin="0,0,16,0" VerticalAlignment="Top" DockPanel.Dock="Left">
+				<Ellipse Fill="{DynamicResource Accent}" />
+				<TextBlock Text="?" Classes="disc" Foreground="{DynamicResource StatusBarForeground}" />
+			</Panel>
+			<TextBlock x:Name="messageText" TextWrapping="Wrap" VerticalAlignment="Center" MinHeight="32"
+			           AutomationProperties.AutomationId="MemoryWarningText" />
+		</DockPanel>
+
+		<TextBlock Grid.Row="1" Text="{DynamicResource MemoryWarningChoices}" TextWrapping="Wrap" Margin="48,14,0,6" />
+		<StackPanel Grid.Row="2" Margin="48,0,0,0">
+			<!-- the RAM cache size to Auto: the budget rises instead of the need falling; its caption carries the automatic
+			     budget, so the code sets it -->
+			<CheckBox x:Name="cacheBox" Margin="0,2" AutomationProperties.AutomationId="MemoryWarningCache" />
+			<CheckBox x:Name="resolutionBox" Content="{DynamicResource MemoryWarningResolution}" Margin="0,2"
+			          AutomationProperties.AutomationId="MemoryWarningResolution" />
+			<CheckBox x:Name="framesBox" Content="{DynamicResource MemoryWarningFrames}" Margin="0,2"
+			          AutomationProperties.AutomationId="MemoryWarningFrames" />
+			<CheckBox x:Name="samplesBox" Content="{DynamicResource MemoryWarningSamples}" Margin="0,2"
+			          AutomationProperties.AutomationId="MemoryWarningSamples" />
+		</StackPanel>
+		<TextBlock x:Name="resultText" Grid.Row="3" TextWrapping="Wrap" Margin="48,8,0,0"
+		           AutomationProperties.AutomationId="MemoryWarningResult" />
+		<CheckBox x:Name="muteBox" Grid.Row="4" Content="{DynamicResource MemoryWarningMute}" Margin="48,14,0,0"
+		          AutomationProperties.AutomationId="MemoryWarningMute" />
+
+		<StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+			<Button x:Name="runButton" Content="{DynamicResource DialogRun}" MinWidth="90" Margin="8,0,0,0" IsDefault="True"
+			        Click="OnRun" AutomationProperties.AutomationId="MemoryWarningRun" />
+			<Button x:Name="cancelButton" Content="{DynamicResource DialogCancel}" MinWidth="90" Margin="8,0,0,0" IsCancel="True"
+			        Click="OnCancel" AutomationProperties.AutomationId="MemoryWarningCancel" />
+		</StackPanel>
+	</Grid>
+</Window>

@@ -1,0 +1,95 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="WaveDudeNext.App.Help.AboutWindow"
+        Title="{DynamicResource AboutTitle}" Icon="/Assets/wavedudenext.ico"
+        Width="600" SizeToContent="Height" MinWidth="480" MinHeight="620" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        AutomationProperties.AutomationId="AboutWindow">
+	<!-- Help > About, as upstream's: identity, the credits word for word as in the source header, the license sentence
+	     with the full text on request, and the system facts a bug report needs; everything reachable by Tab, Esc and Enter
+	     close. Sized to its content at first and resizable: the license document takes the extra height while it is
+	     shown (its row is the star row then, code-behind), otherwise the filler row above the buttons does -->
+	<Window.Styles>
+		<StyleInclude Source="avares://WaveDudeNext.App/Themes/Dialogs.axaml" />
+	</Window.Styles>
+	<!-- rows: header, credits, license notice, the license document (row 3, star while shown), system, filler (row 5, star
+	     while the document is hidden), buttons -->
+	<Grid x:Name="layout" Margin="20,16,20,16" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto">
+
+		<DockPanel Grid.Row="0">
+			<Image Source="avares://WaveDudeNext.App/Assets/wavedudenext.png" Width="64" Height="64" Margin="0,0,16,0" VerticalAlignment="Top" DockPanel.Dock="Left" />
+			<StackPanel>
+				<TextBlock x:Name="productText" FontSize="20" FontWeight="SemiBold" AutomationProperties.AutomationId="AboutProduct" />
+				<TextBlock x:Name="versionText" Margin="0,2,0,0" AutomationProperties.AutomationId="AboutVersion" />
+				<TextBlock x:Name="copyrightText" AutomationProperties.AutomationId="AboutCopyright" />
+				<TextBlock x:Name="portCopyrightText" AutomationProperties.AutomationId="AboutPortCopyright" />
+				<TextBlock Text="{DynamicResource AboutTagline}" Foreground="{DynamicResource GrayText}" Margin="0,2,0,0" />
+			</StackPanel>
+		</DockPanel>
+
+		<StackPanel Grid.Row="1">
+			<Border Classes="section"><TextBlock Text="{DynamicResource AboutCredits}" /></Border>
+			<!-- the credits are the source header's lines, in English, so every place names the two the same way -->
+			<TextBlock x:Name="creditVleggaar" TextWrapping="Wrap" AutomationProperties.AutomationId="AboutCreditVleggaar" />
+			<StackPanel Orientation="Horizontal" Margin="16,0,0,0">
+				<Button Classes="link" Content="youtube.com/@HuygensOptics" Click="OnLink" AutomationProperties.AutomationId="AboutLinkHuygensYouTube" />
+				<TextBlock Text=" · " VerticalAlignment="Center" />
+				<Button Classes="link" Content="huygensoptics.com" Click="OnLink" AutomationProperties.AutomationId="AboutLinkHuygensSite" />
+			</StackPanel>
+			<TextBlock x:Name="creditWaveSimulator2D" TextWrapping="Wrap" Margin="0,6,0,0" AutomationProperties.AutomationId="AboutCreditWaveSimulator2D" />
+			<StackPanel Orientation="Horizontal" Margin="16,0,0,0">
+				<Button Classes="link" Content="youtube.com/@DiffractionLimited" Click="OnLink" AutomationProperties.AutomationId="AboutLinkDiffractionYouTube" />
+				<TextBlock Text=" · " VerticalAlignment="Center" />
+				<Button Classes="link" Content="github.com/0x23/WaveSimulator2D" Click="OnLink" AutomationProperties.AutomationId="AboutLinkWaveSimulator2D" />
+			</StackPanel>
+		</StackPanel>
+
+		<StackPanel Grid.Row="2">
+			<Border Classes="section"><TextBlock Text="{DynamicResource AboutLicense}" /></Border>
+			<TextBlock Text="{DynamicResource AboutLicenseNotice}" TextWrapping="Wrap" />
+			<Button Classes="link" Content="gnu.org/licenses/gpl-3.0.html" Click="OnLink" HorizontalAlignment="Left" AutomationProperties.AutomationId="AboutLinkGpl" />
+			<Button x:Name="licenseToggle" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnToggleLicense"
+			        Content="{DynamicResource AboutShowLicense}" AutomationProperties.AutomationId="AboutLicenseToggle" />
+		</StackPanel>
+
+		<!-- LICENSE.md rendered on request; the viewer scrolls, the text can be selected and copied -->
+		<Border x:Name="licenseBox" Grid.Row="3" IsVisible="False" Height="260" MinHeight="120" Margin="0,8,0,0" BorderThickness="1"
+		        BorderBrush="{DynamicResource TextBoxBorder}" Background="{DynamicResource TextBoxBackground}">
+			<ScrollViewer x:Name="licenseView" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+			              AutomationProperties.AutomationId="AboutLicenseText" />
+		</Border>
+
+		<StackPanel Grid.Row="4">
+			<Border Classes="section"><TextBlock Text="{DynamicResource AboutSystem}" /></Border>
+			<TextBox x:Name="systemText" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MaxHeight="160"
+			         VerticalContentAlignment="Top" AutomationProperties.AutomationId="AboutSystemText" />
+		</StackPanel>
+
+		<StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+			<Button Content="{DynamicResource AboutCopy}" MinWidth="110" Margin="0,0,8,0" Click="OnCopy" ToolTip.Tip="{DynamicResource TipAboutCopy}"
+			        AutomationProperties.AutomationId="AboutCopy" />
+			<Button x:Name="closeButton" Content="{DynamicResource AboutClose}" MinWidth="90" IsDefault="True" IsCancel="True" Click="OnClose"
+			        AutomationProperties.AutomationId="AboutClose" />
+		</StackPanel>
+	</Grid>
+</Window>

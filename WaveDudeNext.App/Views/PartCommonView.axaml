@@ -1,0 +1,75 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:localization="using:WaveDudeNext.App.Localization"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.PartCommonView"
+             x:DataType="model:OpticalPart">
+	<UserControl.Resources>
+		<converters:KindDescriptionConverter x:Key="KindDescription" />
+	</UserControl.Resources>
+
+	<!-- the members every part has: name, enabled, centre and angle; placed first in each kind's form -->
+	<StackPanel>
+		<!-- what this kind is (upstream's choice, beside the Add part menu's tooltips): the Kind.<Type> string under a header
+		     whose chevron turns while it is open; open or closed is one user setting for every kind, bound in the code-behind -->
+		<ToggleButton x:Name="descriptionToggle" Theme="{DynamicResource DescriptionToggle}" Content="{DynamicResource SectionDescription}" ToolTip.Tip="{DynamicResource TipPartDescription}"
+		              AutomationProperties.Name="{DynamicResource TipPartDescription}" AutomationProperties.AutomationId="PartDescriptionToggle" />
+		<TextBlock x:Name="description" Classes="FormDescription" AutomationProperties.AutomationId="PartDescription">
+			<TextBlock.Text>
+				<!-- the language, so the kind's description follows a switch at once (upstream PartCommonView.xaml:48) -->
+				<MultiBinding Converter="{StaticResource KindDescription}">
+					<Binding />
+					<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
+				</MultiBinding>
+			</TextBlock.Text>
+		</TextBlock>
+
+		<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionGeneral}" />
+		<controls:FormPanel>
+			<TextBlock Classes="FormLabel" Text="{meta:Label model:OpticalPart.Name}" />
+			<TextBox Text="{Binding Name}" ToolTip.Tip="{meta:Hint model:OpticalPart.Name}" AutomationProperties.AutomationId="PartName" />
+
+			<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:OpticalPart.Enabled}"
+			          IsChecked="{Binding Enabled}" ToolTip.Tip="{meta:Hint model:OpticalPart.Enabled}" AutomationProperties.AutomationId="PartEnabled" />
+		</controls:FormPanel>
+
+		<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionPosition}" />
+		<controls:FormPanel>
+			<TextBlock Classes="FormLabel" Text="{meta:Label model:OpticalPart.X}" />
+			<controls:NumberBox Text="{Binding X, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:OpticalPart.X}" AutomationProperties.AutomationId="PartX" />
+
+			<TextBlock Classes="FormLabel" Text="{meta:Label model:OpticalPart.Y}" />
+			<controls:NumberBox Text="{Binding Y, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:OpticalPart.Y}" AutomationProperties.AutomationId="PartY" />
+
+			<TextBlock Classes="FormLabel" Text="{meta:Label model:OpticalPart.Angle}" />
+			<controls:NumberBox Text="{Binding Angle, UpdateSourceTrigger=LostFocus}" Minimum="-180" Maximum="180" Increment="5" DragStep="0.5" Decimals="1"
+			                    ToolTip.Tip="{meta:Hint model:OpticalPart.Angle}" AutomationProperties.AutomationId="PartAngleBox" />
+		</controls:FormPanel>
+	</StackPanel>
+</UserControl>

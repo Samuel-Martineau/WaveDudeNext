@@ -1,0 +1,153 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:localization="using:WaveDudeNext.App.Localization"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             x:Class="WaveDudeNext.App.Views.SourceView"
+             x:DataType="model:Source">
+	<UserControl.Resources>
+		<converters:WavelengthConverter x:Key="Wavelength" />
+		<converters:EnumBooleanConverter x:Key="EnumBoolean" />
+	</UserControl.Resources>
+
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionGeneral}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.Name}" />
+				<!-- the name is written on every keystroke, so the tree row follows the typing -->
+				<TextBox Text="{Binding Name}" ToolTip.Tip="{meta:Hint model:Source.Name}" AutomationProperties.AutomationId="SourceName" />
+
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Source.Enabled}"
+				          IsChecked="{Binding Enabled}" ToolTip.Tip="{meta:Hint model:Source.Enabled}" AutomationProperties.AutomationId="SourceEnabled" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionPosition}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.X}" />
+				<controls:NumberBox Text="{Binding X, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Source.X}" AutomationProperties.AutomationId="SourceX" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.Y}" />
+				<controls:NumberBox Text="{Binding Y, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Source.Y}" AutomationProperties.AutomationId="SourceY" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionWave}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.Frequency}" />
+				<controls:NumberBox Text="{Binding Frequency, UpdateSourceTrigger=LostFocus}" Minimum="0.01" Maximum="255" DragStep="0.1" Decimals="2"
+				                    ToolTip.Tip="{meta:Hint model:Source.Frequency}" AutomationProperties.AutomationId="SourceFrequency" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.Amplitude}" />
+				<controls:NumberBox Text="{Binding Amplitude, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="100" DragStep="0.1" Decimals="2"
+				                    ToolTip.Tip="{meta:Hint model:Source.Amplitude}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.Phase}" />
+				<controls:NumberBox Text="{Binding Phase, UpdateSourceTrigger=LostFocus}" Minimum="-180" Maximum="180" DragStep="0.5" Decimals="2"
+				                    ToolTip.Tip="{meta:Hint model:Source.Phase}" />
+
+				<!-- read-only: the wavelength this frequency gives with the project's wave speed (Simulation.Wavelength) -->
+				<TextBlock Classes="FormLabel" Text="{DynamicResource LabelWavelength}" />
+				<TextBlock Classes="FormReadout" ToolTip.Tip="{DynamicResource TipWavelength}" AutomationProperties.AutomationId="SourceWavelength">
+					<TextBlock.Text>
+						<MultiBinding Converter="{StaticResource Wavelength}">
+							<Binding Path="Frequency" />
+							<Binding Path="$parent[panes:PropertiesPane].Project.Simulation.WaveSpeed" />
+							<Binding Path="$parent[panes:PropertiesPane].Project.Simulation.SourceFrequencyScale" />
+							<Binding Path="$parent[panes:PropertiesPane].Project.Simulation.FourthOrderLaplacian" />
+							<!-- the language, for "(nominal)" (upstream SourceView.xaml:91) -->
+							<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
+						</MultiBinding>
+					</TextBlock.Text>
+				</TextBlock>
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionTiming}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.Mode}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:SourceMode}"
+				          SelectedItem="{Binding Mode}" ToolTip.Tip="{meta:Hint model:Source.Mode}" AutomationProperties.AutomationId="SourceMode" />
+
+				<!-- pulse settings only matter for a pulsed source -->
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.PulseShape}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:PulseShape}"
+				          SelectedItem="{Binding PulseShape}" ToolTip.Tip="{meta:Hint model:Source.PulseShape}"
+				          IsEnabled="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SourceMode.Pulsed}}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.PulseWidth}" />
+				<controls:NumberBox Text="{Binding PulseWidth, UpdateSourceTrigger=LostFocus}" Minimum="1" ToolTip.Tip="{meta:Hint model:Source.PulseWidth}"
+				                    IsEnabled="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SourceMode.Pulsed}}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.OffWidth}" />
+				<controls:NumberBox Text="{Binding OffWidth, UpdateSourceTrigger=LostFocus}" Minimum="1" ToolTip.Tip="{meta:Hint model:Source.OffWidth}"
+				                    IsEnabled="{Binding Mode, Converter={StaticResource EnumBoolean}, ConverterParameter={x:Static model:SourceMode.Pulsed}}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Source.DetachAfter}" />
+				<controls:NumberBox Text="{Binding DetachAfter, UpdateSourceTrigger=LostFocus}" Minimum="-1" ToolTip.Tip="{meta:Hint model:Source.DetachAfter}" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionArray}" />
+			<CheckBox Content="{meta:Label model:Source.IsComposite}" IsChecked="{Binding IsComposite}"
+			          ToolTip.Tip="{meta:Hint model:Source.IsComposite}" Margin="0,0,0,4" AutomationProperties.AutomationId="SourceComposite" />
+			<!-- the array's own settings; empty and disabled while there is no array (the border carries the enabled state in
+			     the source's context, the panel inside shows the array) -->
+			<Border IsEnabled="{Binding IsComposite}">
+			<controls:FormPanel DataContext="{Binding Array}" x:DataType="model:SourceArray">
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.SizeX}" />
+				<controls:NumberBox Text="{Binding SizeX, UpdateSourceTrigger=LostFocus}" Minimum="1" ToolTip.Tip="{meta:Hint model:SourceArray.SizeX}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.SizeY}" />
+				<controls:NumberBox Text="{Binding SizeY, UpdateSourceTrigger=LostFocus}" Minimum="1" ToolTip.Tip="{meta:Hint model:SourceArray.SizeY}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.SpacingX}" />
+				<controls:NumberBox Text="{Binding SpacingX, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{meta:Hint model:SourceArray.SpacingX}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.SpacingY}" />
+				<controls:NumberBox Text="{Binding SpacingY, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{meta:Hint model:SourceArray.SpacingY}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.Angle}" />
+				<controls:NumberBox Text="{Binding Angle, UpdateSourceTrigger=LostFocus}" Minimum="-180" Maximum="180" Increment="5" DragStep="0.5" Decimals="1"
+				                    ToolTip.Tip="{meta:Hint model:SourceArray.Angle}" />
+
+				<!-- the four random amounts are offsets added per emitter on top of the values above -->
+				<Label controls:FormPanel.FullWidth="True" Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionRandom}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.RandomFrequency}" />
+				<controls:NumberBox Text="{Binding RandomFrequency, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:SourceArray.RandomFrequency}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.RandomPhase}" />
+				<controls:NumberBox Text="{Binding RandomPhase, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:SourceArray.RandomPhase}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.RandomOffWidth}" />
+				<controls:NumberBox Text="{Binding RandomOffWidth, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:SourceArray.RandomOffWidth}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:SourceArray.RandomPosition}" />
+				<controls:NumberBox Text="{Binding RandomPosition, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:SourceArray.RandomPosition}" />
+			</controls:FormPanel>
+			</Border>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

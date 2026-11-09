@@ -1,0 +1,218 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:WaveDudeNext.App.Panes"
+             xmlns:app="using:WaveDudeNext.App"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Panes.ProjectTree"
+             x:Name="root">
+	<!-- The project tree (upstream Panes/ProjectTree.xaml): the toolbar, then the tree with the Project as its root and one
+	     template per model type beneath; the folders are NamedCollection nodes the code-behind makes. Commands come from the
+	     pane's Commands object (#root.Commands.*, the window's AppCommands); a row's buttons pass the row's node. The texts
+	     are the string table's through DynamicResource. The root's template, the context menu and the menu of part kinds are
+	     built in the code-behind, where their bindings have a context (a popup has none in XAML). -->
+	<UserControl.Styles>
+		<StyleInclude Source="avares://WaveDudeNext.App/Themes/ProjectTree.axaml" />
+	</UserControl.Styles>
+	<UserControl.Resources>
+		<converters:PartIconConverter x:Key="PartIcon" />
+		<converters:LensIconConverter x:Key="LensIcon" />
+	</UserControl.Resources>
+
+	<DockPanel>
+
+		<!-- pane toolbar: acts on the tree selection. Each add button has the icon of what it adds, the one its folder in the
+		     tree shows, with the add plus; source, probe, then part (upstream 2026-10-23, the user's order); the part's button
+		     opens the menu of kinds rather than adding one, so it ends in the drop-down arrow of the combo boxes -->
+		<Border DockPanel.Dock="Top" BorderBrush="{DynamicResource ToolWindowBorder}" BorderThickness="0,0,0,1" Padding="2,2">
+			<StackPanel Orientation="Horizontal">
+				<Button x:Name="addSourceButton" Theme="{StaticResource TextButton}" ToolTip.Tip="{DynamicResource TipAddSource}"
+				        AutomationProperties.Name="{DynamicResource TipAddSource}" AutomationProperties.AutomationId="ToolAddSource"
+				        Command="{Binding #root.Commands.AddSource}">
+					<StackPanel Orientation="Horizontal">
+						<controls:IconView Drawing="Source" PlusBadge="True" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{DynamicResource ToolAddSource}" VerticalAlignment="Center" />
+					</StackPanel>
+				</Button>
+				<Button x:Name="addProbeButton" Theme="{StaticResource TextButton}" ToolTip.Tip="{DynamicResource TipAddProbe}"
+				        AutomationProperties.Name="{DynamicResource TipAddProbe}" AutomationProperties.AutomationId="ToolAddProbe"
+				        Command="{Binding #root.Commands.AddProbe}">
+					<StackPanel Orientation="Horizontal">
+						<controls:IconView Drawing="Probe" PlusBadge="True" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{DynamicResource ToolAddProbe}" VerticalAlignment="Center" />
+					</StackPanel>
+				</Button>
+				<!-- the Flyout, the menu of kinds, is set in the code-behind -->
+				<Button x:Name="addPartButton" Theme="{StaticResource TextButton}" ToolTip.Tip="{DynamicResource TipAddPart}"
+				        AutomationProperties.Name="{DynamicResource TipAddPart}" AutomationProperties.AutomationId="ToolAddPart">
+					<StackPanel Orientation="Horizontal">
+						<controls:IconView Drawing="Part" PlusBadge="True" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{DynamicResource ToolAddPart}" VerticalAlignment="Center" />
+						<Path Data="{DynamicResource DropDownGeometry}" Fill="{Binding $parent[Button].Foreground}" Margin="5,0,0,0" VerticalAlignment="Center" />
+					</StackPanel>
+				</Button>
+				<Rectangle Width="1" Margin="4,2" Fill="{DynamicResource ToolWindowBorder}" />
+				<Button Theme="{StaticResource ToolGlyphButton}" Content="{StaticResource RowUpGeometry}" ToolTip.Tip="{DynamicResource TipMoveUp}"
+				        AutomationProperties.Name="{DynamicResource TipMoveUp}" AutomationProperties.AutomationId="ToolMoveUp"
+				        Command="{Binding #root.Commands.MoveUp}" />
+				<Button Theme="{StaticResource ToolGlyphButton}" Content="{StaticResource RowDownGeometry}" ToolTip.Tip="{DynamicResource TipMoveDown}"
+				        AutomationProperties.Name="{DynamicResource TipMoveDown}" AutomationProperties.AutomationId="ToolMoveDown"
+				        Command="{Binding #root.Commands.MoveDown}" />
+				<Button Theme="{StaticResource ToolGlyphButton}" Content="{StaticResource MinusGeometry}" ToolTip.Tip="{DynamicResource TipRemove}"
+				        AutomationProperties.Name="{DynamicResource TipRemove}" AutomationProperties.AutomationId="ToolRemove"
+				        Command="{Binding #root.Commands.Remove}" />
+			</StackPanel>
+		</Border>
+
+		<!-- the tree; its ItemsSource is the project alone, set in the code-behind, which also adds the root's template -->
+		<TreeView x:Name="tree" Theme="{StaticResource ProjectTreeTheme}" ItemContainerTheme="{StaticResource ProjectTreeItemTheme}"
+		          SelectionMode="Single" AutoScrollToSelectedItem="True" DragDrop.AllowDrop="True">
+			<TreeView.DataTemplates>
+				<!-- the fixed nodes: an icon and the heading -->
+				<DataTemplate DataType="model:Scene">
+					<StackPanel Orientation="Horizontal">
+						<controls:IconView Drawing="Scene" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{DynamicResource TreeScene}" VerticalAlignment="Center" />
+					</StackPanel>
+				</DataTemplate>
+				<DataTemplate DataType="model:Simulation">
+					<StackPanel Orientation="Horizontal">
+						<controls:IconView Drawing="Simulation" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{DynamicResource TreeSimulation}" VerticalAlignment="Center" />
+					</StackPanel>
+				</DataTemplate>
+				<DataTemplate DataType="model:Display">
+					<StackPanel Orientation="Horizontal">
+						<controls:IconView Drawing="Display" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{DynamicResource TreeDisplay}" VerticalAlignment="Center" />
+					</StackPanel>
+				</DataTemplate>
+
+				<!-- folder row: the icon of what it holds, the heading and an add button; the Parts folder's button carries the
+				     menu of kinds, the others run Add with the folder (both wired when the button loads) -->
+				<TreeDataTemplate DataType="app:NamedCollection" ItemsSource="{Binding Items}">
+					<DockPanel Classes="row">
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource PlusGeometry}"
+						        ToolTip.Tip="{DynamicResource TipAdd}" AutomationProperties.Name="{DynamicResource TipAdd}" Loaded="OnFolderAddLoaded" />
+						<controls:IconView DockPanel.Dock="Left" Drawing="{Binding Key, Converter={x:Static local:ProjectTree.FolderIcon}}" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+					</DockPanel>
+				</TreeDataTemplate>
+
+				<!-- item rows, right to left: remove, move down, move up; left: the check box (Space on the row toggles it too),
+				     the icon and the name, which grey out when the item is off (the row's "off" class) -->
+				<DataTemplate DataType="model:Source">
+					<DockPanel Classes="row" Classes.off="{Binding !Enabled}">
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource MinusGeometry}"
+						        ToolTip.Tip="{DynamicResource TipRemove}" AutomationProperties.Name="{DynamicResource TipRemove}"
+						        Command="{Binding #root.Commands.Remove}" CommandParameter="{Binding}" />
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource RowDownGeometry}"
+						        ToolTip.Tip="{DynamicResource TipMoveDown}" AutomationProperties.Name="{DynamicResource TipMoveDown}"
+						        Command="{Binding #root.Commands.MoveDown}" CommandParameter="{Binding}" />
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource RowUpGeometry}"
+						        ToolTip.Tip="{DynamicResource TipMoveUp}" AutomationProperties.Name="{DynamicResource TipMoveUp}"
+						        Command="{Binding #root.Commands.MoveUp}" CommandParameter="{Binding}" />
+						<CheckBox DockPanel.Dock="Left" Theme="{StaticResource RowCheckBox}" Margin="0,0,4,0" VerticalAlignment="Center"
+						          IsChecked="{Binding Enabled}" ToolTip.Tip="{DynamicResource TipSourceEnabled}"
+						          AutomationProperties.Name="{DynamicResource TipSourceEnabled}" AutomationProperties.AutomationId="{Binding Name, StringFormat='Enabled:{0}'}" />
+						<controls:IconView DockPanel.Dock="Left" Drawing="Source" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+					</DockPanel>
+				</DataTemplate>
+				<!-- an optical part: like a source; the kind's icon, a lens's its own profile from the radii (upstream 2026-10-29) -->
+				<DataTemplate DataType="model:OpticalPart">
+					<DockPanel Classes="row" Classes.off="{Binding !Enabled}">
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource MinusGeometry}"
+						        ToolTip.Tip="{DynamicResource TipRemove}" AutomationProperties.Name="{DynamicResource TipRemove}"
+						        Command="{Binding #root.Commands.Remove}" CommandParameter="{Binding}" />
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource RowDownGeometry}"
+						        ToolTip.Tip="{DynamicResource TipMoveDown}" AutomationProperties.Name="{DynamicResource TipMoveDown}"
+						        Command="{Binding #root.Commands.MoveDown}" CommandParameter="{Binding}" />
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource RowUpGeometry}"
+						        ToolTip.Tip="{DynamicResource TipMoveUp}" AutomationProperties.Name="{DynamicResource TipMoveUp}"
+						        Command="{Binding #root.Commands.MoveUp}" CommandParameter="{Binding}" />
+						<CheckBox DockPanel.Dock="Left" Theme="{StaticResource RowCheckBox}" Margin="0,0,4,0" VerticalAlignment="Center"
+						          IsChecked="{Binding Enabled}" ToolTip.Tip="{DynamicResource TipPartEnabled}"
+						          AutomationProperties.Name="{DynamicResource TipPartEnabled}" AutomationProperties.AutomationId="{Binding Name, StringFormat='Enabled:{0}'}" />
+						<ContentControl DockPanel.Dock="Left" Content="{Binding}" Focusable="False" IsTabStop="False" Margin="0,0,4,0" VerticalAlignment="Center">
+							<ContentControl.DataTemplates>
+								<DataTemplate DataType="model:LensPart">
+									<controls:IconView>
+										<controls:IconView.Drawing>
+											<MultiBinding Converter="{StaticResource LensIcon}">
+												<Binding Path="R1" />
+												<Binding Path="R2" />
+												<Binding Path="Diameter" />
+											</MultiBinding>
+										</controls:IconView.Drawing>
+									</controls:IconView>
+								</DataTemplate>
+								<DataTemplate DataType="model:OpticalPart">
+									<controls:IconView Drawing="{Binding Converter={StaticResource PartIcon}}" />
+								</DataTemplate>
+							</ContentControl.DataTemplates>
+						</ContentControl>
+						<TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+					</DockPanel>
+				</DataTemplate>
+				<!-- a project colour scheme: its gradient and name -->
+				<DataTemplate DataType="rendering:ColorScheme">
+					<DockPanel Classes="row">
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource MinusGeometry}"
+						        ToolTip.Tip="{DynamicResource TipRemove}" AutomationProperties.Name="{DynamicResource TipRemove}"
+						        Command="{Binding #root.Commands.Remove}" CommandParameter="{Binding}" />
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource RowDownGeometry}"
+						        ToolTip.Tip="{DynamicResource TipMoveDown}" AutomationProperties.Name="{DynamicResource TipMoveDown}"
+						        Command="{Binding #root.Commands.MoveDown}" CommandParameter="{Binding}" />
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource RowUpGeometry}"
+						        ToolTip.Tip="{DynamicResource TipMoveUp}" AutomationProperties.Name="{DynamicResource TipMoveUp}"
+						        Command="{Binding #root.Commands.MoveUp}" CommandParameter="{Binding}" />
+						<Rectangle DockPanel.Dock="Left" Width="36" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" StrokeThickness="0.5"
+						           Stroke="{DynamicResource TextBoxBorder}" Fill="{Binding Stops, Converter={x:Static local:ProjectTree.SchemeBrush}}" />
+						<TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+					</DockPanel>
+				</DataTemplate>
+				<DataTemplate DataType="model:Probe">
+					<DockPanel Classes="row" Classes.off="{Binding !Active}">
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource MinusGeometry}"
+						        ToolTip.Tip="{DynamicResource TipRemove}" AutomationProperties.Name="{DynamicResource TipRemove}"
+						        Command="{Binding #root.Commands.Remove}" CommandParameter="{Binding}" />
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource RowDownGeometry}"
+						        ToolTip.Tip="{DynamicResource TipMoveDown}" AutomationProperties.Name="{DynamicResource TipMoveDown}"
+						        Command="{Binding #root.Commands.MoveDown}" CommandParameter="{Binding}" />
+						<Button DockPanel.Dock="Right" Theme="{StaticResource GlyphButton}" Content="{StaticResource RowUpGeometry}"
+						        ToolTip.Tip="{DynamicResource TipMoveUp}" AutomationProperties.Name="{DynamicResource TipMoveUp}"
+						        Command="{Binding #root.Commands.MoveUp}" CommandParameter="{Binding}" />
+						<CheckBox DockPanel.Dock="Left" Theme="{StaticResource RowCheckBox}" Margin="0,0,4,0" VerticalAlignment="Center"
+						          IsChecked="{Binding Active}" ToolTip.Tip="{DynamicResource TipProbeActive}"
+						          AutomationProperties.Name="{DynamicResource TipProbeActive}" AutomationProperties.AutomationId="{Binding Name, StringFormat='Enabled:{0}'}" />
+						<controls:IconView DockPanel.Dock="Left" Drawing="Probe" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+					</DockPanel>
+				</DataTemplate>
+			</TreeView.DataTemplates>
+		</TreeView>
+	</DockPanel>
+</UserControl>

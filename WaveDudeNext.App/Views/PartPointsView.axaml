@@ -1,0 +1,63 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.PartPointsView"
+             x:DataType="model:OutlinePart">
+	<!-- the point list of a polygon outline (the data context is the part): one row per point with X and Y relative to
+	     the centre, before rotation, a remove button, and an add button below -->
+	<StackPanel>
+		<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionPoints}" />
+		<TextBlock Classes="FormHint" Text="{Binding $parent[views:PartPointsView].HintText}" />
+		<DockPanel Margin="0,0,0,2">
+			<Border DockPanel.Dock="Right" Width="22" />
+			<UniformGrid Columns="2">
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:PartPoint.X}" Margin="2,0" />
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:PartPoint.Y}" Margin="2,0" />
+			</UniformGrid>
+		</DockPanel>
+		<ItemsControl x:Name="list" ItemsSource="{Binding Points}" Focusable="False">
+			<ItemsControl.ItemTemplate>
+				<DataTemplate x:DataType="model:PartPoint">
+					<DockPanel Margin="0,0,0,4">
+						<Button DockPanel.Dock="Right" Theme="{DynamicResource RemovePointButton}" ToolTip.Tip="{DynamicResource TipRemovePoint}"
+						        AutomationProperties.Name="{DynamicResource TipRemovePoint}" Click="OnRemovePoint" />
+						<UniformGrid Columns="2">
+							<controls:NumberBox Margin="0,0,2,0" Text="{Binding X, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{DynamicResource Hint.PartPoint.X}" />
+							<controls:NumberBox Margin="2,0,0,0" Text="{Binding Y, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{DynamicResource Hint.PartPoint.Y}" />
+						</UniformGrid>
+					</DockPanel>
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+		<StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+			<Button Padding="8,2" Margin="0,2,6,0" Content="{DynamicResource ButtonAddPoint}" ToolTip.Tip="{DynamicResource TipAddPoint}"
+			        Click="OnAddPoint" AutomationProperties.AutomationId="PartAddPoint" />
+		</StackPanel>
+	</StackPanel>
+</UserControl>

@@ -1,0 +1,45 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:localization="using:WaveDudeNext.App.Localization"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:app="using:WaveDudeNext.App"
+             x:Class="WaveDudeNext.App.Views.CollectionView"
+             x:DataType="app:NamedCollection">
+	<UserControl.Resources>
+		<converters:ItemCountConverter x:Key="ItemCount" />
+	</UserControl.Resources>
+
+	<!-- a folder node (Sources, Probes): just the name and the count, the count with its plural -->
+	<StackPanel Margin="8">
+		<Label Theme="{DynamicResource FormSection}" Content="{Binding Label}" Margin="0,2,0,4" />
+		<TextBlock Classes="FormValue" Margin="0" AutomationProperties.AutomationId="CollectionCount">
+			<TextBlock.Text>
+				<!-- the language, so "n items" follows a switch at once (upstream CollectionView.xaml:36) -->
+				<MultiBinding Converter="{StaticResource ItemCount}">
+					<Binding Path="Items.Count" />
+					<Binding Path="Current" Source="{x:Static localization:LanguageController.Instance}" />
+				</MultiBinding>
+			</TextBlock.Text>
+		</TextBlock>
+	</StackPanel>
+</UserControl>

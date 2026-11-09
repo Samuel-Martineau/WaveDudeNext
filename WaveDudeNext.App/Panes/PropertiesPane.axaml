@@ -1,0 +1,100 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:app="using:WaveDudeNext.App"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Panes.PropertiesPane"
+             Focusable="False">
+	<!-- the editor styles apply to everything under the pane (the window may merge them for the whole application later) -->
+	<UserControl.Styles>
+		<StyleInclude Source="avares://WaveDudeNext.App/Themes/Editors.axaml" />
+	</UserControl.Styles>
+
+	<!-- one view per model type; the content control picks the template by the selected object's type, and a template
+	     matches the derived kinds too, so the three gate kinds share LogicGatePartView -->
+	<UserControl.DataTemplates>
+		<DataTemplate DataType="{x:Type model:Project}">
+			<views:ProjectView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:Scene}">
+			<views:SceneView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:Simulation}">
+			<views:SimulationView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:Display}">
+			<views:DisplayView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:Source}">
+			<views:SourceView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:LensPart}">
+			<views:LensPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:PolygonPart}">
+			<views:PolygonPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:RectanglePart}">
+			<views:RectanglePartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:EllipsePart}">
+			<views:EllipsePartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:TrianglePart}">
+			<views:TrianglePartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:OutlinePart}">
+			<views:OutlinePartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:FiberPart}">
+			<views:FiberPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:BraggReflectorPart}">
+			<views:BraggReflectorPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:GrinLensPart}">
+			<views:GrinLensPartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:ZonePlatePart}">
+			<views:ZonePlatePartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:LogicGatePart}">
+			<views:LogicGatePartView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type model:Probe}">
+			<views:ProbeView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type rendering:ColorScheme}">
+			<views:ColorSchemeView />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type app:NamedCollection}">
+			<views:CollectionView />
+		</DataTemplate>
+	</UserControl.DataTemplates>
+
+	<Panel Background="{DynamicResource ToolWindowBackground}">
+		<ContentControl x:Name="content" Focusable="False" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+		<TextBlock x:Name="hint" Margin="6" VerticalAlignment="Top" Foreground="{DynamicResource GrayText}" Text="{DynamicResource NoSelection}" />
+	</Panel>
+</UserControl>

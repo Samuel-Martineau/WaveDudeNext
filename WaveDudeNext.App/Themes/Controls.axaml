@@ -1,0 +1,712 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- The control styles of the whole application, upstream's Themes/Controls.xaml on Avalonia 12: the Visual Studio
+     look, 12 px text, 23 px rows, 1 px square borders, no corner radius, no shadow, no animation, keyboard focus an
+     Accent border (the user's rule). Every colour is a DynamicResource from the colour table in force (Themes/Dark.axaml
+     or Light.axaml through the theme variant), so a theme switch restyles everything live.
+
+     Each control in scope gets a ControlTheme keyed by its type, which replaces Fluent's theme for it outright: a plain
+     Style over Fluent's theme would keep Fluent's own pseudo-class triggers (they outrank a style's setters), its
+     transitions and its pressed scale. The ControlThemes live in Styles.Resources, found before Fluent's because this
+     file is included after the Fluent theme (Application.Styles are searched last to first) or sits on a window; the
+     classes (dockHeader, statusBar, statusWarn, statusError) and the Window are plain styles. Template part names are
+     the ones Avalonia's control code looks up (PART_Popup, PART_LineUpButton and the other ScrollBar buttons,
+     PART_Header and PART_HeaderPresenter, PART_ItemsPresenter), so the controls keep working under the new templates.
+     Editors (TextBox, ComboBox, CheckBox, Slider) are Editors.axaml's, lists are Lists.axaml's, the dock chrome is the
+     docking control theme's. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="using:Avalonia.Controls.Converters">
+	<Styles.Resources>
+		<ResourceDictionary>
+			<!-- glyphs (upstream Controls.xaml:45-55): 8x4 scroll arrows, the 4x8 submenu arrow, the check mark stroked at
+			     1.5, the 5x10 tree chevrons stroked at 1 -->
+			<StreamGeometry x:Key="ArrowUpGeometry">M0,4 L4,0 L8,4 Z</StreamGeometry>
+			<StreamGeometry x:Key="ArrowDownGeometry">M0,0 L8,0 L4,4 Z</StreamGeometry>
+			<StreamGeometry x:Key="ArrowLeftGeometry">M4,0 L4,8 L0,4 Z</StreamGeometry>
+			<StreamGeometry x:Key="ArrowRightGeometry">M0,0 L4,4 L0,8 Z</StreamGeometry>
+			<StreamGeometry x:Key="SubmenuArrowGeometry">M0,0 L4,4 L0,8 Z</StreamGeometry>
+			<StreamGeometry x:Key="CheckGeometry">M0,4 L3,7 L8,1</StreamGeometry>
+			<StreamGeometry x:Key="ChevronRightGeometry">M0,0 L5,5 L0,10</StreamGeometry>
+			<StreamGeometry x:Key="ChevronDownGeometry">M0,0 L5,5 L10,0</StreamGeometry>
+			<StreamGeometry x:Key="ChevronUpGeometry">M0,5 L5,0 L10,5</StreamGeometry>
+			<StreamGeometry x:Key="CloseGeometry">M0,1 L1,0 L4,3 L7,0 L8,1 L5,4 L8,7 L7,8 L4,5 L1,8 L0,7 L3,4 Z</StreamGeometry>
+			<StreamGeometry x:Key="DropDownGeometry">M0,0 L8,0 L4,4 Z</StreamGeometry>
+			<!-- the gesture text of a menu entry ("Ctrl+N"), from the KeyGesture the way the platform writes it -->
+			<converters:PlatformKeyGestureConverter x:Key="KeyGestureConverter" />
+			<!-- a tree row's indent: 16 px per level (upstream's column width), from the item's Level -->
+			<converters:MarginMultiplierConverter x:Key="TreeIndentConverter" Indent="16" Left="True" />
+
+			<!-- ===================== scroll bars ===================== -->
+			<!-- 14 px thick with 14 px line buttons, the arrows in ScrollBarArrow with hover and pressed colours, a flat thumb
+			     with Margin 3 (8 px visible), transparent page areas; always shown at full width, since the panes' lists are
+			     read at a glance (Fluent's collapsed thumb and fade are not kept) -->
+			<ControlTheme x:Key="ScrollBarLineButtonTheme" TargetType="RepeatButton">
+				<Setter Property="Focusable" Value="False" />
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Background="{TemplateBinding Background}">
+							<ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+							                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<ControlTheme x:Key="ScrollBarPageButtonTheme" TargetType="RepeatButton">
+				<Setter Property="Focusable" Value="False" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Background="Transparent" />
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<ControlTheme x:Key="ScrollBarThumbTheme" TargetType="Thumb">
+				<Setter Property="Focusable" Value="False" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Name="PART_Thumb" Background="{DynamicResource ScrollBarThumb}" Margin="3" />
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:pointerover /template/ Border#PART_Thumb">
+					<Setter Property="Background" Value="{DynamicResource ScrollBarThumbHover}" />
+				</Style>
+				<Style Selector="^:pressed /template/ Border#PART_Thumb">
+					<Setter Property="Background" Value="{DynamicResource ScrollBarThumbPressed}" />
+				</Style>
+			</ControlTheme>
+
+			<ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+				<Setter Property="Background" Value="{DynamicResource ScrollBarBackground}" />
+				<Setter Property="AllowAutoHide" Value="False" />
+				<Style Selector="^:vertical">
+					<Setter Property="Width" Value="14" />
+					<Setter Property="MinWidth" Value="14" />
+					<Setter Property="Template">
+						<ControlTemplate>
+							<Grid Background="{TemplateBinding Background}" RowDefinitions="14,*,14">
+								<RepeatButton Name="PART_LineUpButton" Classes="line" Grid.Row="0" Focusable="False"
+								              Theme="{StaticResource ScrollBarLineButtonTheme}">
+									<Path Data="{StaticResource ArrowUpGeometry}" Fill="{DynamicResource ScrollBarArrow}" />
+								</RepeatButton>
+								<Track Grid.Row="1"
+								       Minimum="{TemplateBinding Minimum}"
+								       Maximum="{TemplateBinding Maximum}"
+								       Value="{TemplateBinding Value, Mode=TwoWay}"
+								       DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}"
+								       ViewportSize="{TemplateBinding ViewportSize}"
+								       Orientation="{TemplateBinding Orientation}"
+								       IsDirectionReversed="True">
+									<Track.DecreaseButton>
+										<RepeatButton Name="PART_PageUpButton" Focusable="False" Theme="{StaticResource ScrollBarPageButtonTheme}" />
+									</Track.DecreaseButton>
+									<Track.IncreaseButton>
+										<RepeatButton Name="PART_PageDownButton" Focusable="False" Theme="{StaticResource ScrollBarPageButtonTheme}" />
+									</Track.IncreaseButton>
+									<Thumb Theme="{StaticResource ScrollBarThumbTheme}" Width="14" MinHeight="14" />
+								</Track>
+								<RepeatButton Name="PART_LineDownButton" Classes="line" Grid.Row="2" Focusable="False"
+								              Theme="{StaticResource ScrollBarLineButtonTheme}">
+									<Path Data="{StaticResource ArrowDownGeometry}" Fill="{DynamicResource ScrollBarArrow}" />
+								</RepeatButton>
+							</Grid>
+						</ControlTemplate>
+					</Setter>
+				</Style>
+				<Style Selector="^:horizontal">
+					<Setter Property="Height" Value="14" />
+					<Setter Property="MinHeight" Value="14" />
+					<Setter Property="Template">
+						<ControlTemplate>
+							<Grid Background="{TemplateBinding Background}" ColumnDefinitions="14,*,14">
+								<RepeatButton Name="PART_LineUpButton" Classes="line" Grid.Column="0" Focusable="False"
+								              Theme="{StaticResource ScrollBarLineButtonTheme}">
+									<Path Data="{StaticResource ArrowLeftGeometry}" Fill="{DynamicResource ScrollBarArrow}" />
+								</RepeatButton>
+								<Track Grid.Column="1"
+								       Minimum="{TemplateBinding Minimum}"
+								       Maximum="{TemplateBinding Maximum}"
+								       Value="{TemplateBinding Value, Mode=TwoWay}"
+								       DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}"
+								       ViewportSize="{TemplateBinding ViewportSize}"
+								       Orientation="{TemplateBinding Orientation}">
+									<Track.DecreaseButton>
+										<RepeatButton Name="PART_PageUpButton" Focusable="False" Theme="{StaticResource ScrollBarPageButtonTheme}" />
+									</Track.DecreaseButton>
+									<Track.IncreaseButton>
+										<RepeatButton Name="PART_PageDownButton" Focusable="False" Theme="{StaticResource ScrollBarPageButtonTheme}" />
+									</Track.IncreaseButton>
+									<Thumb Theme="{StaticResource ScrollBarThumbTheme}" Height="14" MinWidth="14" />
+								</Track>
+								<RepeatButton Name="PART_LineDownButton" Classes="line" Grid.Column="2" Focusable="False"
+								              Theme="{StaticResource ScrollBarLineButtonTheme}">
+									<Path Data="{StaticResource ArrowRightGeometry}" Fill="{DynamicResource ScrollBarArrow}" />
+								</RepeatButton>
+							</Grid>
+						</ControlTemplate>
+					</Setter>
+				</Style>
+				<Style Selector="^ /template/ RepeatButton.line:pointerover Path">
+					<Setter Property="Fill" Value="{DynamicResource ScrollBarArrowHover}" />
+				</Style>
+				<Style Selector="^ /template/ RepeatButton.line:pressed Path">
+					<Setter Property="Fill" Value="{DynamicResource ScrollBarArrowPressed}" />
+				</Style>
+			</ControlTheme>
+
+			<!-- the bars take a column and a row of their own, as upstream's WPF scroll bars did: Fluent's template lays the
+			     content under the bars whenever AllowAutoHide is on (the project tree's rightmost pixels were covered by the
+			     bar's opaque track), so this template never spans; the corner between two bars is ScrollBarBackground. The
+			     gesture recogniser is Fluent's, for touch and pad scrolling. -->
+			<ControlTheme x:Key="{x:Type ScrollViewer}" TargetType="ScrollViewer">
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="AllowAutoHide" Value="False" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Grid ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+							<ScrollContentPresenter Name="PART_ContentPresenter" Grid.Row="0" Grid.Column="0"
+							                        Background="{TemplateBinding Background}"
+							                        HorizontalSnapPointsType="{TemplateBinding HorizontalSnapPointsType}"
+							                        VerticalSnapPointsType="{TemplateBinding VerticalSnapPointsType}"
+							                        HorizontalSnapPointsAlignment="{TemplateBinding HorizontalSnapPointsAlignment}"
+							                        VerticalSnapPointsAlignment="{TemplateBinding VerticalSnapPointsAlignment}"
+							                        Padding="{TemplateBinding Padding}"
+							                        ScrollViewer.IsScrollInertiaEnabled="{TemplateBinding IsScrollInertiaEnabled}">
+								<ScrollContentPresenter.GestureRecognizers>
+									<ScrollGestureRecognizer CanHorizontallyScroll="{Binding CanHorizontallyScroll, ElementName=PART_ContentPresenter}"
+									                         CanVerticallyScroll="{Binding CanVerticallyScroll, ElementName=PART_ContentPresenter}"
+									                         IsScrollInertiaEnabled="{Binding (ScrollViewer.IsScrollInertiaEnabled), ElementName=PART_ContentPresenter}"
+									                         Offset="{Binding Offset, ElementName=PART_ContentPresenter}"
+									                         Viewport="{Binding Viewport, ElementName=PART_ContentPresenter}"
+									                         Extent="{Binding Extent, ElementName=PART_ContentPresenter}" />
+								</ScrollContentPresenter.GestureRecognizers>
+							</ScrollContentPresenter>
+							<ScrollBar Name="PART_HorizontalScrollBar" Orientation="Horizontal" Grid.Row="1" />
+							<ScrollBar Name="PART_VerticalScrollBar" Orientation="Vertical" Grid.Column="1" />
+							<Panel Name="PART_ScrollBarsSeparator" Grid.Row="1" Grid.Column="1" Background="{DynamicResource ScrollBarBackground}" />
+						</Grid>
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<!-- ===================== tree view ===================== -->
+			<!-- the expander: 16x16, a 5x10 chevron stroked at 1, right when closed and down when open, the accent on hover;
+			     a pixel above the middle of the 23 px row so the chevron centres on the text (upstream Controls.xaml:583) -->
+			<ControlTheme x:Key="TreeViewChevronTheme" TargetType="ToggleButton">
+				<Setter Property="Width" Value="16" />
+				<Setter Property="Height" Value="16" />
+				<Setter Property="Focusable" Value="False" />
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Background="{TemplateBinding Background}">
+							<Path Name="PART_Glyph" Data="{StaticResource ChevronRightGeometry}" Stroke="{DynamicResource TreeViewGlyph}"
+							      StrokeThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="2,0,0,0" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:checked /template/ Path#PART_Glyph">
+					<Setter Property="Data" Value="{StaticResource ChevronDownGeometry}" />
+					<Setter Property="Margin" Value="0,2,0,0" />
+				</Style>
+				<Style Selector="^:pointerover /template/ Path#PART_Glyph">
+					<Setter Property="Stroke" Value="{DynamicResource TreeViewGlyphHover}" />
+				</Style>
+			</ControlTheme>
+
+			<!-- every row 23 px, the highlight on the header cell only (the chevron stays outside it, as upstream's Bd did),
+			     indent 16 per level; selected rows TreeViewItemSelected while the tree has the keyboard focus, the inactive
+			     colours otherwise (the plain styles below, which read the TreeView's :focus-within); keyboard focus a 1 px
+			     Accent border inside the row, the border being there in every state so nothing moves -->
+			<ControlTheme x:Key="{x:Type TreeViewItem}" TargetType="TreeViewItem">
+				<Setter Property="Foreground" Value="{DynamicResource TreeViewForeground}" />
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="Padding" Value="3,0" />
+				<Setter Property="MinHeight" Value="23" />
+				<Setter Property="FocusAdorner" Value="{x:Null}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<StackPanel>
+							<Grid Name="PART_Header" ColumnDefinitions="16,*"
+							      Margin="{TemplateBinding Level, Converter={StaticResource TreeIndentConverter}}">
+								<ToggleButton Name="PART_ExpandCollapseChevron" Grid.Column="0" Focusable="False" VerticalAlignment="Center"
+								              Margin="0,0,0,1" Theme="{StaticResource TreeViewChevronTheme}"
+								              IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}" />
+								<Border Name="PART_LayoutRoot" Grid.Column="1" Background="{TemplateBinding Background}"
+								        BorderBrush="Transparent" BorderThickness="1"
+								        MinHeight="{TemplateBinding MinHeight}" Padding="{TemplateBinding Padding}">
+									<ContentPresenter Name="PART_HeaderPresenter" Focusable="False"
+									                  Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+									                  HorizontalAlignment="Left" VerticalAlignment="Center" />
+								</Border>
+							</Grid>
+							<ItemsPresenter Name="PART_ItemsPresenter" IsVisible="{TemplateBinding IsExpanded}" ItemsPanel="{TemplateBinding ItemsPanel}" />
+						</StackPanel>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:empty /template/ ToggleButton#PART_ExpandCollapseChevron">
+					<Setter Property="IsVisible" Value="False" />
+				</Style>
+				<Style Selector="^ /template/ Border#PART_LayoutRoot:pointerover">
+					<Setter Property="Background" Value="{DynamicResource TreeViewItemHover}" />
+				</Style>
+				<Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+					<Setter Property="Background" Value="{DynamicResource TreeViewItemSelectedInactive}" />
+				</Style>
+				<Style Selector="^:selected">
+					<Setter Property="Foreground" Value="{DynamicResource TreeViewItemSelectedInactiveForeground}" />
+				</Style>
+				<Style Selector="^:focus-visible /template/ Border#PART_LayoutRoot">
+					<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+				</Style>
+				<Style Selector="^:disabled">
+					<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				</Style>
+			</ControlTheme>
+
+			<ControlTheme x:Key="{x:Type TreeView}" TargetType="TreeView">
+				<Setter Property="Background" Value="{DynamicResource TreeViewBackground}" />
+				<Setter Property="Foreground" Value="{DynamicResource TreeViewForeground}" />
+				<Setter Property="BorderThickness" Value="0" />
+				<Setter Property="Padding" Value="2" />
+				<Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+				<Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+						        BorderThickness="{TemplateBinding BorderThickness}">
+							<ScrollViewer Focusable="False" AllowAutoHide="False"
+							              HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+							              VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}"
+							              IsScrollChainingEnabled="{TemplateBinding (ScrollViewer.IsScrollChainingEnabled)}"
+							              IsDeferredScrollingEnabled="{TemplateBinding (ScrollViewer.IsDeferredScrollingEnabled)}"
+							              BringIntoViewOnFocusChange="{TemplateBinding (ScrollViewer.BringIntoViewOnFocusChange)}">
+								<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Margin="{TemplateBinding Padding}" />
+							</ScrollViewer>
+						</Border>
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<!-- ===================== menus ===================== -->
+			<!-- the menu bar's headers: Padding 7,4 makes them 23 px like the entries of their menus (upstream
+			     Controls.xaml:336); highlighted MenuItemHover, open MenuHeaderOpen (declared after, so it wins while both hold).
+			     The popup is placed under the whole header, left-aligned, on MenuPopupBackground with a 1 px MenuPopupBorder
+			     and Padding 2, no shadow (WindowManagerAddShadowHint off) and no animation; it inherits the window's UI zoom
+			     (Popup.InheritsTransform, defaulted on by WindowZoom). A scroll viewer with the theme's own bars takes over
+			     when a menu is taller than the screen. -->
+			<ControlTheme x:Key="TopLevelMenuItemTheme" TargetType="MenuItem">
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
+				<Setter Property="Padding" Value="7,4" />
+				<Setter Property="MinHeight" Value="23" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
+						        MinHeight="{TemplateBinding MinHeight}">
+							<Panel>
+								<ContentPresenter Name="PART_HeaderPresenter" Content="{TemplateBinding Header}"
+								                  ContentTemplate="{TemplateBinding HeaderTemplate}" RecognizesAccessKey="True"
+								                  HorizontalAlignment="Left" VerticalAlignment="Center" />
+								<!-- placed against the header itself, not the panel inside its padding, which had put the menu 7 px to the
+								     right and 4 px up into the header (2026-11-09, the user's report); the menu's left edge is the header's,
+								     its top the header's bottom, as in the WPF head -->
+								<Popup Name="PART_Popup" WindowManagerAddShadowHint="False" IsLightDismissEnabled="True"
+								       IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}" Placement="BottomEdgeAlignedLeft"
+								       PlacementTarget="{Binding $parent[MenuItem]}"
+								       OverlayInputPassThroughElement="{Binding $parent[Menu]}">
+									<Border Background="{DynamicResource MenuPopupBackground}" BorderBrush="{DynamicResource MenuPopupBorder}"
+									        BorderThickness="1" Padding="2">
+										<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+											<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Grid.IsSharedSizeScope="True" />
+										</ScrollViewer>
+									</Border>
+								</Popup>
+							</Panel>
+						</Border>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+					<Setter Property="Background" Value="{DynamicResource MenuItemHover}" />
+				</Style>
+				<Style Selector="^:selected">
+					<Setter Property="Foreground" Value="{DynamicResource MenuItemHoverForeground}" />
+				</Style>
+				<Style Selector="^:open /template/ Border#PART_LayoutRoot">
+					<Setter Property="Background" Value="{DynamicResource MenuHeaderOpen}" />
+				</Style>
+				<Style Selector="^:disabled">
+					<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				</Style>
+			</ControlTheme>
+
+			<!-- the menu bar: MenuBackground, Padding 2,0, as high as its 23 px headers, out of the Tab cycle (upstream's
+			     rule: F10 or Alt reach it; the arrow keys walk it) -->
+			<ControlTheme x:Key="{x:Type Menu}" TargetType="Menu">
+				<Setter Property="Background" Value="{DynamicResource MenuBackground}" />
+				<Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
+				<Setter Property="Padding" Value="2,0" />
+				<Setter Property="ItemContainerTheme" Value="{StaticResource TopLevelMenuItemTheme}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+							<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" KeyboardNavigation.TabNavigation="None" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<!-- the entries of a menu (upstream's SubmenuItem and SubmenuHeader templates): Padding 2, columns 24 (a 16 px icon
+			     or the check mark) / header / gesture text in GrayText (one shared width per menu) / 16 (the submenu arrow),
+			     23 px rows; highlighted MenuItemHover with the glyphs in MenuGlyphHover; a submenu opens to the right, 3 px
+			     up so its first entry is level with this one (over the popup's padding and border) -->
+			<ControlTheme x:Key="{x:Type MenuItem}" TargetType="MenuItem">
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
+				<Setter Property="Padding" Value="2" />
+				<Setter Property="MinHeight" Value="23" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Panel>
+							<Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
+							        MinHeight="{TemplateBinding MinHeight}">
+								<Grid>
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="24" />
+										<ColumnDefinition Width="*" />
+										<ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemGestureColumn" />
+										<ColumnDefinition Width="16" />
+									</Grid.ColumnDefinitions>
+									<ContentControl Name="PART_IconPresenter" Grid.Column="0" Content="{TemplateBinding Icon}" IsVisible="False"
+									                Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
+									<Path Name="PART_CheckGlyph" Grid.Column="0" Data="{StaticResource CheckGeometry}" Stroke="{DynamicResource MenuGlyph}"
+									      StrokeThickness="1.5" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center" />
+									<ContentPresenter Name="PART_HeaderPresenter" Grid.Column="1" Content="{TemplateBinding Header}"
+									                  ContentTemplate="{TemplateBinding HeaderTemplate}" RecognizesAccessKey="True"
+									                  Margin="4,2,8,2" HorizontalAlignment="Left" VerticalAlignment="Center" />
+									<TextBlock Name="PART_InputGestureText" Grid.Column="2" Margin="16,2,4,2" VerticalAlignment="Center"
+									           Text="{TemplateBinding InputGesture, Converter={StaticResource KeyGestureConverter}}"
+									           Foreground="{DynamicResource GrayText}" />
+									<Path Name="PART_ChevronPath" Grid.Column="3" Data="{StaticResource SubmenuArrowGeometry}" Fill="{DynamicResource MenuGlyph}"
+									      HorizontalAlignment="Center" VerticalAlignment="Center" />
+								</Grid>
+							</Border>
+							<Popup Name="PART_Popup" WindowManagerAddShadowHint="False" Placement="RightEdgeAlignedTop" VerticalOffset="-3"
+							       IsLightDismissEnabled="False" IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}">
+								<Border Background="{DynamicResource MenuPopupBackground}" BorderBrush="{DynamicResource MenuPopupBorder}"
+								        BorderThickness="1" Padding="2">
+									<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+										<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Grid.IsSharedSizeScope="True" />
+									</ScrollViewer>
+								</Border>
+							</Popup>
+						</Panel>
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:icon /template/ ContentControl#PART_IconPresenter">
+					<Setter Property="IsVisible" Value="True" />
+				</Style>
+				<Style Selector="^:checked /template/ Path#PART_CheckGlyph">
+					<Setter Property="IsVisible" Value="True" />
+				</Style>
+				<Style Selector="^:empty /template/ Path#PART_ChevronPath">
+					<Setter Property="IsVisible" Value="False" />
+				</Style>
+				<Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+					<Setter Property="Background" Value="{DynamicResource MenuItemHover}" />
+				</Style>
+				<Style Selector="^:selected">
+					<Setter Property="Foreground" Value="{DynamicResource MenuItemHoverForeground}" />
+				</Style>
+				<Style Selector="^:selected /template/ Path#PART_CheckGlyph">
+					<Setter Property="Stroke" Value="{DynamicResource MenuGlyphHover}" />
+				</Style>
+				<Style Selector="^:selected /template/ Path#PART_ChevronPath">
+					<Setter Property="Fill" Value="{DynamicResource MenuGlyphHover}" />
+				</Style>
+				<Style Selector="^:disabled">
+					<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				</Style>
+				<!-- an entry whose header is "-" is a separator line, as Avalonia marks it -->
+				<Style Selector="^:separator">
+					<Setter Property="Template">
+						<ControlTemplate>
+							<Separator />
+						</ControlTemplate>
+					</Setter>
+				</Style>
+			</ControlTheme>
+
+			<!-- a menu separator: 1 px of MenuSeparator, clear of the icon column (upstream Controls.xaml:359); a Separator
+			     placed among a menu's items is its own row, Avalonia gives it no container -->
+			<ControlTheme x:Key="{x:Type Separator}" TargetType="Separator">
+				<Setter Property="Background" Value="{DynamicResource MenuSeparator}" />
+				<Setter Property="Height" Value="1" />
+				<Setter Property="Margin" Value="26,3,2,3" />
+				<Setter Property="Focusable" Value="False" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Background="{TemplateBinding Background}" />
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<!-- a context menu: the same popup look as a menu's, its entries the MenuItem theme above -->
+			<ControlTheme x:Key="{x:Type ContextMenu}" TargetType="ContextMenu">
+				<Setter Property="FontSize" Value="12" />
+				<Setter Property="Background" Value="{DynamicResource MenuPopupBackground}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource MenuPopupBorder}" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="Padding" Value="2" />
+				<Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
+				<Setter Property="Focusable" Value="True" />
+				<Setter Property="HorizontalAlignment" Value="Stretch" />
+				<Setter Property="WindowManagerAddShadowHint" Value="False" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+						        BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"
+						        HorizontalAlignment="{TemplateBinding HorizontalAlignment}">
+							<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
+							                KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<!-- a menu flyout (the project tree's Part button): the context menu's look, square with a 1 px border, where
+			     Fluent's presenter had rounded corners and its own border colour (seen live at 1.5x, 2026-11-07) -->
+			<ControlTheme x:Key="{x:Type MenuFlyoutPresenter}" TargetType="MenuFlyoutPresenter">
+				<!-- 12 px like the menus: a flyout's presenter is a root of its own and takes Fluent's 14 px otherwise (2026-11-09, the user's report on the Part menu) -->
+				<Setter Property="FontSize" Value="12" />
+				<Setter Property="Background" Value="{DynamicResource MenuPopupBackground}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource MenuPopupBorder}" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="CornerRadius" Value="0" />
+				<Setter Property="Padding" Value="2" />
+				<Setter Property="Foreground" Value="{DynamicResource MenuForeground}" />
+				<Setter Property="Focusable" Value="True" />
+				<Setter Property="HorizontalAlignment" Value="Stretch" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+						        BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"
+						        HorizontalAlignment="{TemplateBinding HorizontalAlignment}">
+							<ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
+							                KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<!-- ===================== tool tip ===================== -->
+			<!-- ToolTipBackground with a 1 px ToolTipBorder, Padding 6,3, no shadow, no fade; a long tip wraps at 400 px
+			     (upstream's one-line tips ran past the screen on the long Tip* texts) -->
+			<ControlTheme x:Key="{x:Type ToolTip}" TargetType="ToolTip">
+				<Setter Property="Background" Value="{DynamicResource ToolTipBackground}" />
+				<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource ToolTipBorder}" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="Padding" Value="6,3" />
+				<Setter Property="FontSize" Value="12" />
+				<Setter Property="MaxWidth" Value="400" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+						        BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+							<ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+							                  ContentTemplate="{TemplateBinding ContentTemplate}" TextBlock.TextWrapping="Wrap" />
+						</Border>
+					</ControlTemplate>
+				</Setter>
+			</ControlTheme>
+
+			<!-- ===================== buttons ===================== -->
+			<!-- ButtonBackground in a 1 px ButtonBorder, Padding 10,3, MinHeight 23; hover ButtonHover, keyboard focus an Accent
+			     border (Avalonia's focus adorner switched off), pressed ButtonPressed with white text, disabled GrayText -->
+			<ControlTheme x:Key="{x:Type Button}" TargetType="Button">
+				<Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
+				<Setter Property="BorderBrush" Value="{DynamicResource ButtonBorder}" />
+				<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="Padding" Value="10,3" />
+				<Setter Property="MinHeight" Value="23" />
+				<Setter Property="HorizontalContentAlignment" Value="Center" />
+				<Setter Property="VerticalContentAlignment" Value="Center" />
+				<Setter Property="FocusAdorner" Value="{x:Null}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}"
+						                  BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+						                  Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
+						                  ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True"
+						                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+						                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+					<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+				</Style>
+				<Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+					<Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+				</Style>
+				<Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+					<Setter Property="Background" Value="{DynamicResource ButtonPressed}" />
+					<Setter Property="Foreground" Value="White" />
+				</Style>
+				<Style Selector="^:disabled">
+					<Setter Property="Foreground" Value="{DynamicResource GrayText}" />
+				</Style>
+			</ControlTheme>
+
+			<!-- ===================== splitter ===================== -->
+			<!-- a flat SplitterBackground bar, no preview; ButtonHover under the pointer and the Accent with the keyboard focus,
+			     as upstream's manual window styled its splitter, since a splitter is Tab-reachable here too -->
+			<ControlTheme x:Key="{x:Type GridSplitter}" TargetType="GridSplitter">
+				<Setter Property="Background" Value="{DynamicResource SplitterBackground}" />
+				<Setter Property="ShowsPreview" Value="False" />
+				<Setter Property="Focusable" Value="True" />
+				<Setter Property="MinWidth" Value="4" />
+				<Setter Property="MinHeight" Value="4" />
+				<Setter Property="FocusAdorner" Value="{x:Null}" />
+				<Setter Property="Template">
+					<ControlTemplate>
+						<Border Name="PART_Root" Background="{TemplateBinding Background}" />
+					</ControlTemplate>
+				</Setter>
+				<Style Selector="^:pointerover /template/ Border#PART_Root">
+					<Setter Property="Background" Value="{DynamicResource ButtonHover}" />
+				</Style>
+				<Style Selector="^:focus-visible /template/ Border#PART_Root">
+					<Setter Property="Background" Value="{DynamicResource Accent}" />
+				</Style>
+			</ControlTheme>
+		</ResourceDictionary>
+	</Styles.Resources>
+
+	<!-- ===================== window ===================== -->
+	<!-- every window: WindowBackground, WindowForeground, 12 px text (the WPF head's 9 pt) in the platform's default font, Segoe UI
+	     on Windows as there; how the text is rendered (subpixel antialiasing, hinting, the baseline on the grid) is set in code,
+	     Theming/TextRendering, since Avalonia 12 exposes those options through methods, not properties a setter can name -->
+	<Style Selector="Window">
+		<Setter Property="Background" Value="{DynamicResource WindowBackground}" />
+		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
+		<Setter Property="FontSize" Value="12" />
+	</Style>
+
+	<!-- every popup (a menu's, a context menu's, a tooltip's, a drop-down's) takes the scale of the control it opens from,
+	     so the UI zoom (WindowZoom) reaches it: a popup is a window of its own on X11 and Windows, and Avalonia carries the
+	     transform over only when asked. The context menu and tooltip popups are made in code with the control as their
+	     parent, so this style reaches them too. -->
+	<Style Selector="Popup">
+		<Setter Property="InheritsTransform" Value="True" />
+	</Style>
+
+	<!-- the selected tree row while the tree holds the keyboard focus: the active colours (a plain style outranks the
+	     theme's inactive ones) -->
+	<Style Selector="TreeView:focus-within TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+		<Setter Property="Background" Value="{DynamicResource TreeViewItemSelected}" />
+	</Style>
+	<Style Selector="TreeView:focus-within TreeViewItem:selected">
+		<Setter Property="Foreground" Value="{DynamicResource TreeViewItemSelectedForeground}" />
+	</Style>
+
+	<!-- the 16x16 glyph button of a pane's title bar (upstream DockHeaderButtonStyle): Content is a geometry drawn in the
+	     Foreground, Background is the colour shown under the pointer, nothing else; not in the Tab cycle -->
+	<Style Selector="Button.dockHeader">
+		<Setter Property="Width" Value="16" />
+		<Setter Property="Height" Value="16" />
+		<Setter Property="MinWidth" Value="0" />
+		<Setter Property="MinHeight" Value="0" />
+		<Setter Property="Margin" Value="1,0" />
+		<Setter Property="Padding" Value="0" />
+		<Setter Property="BorderThickness" Value="0" />
+		<Setter Property="Focusable" Value="False" />
+		<Setter Property="Template">
+			<ControlTemplate>
+				<Panel>
+					<Border Name="PART_Hover" Background="{TemplateBinding Background}" IsVisible="False" />
+					<Path Data="{TemplateBinding Content}" Fill="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+				</Panel>
+			</ControlTemplate>
+		</Setter>
+	</Style>
+	<Style Selector="Button.dockHeader:pointerover /template/ Border#PART_Hover">
+		<Setter Property="IsVisible" Value="True" />
+	</Style>
+
+	<!-- ===================== status bar ===================== -->
+	<!-- the bar: StatusBarBackground, MinHeight 22, the right padding keeping the window's resize grip clear of the last
+	     item; its texts white. A warning or error line recolours the text and the bar through the classes statusWarn and
+	     statusError (upstream's StatusBarTarget swapped the brush keys) -->
+	<Style Selector="Border.statusBar">
+		<Setter Property="Background" Value="{DynamicResource StatusBarBackground}" />
+		<Setter Property="MinHeight" Value="22" />
+		<Setter Property="Padding" Value="4,0,16,0" />
+	</Style>
+	<Style Selector="Border.statusBar TextBlock">
+		<Setter Property="Foreground" Value="{DynamicResource StatusBarForeground}" />
+	</Style>
+	<Style Selector="Border.statusBar.statusWarn">
+		<Setter Property="Background" Value="{DynamicResource StatusBarWarnBackground}" />
+	</Style>
+	<Style Selector="Border.statusBar.statusError">
+		<Setter Property="Background" Value="{DynamicResource StatusBarErrorBackground}" />
+	</Style>
+	<Style Selector="TextBlock.statusWarn">
+		<Setter Property="Foreground" Value="{DynamicResource StatusBarWarnForeground}" />
+		<Setter Property="Background" Value="{DynamicResource StatusBarWarnBackground}" />
+	</Style>
+	<Style Selector="TextBlock.statusError">
+		<Setter Property="Foreground" Value="{DynamicResource StatusBarErrorForeground}" />
+		<Setter Property="Background" Value="{DynamicResource StatusBarErrorBackground}" />
+	</Style>
+
+	<!-- ===================== tabs ===================== -->
+	<!-- the least that makes Fluent's tabs fit the grid: 12 px text, 23 px headers with the dock tabs' padding, the
+	     selected tab's underline in the Accent, square -->
+	<Style Selector="TabControl">
+		<Setter Property="Padding" Value="0" />
+	</Style>
+	<Style Selector="TabItem">
+		<Setter Property="FontSize" Value="12" />
+		<Setter Property="FontWeight" Value="Normal" />
+		<Setter Property="MinHeight" Value="23" />
+		<Setter Property="Padding" Value="9,4,9,3" />
+		<Setter Property="Margin" Value="0" />
+		<Setter Property="Foreground" Value="{DynamicResource ToolTabForeground}" />
+		<Setter Property="Background" Value="Transparent" />
+	</Style>
+	<Style Selector="TabItem:selected">
+		<Setter Property="Foreground" Value="{DynamicResource ToolTabSelectedForeground}" />
+		<Setter Property="Background" Value="Transparent" />
+	</Style>
+	<Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
+		<Setter Property="Background" Value="{DynamicResource Accent}" />
+		<Setter Property="CornerRadius" Value="0" />
+	</Style>
+	<Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="TextElement.Foreground" Value="{DynamicResource ToolTabHoverForeground}" />
+	</Style>
+</Styles>

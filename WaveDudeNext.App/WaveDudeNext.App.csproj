@@ -1,0 +1,76 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Avalonia head of the application (2026-11-09): the second window over the models of WaveDudeNext.UI, beside the
+       WPF one, which stays canonical. Its controls, panes, forms, themes, docking, manual renderer, Skia painters and
+       converters came from Mark's port of version 0.1.3 (the "Based on" line of every file here names him); its window
+       is written here on the models, as the WPF window is. Plain net10.0: this head is meant for Windows first, then
+       macOS and Linux. The text is the platform's default font, Segoe UI on Windows as in the WPF head (no bundled
+       font; the port had Inter). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Program.Main configures logging before Avalonia starts -->
+    <StartupObject>WaveDudeNext.App.Program</StartupObject>
+    <!-- Avalonia's clipboard and drag-and-drop on Windows go through COM -->
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- executable icon (Explorer, taskbar); the window icon is the same file as an Avalonia resource -->
+    <ApplicationIcon>Assets\wavedudenext.ico</ApplicationIcon>
+    <!-- bindings are checked at compile time against x:DataType; a view that binds by name declares its type -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- read by the file properties; the license text is LICENSE.md, the header of every source file names it.
+         Authors and Company are the product's name (2026-10-26, the user's rule): .NET puts the company into folder names,
+         and the author's name is nobody's business on a user's disk; the Copyright line names him -->
+    <Authors>WaveDudeNext</Authors>
+    <Company>WaveDudeNext</Company>
+    <Copyright>Copyright (C) 2026 Alexander Gräf</Copyright>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <!-- the .editorconfig code-style rules are build warnings too: a file without the license header (IDE0073) -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- the window icon (the WPF App.ico) and the pictures the window embeds -->
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <!-- the manual, the license and the manual's figures, rendered at run time by Help/MarkdownDocument (the WPF head
+       converts them at build into FlowDocuments, which Avalonia has not); the same logical names as the port used -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\MANUAL.md" Link="Help\MANUAL.md" LogicalName="MANUAL.md" />
+    <EmbeddedResource Include="..\LICENSE.md" Link="Help\LICENSE.md" LogicalName="LICENSE.md" />
+    <EmbeddedResource Include="..\Assets\*.svg" Link="Help\Figures\%(Filename)%(Extension)" LogicalName="Assets/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- the string tables are the WPF head's (2026-11-09, the user's choice: one source, both heads loading compiled
+       dictionaries): WaveDudeNext.WPF/Strings/Strings.XX.xaml, converted at build into Avalonia dictionaries under obj/
+       and compiled from there as Strings/Strings.XX.axaml. The Build folder's C# is the build's converter, compiled by
+       MSBuild, not part of the app -->
+  <ItemGroup>
+    <StringTable Include="..\WaveDudeNext.WPF\Strings\Strings.*.xaml" />
+  </ItemGroup>
+  <Import Project="Build\StringTables.targets" />
+  <ItemGroup>
+    <Compile Remove="Build\**" />
+    <None Include="Build\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.5" />
+    <!-- the painters of the export decorations and the scene image decoder draw with Skia directly; the version is the
+         one Avalonia 12.1.5 renders with -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+    <PackageReference Include="NLog" Version="6.2.1" />
+  </ItemGroup>
+
+  <!-- WaveDudeNext.UI holds what no UI framework anchors (2026-11-06): the models, the settings, the shipped examples -->
+  <ItemGroup>
+    <ProjectReference Include="..\WaveDudeNext\WaveDudeNext.csproj" />
+    <ProjectReference Include="..\WaveDudeNext.UI\WaveDudeNext.UI.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,109 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.LensPartView"
+             x:DataType="model:LensPart">
+	<UserControl.Resources>
+		<converters:LensEdgeConverter x:Key="EdgeThickness" />
+	</UserControl.Resources>
+
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<views:PartCommonView />
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionMaterial}" />
+			<controls:FormPanel>
+				<!-- the box toggles the flag through its binding, then its click renames the part to match (Lens 1 to Mirror 1 and back) -->
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:LensPart.Mirror}" Click="OnMirrorToggled"
+				          IsChecked="{Binding Mirror}" ToolTip.Tip="{meta:Hint model:LensPart.Mirror}" AutomationProperties.AutomationId="PartMirror" />
+
+				<!-- a mirror has no index, no coating and no absorption -->
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:LensPart.RefractiveIndex}" />
+				<controls:NumberBox Text="{Binding RefractiveIndex, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="2.55" Increment="0.01" IsEnabled="{Binding !Mirror}"
+				                    ToolTip.Tip="{meta:Hint model:LensPart.RefractiveIndex}" AutomationProperties.AutomationId="PartIndex" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:LensPart.Coating}" />
+				<controls:NumberBox Text="{Binding Coating, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="50" IsEnabled="{Binding !Mirror}"
+				                    ToolTip.Tip="{meta:Hint model:LensPart.Coating}" AutomationProperties.AutomationId="PartCoating" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:CoatedPart.CoatingProfile}" />
+				<ComboBox Theme="{DynamicResource EnumComboBox}" ItemsSource="{meta:EnumValues model:CoatingProfile}" SelectedItem="{Binding CoatingProfile}" IsEnabled="{Binding !Mirror}"
+				          ToolTip.Tip="{meta:Hint model:CoatedPart.CoatingProfile}" AutomationProperties.AutomationId="PartCoatingProfile" />
+
+				<!-- the faces: the first surface is the front, the second the back, the rim the sides -->
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.FrontCoated}" IsEnabled="{Binding !Mirror}"
+				          IsChecked="{Binding FrontCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.FrontCoated}" AutomationProperties.AutomationId="PartFrontCoated" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.BackCoated}" IsEnabled="{Binding !Mirror}"
+				          IsChecked="{Binding BackCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.BackCoated}" AutomationProperties.AutomationId="PartBackCoated" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:CoatedPart.SidesCoated}" IsEnabled="{Binding !Mirror}"
+				          IsChecked="{Binding SidesCoated}" ToolTip.Tip="{meta:Hint model:CoatedPart.SidesCoated}" AutomationProperties.AutomationId="PartSidesCoated" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:LensPart.Absorption}" />
+				<controls:NumberBox Text="{Binding Absorption, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="255" Increment="5" IsEnabled="{Binding !Mirror}"
+				                    ToolTip.Tip="{meta:Hint model:LensPart.Absorption}" AutomationProperties.AutomationId="PartAbsorption" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:LensPart.AbsorptionRamp}" />
+				<controls:NumberBox Text="{Binding AbsorptionRamp, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="400" Increment="5" IsEnabled="{Binding !Mirror}"
+				                    ToolTip.Tip="{meta:Hint model:LensPart.AbsorptionRamp}" AutomationProperties.AutomationId="PartAbsorptionRamp" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionShape}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:LensPart.Diameter}" />
+				<controls:NumberBox Text="{Binding Diameter, UpdateSourceTrigger=LostFocus}" Minimum="2" Increment="10" ToolTip.Tip="{meta:Hint model:LensPart.Diameter}" AutomationProperties.AutomationId="PartDiameter" />
+
+				<!-- the lens's state in one box: on for a diverging lens; ticking it flips both radii -->
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:LensPart.IsConcave}"
+				          IsChecked="{Binding IsConcave}" ToolTip.Tip="{meta:Hint model:LensPart.IsConcave}" AutomationProperties.AutomationId="PartConcave" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:LensPart.R1}" />
+				<controls:NumberBox Text="{Binding R1, UpdateSourceTrigger=LostFocus}" Increment="10" ToolTip.Tip="{meta:Hint model:LensPart.R1}" AutomationProperties.AutomationId="PartR1" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:LensPart.R2}" />
+				<controls:NumberBox Text="{Binding R2, UpdateSourceTrigger=LostFocus}" Increment="10" ToolTip.Tip="{meta:Hint model:LensPart.R2}" AutomationProperties.AutomationId="PartR2" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:LensPart.Thickness}" />
+				<controls:NumberBox Text="{Binding Thickness, UpdateSourceTrigger=LostFocus}" Minimum="1" ToolTip.Tip="{meta:Hint model:LensPart.Thickness}" AutomationProperties.AutomationId="PartThickness" />
+
+				<!-- read-only: what the radii leave at the rim; 0 when the surfaces meet there -->
+				<TextBlock Classes="FormLabel" Text="{DynamicResource LabelEdgeThickness}" />
+				<TextBlock Classes="FormReadout" ToolTip.Tip="{DynamicResource TipEdgeThickness}" AutomationProperties.AutomationId="PartEdgeThickness">
+					<TextBlock.Text>
+						<MultiBinding Converter="{StaticResource EdgeThickness}">
+							<Binding Path="Diameter" />
+							<Binding Path="Thickness" />
+							<Binding Path="R1" />
+							<Binding Path="R2" />
+						</MultiBinding>
+					</TextBlock.Text>
+				</TextBlock>
+			</controls:FormPanel>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

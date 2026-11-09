@@ -1,0 +1,75 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.DisplayView"
+             x:DataType="model:Display">
+	<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+		<StackPanel Margin="8">
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionField}" />
+			<views:DisplayLayerView DataContext="{Binding Field}" Kind="Field" />
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionIntensity}" />
+			<views:DisplayLayerView DataContext="{Binding Intensity}" Kind="Intensity" />
+
+			<!-- what the preview pictures draw over the frames: a selected object shows its own either way -->
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionPreview}" />
+			<controls:FormPanel>
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Display.HandlesInPreview}"
+				          IsChecked="{Binding HandlesInPreview}" ToolTip.Tip="{meta:Hint model:Display.HandlesInPreview}" AutomationProperties.AutomationId="DisplayHandlesInPreview" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Display.LabelsInPreview}"
+				          IsChecked="{Binding LabelsInPreview}" ToolTip.Tip="{meta:Hint model:Display.LabelsInPreview}" AutomationProperties.AutomationId="DisplayLabelsInPreview" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionExportRange}" />
+			<controls:FormPanel>
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Display.ExportFrom}" />
+				<controls:NumberBox Text="{Binding ExportFrom, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Display.ExportFrom}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Display.ExportTo}" />
+				<controls:NumberBox Text="{Binding ExportTo, UpdateSourceTrigger=LostFocus}" Minimum="0" ToolTip.Tip="{meta:Hint model:Display.ExportTo}" />
+
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Display.ProbeGraphsInExport}"
+				          IsChecked="{Binding ProbeGraphsInExport}" ToolTip.Tip="{meta:Hint model:Display.ProbeGraphsInExport}" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Display.ProbeMarkersInExport}"
+				          IsChecked="{Binding ProbeMarkersInExport}" ToolTip.Tip="{meta:Hint model:Display.ProbeMarkersInExport}" />
+				<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:Display.SourceMarkersInExport}"
+				          IsChecked="{Binding SourceMarkersInExport}" ToolTip.Tip="{meta:Hint model:Display.SourceMarkersInExport}" />
+			</controls:FormPanel>
+
+			<Label Theme="{DynamicResource FormSection}" Content="{DynamicResource SectionVideo}" />
+			<controls:FormPanel DataContext="{Binding Video}" x:DataType="model:Video">
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Video.Fps}" />
+				<controls:NumberBox Text="{Binding Fps, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="240" ToolTip.Tip="{meta:Hint model:Video.Fps}" />
+
+				<TextBlock Classes="FormLabel" Text="{meta:Label model:Video.Quality}" />
+				<controls:NumberBox Text="{Binding Quality, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="100" ToolTip.Tip="{meta:Hint model:Video.Quality}" />
+			</controls:FormPanel>
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

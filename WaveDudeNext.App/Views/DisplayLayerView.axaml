@@ -1,0 +1,56 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, author of the Avalonia port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
+             xmlns:converters="using:WaveDudeNext.App.Converters"
+             xmlns:meta="using:WaveDudeNext.App.Markup"
+             xmlns:panes="using:WaveDudeNext.App.Panes"
+             xmlns:views="using:WaveDudeNext.App.Views"
+             xmlns:model="using:WaveDudeNext.Model"
+             xmlns:rendering="using:WaveDudeNext.Rendering"
+             x:Class="WaveDudeNext.App.Views.DisplayLayerView"
+             x:DataType="model:DisplayLayer">
+	<controls:FormPanel>
+		<TextBlock Classes="FormLabel" Text="{meta:Label model:DisplayLayer.ColorScheme}" />
+		<!-- the picker lists the project's schemes and the shared ones of this layer's kind, with previews -->
+		<controls:ColorSchemePicker SelectedName="{Binding ColorScheme}" ToolTip.Tip="{meta:Hint model:DisplayLayer.ColorScheme}" AutomationProperties.AutomationId="SchemePicker"
+		                            Kind="{Binding $parent[views:DisplayLayerView].Kind}"
+		                            Project="{Binding $parent[panes:PropertiesPane].Project}" />
+
+		<TextBlock Classes="FormLabel" Text="{meta:Label model:DisplayLayer.Brightness}" />
+		<controls:NumberBox Text="{Binding Brightness, UpdateSourceTrigger=LostFocus}" Minimum="0.0001" Maximum="100000" Logarithmic="True"
+		                    ToolTip.Tip="{meta:Hint model:DisplayLayer.Brightness}" AutomationProperties.AutomationId="LayerBrightness" />
+
+		<TextBlock Classes="FormLabel" Text="{meta:Label model:DisplayLayer.BlackLevel}" />
+		<controls:NumberBox Text="{Binding BlackLevel, UpdateSourceTrigger=LostFocus}" Minimum="-10" Maximum="1" Increment="0.01" ToolTip.Tip="{meta:Hint model:DisplayLayer.BlackLevel}" />
+
+		<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:DisplayLayer.Preview}"
+		          IsChecked="{Binding Preview}" ToolTip.Tip="{meta:Hint model:DisplayLayer.Preview}" />
+		<!-- the scene image's glowing-edges outline: over the preview (opt-out), baked into exports (opt-in) -->
+		<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:DisplayLayer.Overlay}"
+		          IsChecked="{Binding Overlay}" ToolTip.Tip="{meta:Hint model:DisplayLayer.Overlay}" />
+		<TextBlock Classes="FormLabel" Text="{meta:Label model:DisplayLayer.OverlayGain}" />
+		<controls:NumberBox Text="{Binding OverlayGain, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="5" Increment="0.05" ToolTip.Tip="{meta:Hint model:DisplayLayer.OverlayGain}" />
+		<CheckBox controls:FormPanel.FullWidth="True" Content="{meta:Label model:DisplayLayer.OverlayInExport}"
+		          IsChecked="{Binding OverlayInExport}" ToolTip.Tip="{meta:Hint model:DisplayLayer.OverlayInExport}" />
+	</controls:FormPanel>
+</UserControl>
