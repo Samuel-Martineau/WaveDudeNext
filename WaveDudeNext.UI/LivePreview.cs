@@ -28,25 +28,27 @@ namespace WaveDudeNext.UI;
 /// <summary>
 /// Keeps the preview current after edits (a model of this library since 2026-11-07; the main window's own before). A
 /// simulation-affecting edit marks the run stale (<see cref="RunHost.IsRunStale"/>), stops playback and any run in
-/// progress (its snapshot is obsolete), asks the <see cref="ScratchRunner"/> for the frame the preview shows once the
-/// burst of edits has rested for <see cref="ScratchDelay"/> (the newest request wins) and, when <see cref="Settings.AutoRerun"/>
-/// is on, starts a stored re-run once the user has been quiet for <see cref="RerunDelay"/>. A probe edit never
-/// starts a run: only the recordings are stale, the scratch frame refreshes the graph; except that an active probe
-/// the run does not record is a simulation edit (2026-10-18). Scrubbing asks for scratch frames whenever the store
-/// cannot show the position: no run, a stale run, or a run that has not got there yet. The scratch runner has its own
-/// engine, and any run in progress is paused while a scratch frame computes, so the frame the user looks at always
-/// comes first (the user's rule, 2026-10-14). The two delays pace work, nothing else: when an edit is finished is the
-/// undo history's affair. The application's edit hub hands every change to <see cref="Edited"/>; the preview binds
+/// progress (its snapshot is obsolete), asks the <see cref="ScratchRunner"/> for the frame the preview shows, and, when
+/// <see cref="Settings.AutoRerun"/> is on, redoes the stored run once the edit has finished. A probe edit never starts
+/// a run: only the recordings are stale, the scratch frame refreshes the graph; except that an active probe the run
+/// does not record is a simulation edit (2026-10-18). Scrubbing asks for scratch frames whenever the store cannot show
+/// the position: no run, a stale run, or a run that has not got there yet. The scratch runner has its own engine, and
+/// any run in progress is paused while a scratch frame computes, so the frame the user looks at always comes first (the
+/// user's rule, 2026-10-14).
+/// <para>
+/// Nothing here keeps time (2026-11-07, the user's choice, replacing a 120 ms debounce of the requests and a quiet period
+/// of 1.5 s before the re-run): every change asks for its frame at once, and the runner, which finishes the frame in
+/// flight and then takes the newest request (2026-11-09), does the coalescing, so a drag shows frames at the rate the
+/// engine delivers them; a part or scene edit asks when the scene is composed (<see cref="SceneComposer.Composed"/>), never
+/// waiting for the worker on the UI thread. The re-run comes when the edit has finished, the application's own notion
+/// of it (<see cref="EditFinished"/>, the one the undo history takes: a mouse button released, the focus leaving, Enter,
+/// a command), held back by a frame still computing, a run still active or an export in progress until each of them is
+/// over, which each announces. The application's edit hub hands every change to <see cref="Edited"/>; the preview binds
 /// <see cref="ScratchFrame"/>. UI thread only.
+/// </para>
 /// </summary>
 public sealed class LivePreview : ObservableObject
 {
-	/// <summary>How long after the last edit or scrub a scratch frame is requested.</summary>
-	public static readonly TimeSpan ScratchDelay = TimeSpan.FromMilliseconds(120);
-
-	/// <summary>How long the user must be quiet after an edit before the stored run is redone.</summary>
-	public static readonly TimeSpan RerunDelay = TimeSpan.FromMilliseconds(1500);
-
 	private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
 
 	private readonly ProjectDocument _document;
@@ -55,24 +57,29 @@ public sealed class LivePreview : ObservableObject
 	private readonly BusyState _busy;
 	private readonly SceneComposer _scene;
 	private readonly SynchronizationContext _uiThread;
-	private readonly IUiTimer _scratchTimer;
-	private readonly IUiTimer _rerunTimer;
 	private ScratchRunner? _scratch;
 	private SimulationRun? _pausedForScratch;
-	private (RunSpec Spec, int Frame)? _scratchRequested;
 	private ScratchResult? _scratchFrame;
 
-	/// <summary>The newest simulation or probe edit, named with its value on the next scratch request's log line (2026-10-27); null once named.</summary>
+	/// <summary>The newest request made and what it is for: the frame's reason and the edit that led to it, logged when its result shows; null while none is outstanding.</summary>
+	private (RunSpec Spec, int Frame, string Why)? _scratchRequested;
+
+	/// <summary>A frame was asked for while the scene was being composed: it is asked for when the composition is done.</summary>
+	private bool _requestWhenComposed;
+
+	/// <summary>An edit began (a change arrived) and has not finished yet: no re-run meanwhile.</summary>
+	private bool _editInProgress;
+
+	/// <summary>The newest simulation or probe edit, named with its value on the next frame's log line (2026-10-27); null once named.</summary>
 	private ProjectChange? _lastChange;
 
-	/// <param name="document">The open project; a replacement resets the live state and warms the scratch engine up.</param>
+	/// <param name="document">The open project.</param>
 	/// <param name="runs">The current run, its flags, and the automatic re-runs started here.</param>
 	/// <param name="preview">The position the scratch frames are for; playback, stopped by a simulation edit.</param>
 	/// <param name="busy">Told the frame being computed; asked whether an export is in progress, which holds the re-run back.</param>
-	/// <param name="scene">The scene pixels a scratch frame takes, repainted after a part edit.</param>
-	/// <param name="timers">The UI thread's timers for the two delays.</param>
+	/// <param name="scene">The scene pixels a scratch frame takes, repainted after a part edit; a frame waits for its composition.</param>
 	/// <param name="uiThread">The UI thread for the scratch runner's results, at normal priority.</param>
-	public LivePreview(ProjectDocument document, RunHost runs, PreviewState preview, BusyState busy, SceneComposer scene, IUiTimers timers, SynchronizationContext uiThread)
+	public LivePreview(ProjectDocument document, RunHost runs, PreviewState preview, BusyState busy, SceneComposer scene, SynchronizationContext uiThread)
 	{
 		_document = document;
 		_runs = runs;
@@ -80,13 +87,9 @@ public sealed class LivePreview : ObservableObject
 		_busy = busy;
 		_scene = scene;
 		_uiThread = uiThread;
-		_scratchTimer = timers.Create(ScratchDelay, RequestScratch);
-		_rerunTimer = timers.Create(RerunDelay, AutoRerun);
-		document.ProjectReplaced += (_, _) => OnProjectReplaced();
 		runs.RunFinished += (_, _) => RunFinished();
 		preview.PropertyChanged += OnPreviewChanged;
-		// the document's first project was never "replaced": its warm-up is scheduled here
-		OnProjectReplaced();
+		scene.Composed += (_, _) => OnSceneComposed();
 	}
 
 	/// <summary>The newest scratch frame (or skip notice) for the preview's position; null when none applies.</summary>
@@ -101,12 +104,15 @@ public sealed class LivePreview : ObservableObject
 	/// <summary>Whether the store cannot show the preview's position, or its recordings are stale: no run, a stale one, stale probes, or a run that has not reached it.</summary>
 	private bool NeedsScratch => _runs.Run == null || _runs.IsRunStale || _runs.IsProbesStale || _runs.Run.FrameCount <= _preview.Position;
 
+	/// <summary>Whether a scratch frame is on its way: asked for, waiting for the scene, or computing.</summary>
+	private bool ScratchPending => _requestWhenComposed || _scratchRequested != null || _scratch?.IsBusy == true;
+
 	/// <summary>
 	/// A project edit, after the application has told the document, the undo history and the scene image about it:
 	/// what it means for the run, the preview and the scene. A colour scheme edit means nothing here; a probe edit
 	/// stales the recordings and asks for the frame; a simulation edit (or an active probe the run does not record,
 	/// or a brightness edit the 8-bit samples bake in) stales the run, stops playback and any run in progress,
-	/// repaints the scene after a part edit, and schedules the scratch frame and the re-run.
+	/// repaints the scene after a part edit, and asks for the frame; the re-run follows <see cref="EditFinished"/>.
 	/// </summary>
 	public void Edited(ProjectChange change)
 	{
@@ -124,7 +130,8 @@ public sealed class LivePreview : ObservableObject
 				_runs.IsProbesStale = true;
 			}
 			_lastChange = change;
-			ScheduleScratch();
+			_editInProgress = true;
+			RequestScratch();
 			return;
 		}
 		if (!change.AffectsSimulation && !unrecorded && !IsBrightnessBaked(change))
@@ -132,6 +139,7 @@ public sealed class LivePreview : ObservableObject
 			return;
 		}
 		_lastChange = change;
+		_editInProgress = true;
 		if (_runs.Run != null && !_runs.IsRunStale)
 		{
 			if (unrecorded)
@@ -166,20 +174,33 @@ public sealed class LivePreview : ObservableObject
 		}
 		if (_runs.Run is { IsActive: true } run)
 		{
-			// its snapshot is already obsolete: stop it now, the quiet period starts a fresh one. Any run, since
+			// its snapshot is already obsolete: stop it now; the re-run follows the edit's end. Any run, since
 			// 2026-10-16 (the user's rule: an edit makes the whole run moot, whoever started it); before, a run the
 			// user had started went on and was only marked stale
 			Logger.Debug("The {Kind} is stopped: its snapshot is obsolete", run.IsAutomatic ? "automatic run" : "run");
 			run.Stop();
 		}
-		ScheduleScratch();
-		ScheduleRerun();
+		RequestScratch();
+	}
+
+	/// <summary>
+	/// The edit has finished (the application's word, from its input: a mouse button released or pressed, the focus
+	/// leaving, Enter in a text box, a command, a drop, an edit that arrived without input): a stale run is redone now,
+	/// or as soon as the frame still computing, the run still active or the export in progress is over.
+	/// </summary>
+	public void EditFinished()
+	{
+		_editInProgress = false;
+		if (Settings.Default.AutoRerun && _runs.IsRunStale && !TryRerun())
+		{
+			Logger.Debug("Automatic re-run waits: {Reason}", _busy.IsExporting ? "an export is in progress" : _runs.IsActive ? "a run is still active" : "a preview frame is being computed");
+		}
 	}
 
 	/// <summary>
 	/// View > Preview resolution / frames / samples changed: the run and the scratch frame on screen were made
 	/// with the old shape, so both are redone as after an edit (the run marked stale, an automatic one stopped,
-	/// the position's frame requested, the re-run scheduled).
+	/// the position's frame requested, the re-run following the command's end).
 	/// </summary>
 	public void PreviewQualityChanged()
 	{
@@ -192,8 +213,9 @@ public sealed class LivePreview : ObservableObject
 				run.Stop();
 			}
 		}
-		ScheduleScratch();
-		ScheduleRerun();
+		// the setting is a command's doing (the View menu, the memory warning inside a run's start): its end brings the re-run
+		_editInProgress = true;
+		RequestScratch();
 	}
 
 	/// <summary>
@@ -226,31 +248,35 @@ public sealed class LivePreview : ObservableObject
 	{
 		if (_runs.IsRunStale)
 		{
-			ScheduleScratch();
-			ScheduleRerun();
+			RequestScratch();
+			TryRerun();
 		}
 		else if (_runs.IsProbesStale)
 		{
-			ScheduleScratch();
+			RequestScratch();
 		}
 	}
 
-	/// <summary>Ends the scratch engine and the delays; for closing.</summary>
+	/// <summary>
+	/// A new project is in place and its scene composition under way: no scratch frame applies, and the first one warms
+	/// the engine up (an OpenCL compile), better now than on the first click. Called by the application after it has
+	/// told the scene composer, so the frame follows the new scene.
+	/// </summary>
+	public void ProjectReplaced()
+	{
+		ScratchFrame = null;
+		_scratchRequested = null;
+		_editInProgress = false;
+		RequestScratch();
+	}
+
+	/// <summary>Ends the scratch engine; for closing.</summary>
 	public void Shutdown()
 	{
 		_scratchRequested = null;
-		_scratchTimer.Stop();
-		_rerunTimer.Stop();
+		_requestWhenComposed = false;
 		_scratch?.Dispose();
 		_scratch = null;
-	}
-
-	/// <summary>A new project: nothing is stale (the run went with the old one) and no scratch frame applies; the first scratch frame warms the engine up.</summary>
-	private void OnProjectReplaced()
-	{
-		ScratchFrame = null;
-		// warm up: the first scratch frame builds the engine (an OpenCL compile), better now than on the first click
-		ScheduleScratch();
 	}
 
 	/// <summary>A scrub to a position the store cannot show asks for its frame; so does playback stopping at one.</summary>
@@ -258,11 +284,21 @@ public sealed class LivePreview : ObservableObject
 	{
 		if (e.PropertyName == nameof(PreviewState.Position) && NeedsScratch)
 		{
-			ScheduleScratch();
+			RequestScratch();
 		}
 		else if (e.PropertyName == nameof(PreviewState.IsPlaying) && !_preview.IsPlaying && NeedsScratch)
 		{
-			ScheduleScratch();
+			RequestScratch();
+		}
+	}
+
+	/// <summary>The scene is composed: a frame that waited for it is asked for now, unless another composition is already under way.</summary>
+	private void OnSceneComposed()
+	{
+		if (_requestWhenComposed && !_scene.IsComposing)
+		{
+			_requestWhenComposed = false;
+			RequestScratch();
 		}
 	}
 
@@ -289,27 +325,22 @@ public sealed class LivePreview : ObservableObject
 		change.Item is DisplayLayer && change.Property == nameof(DisplayLayer.Brightness) && Settings.Default.PreviewSampleBytes == 1;
 
 	/// <summary>
-	/// After <see cref="ScratchDelay"/> of quiet, asks for the frame at the preview's position. Not while the preview
-	/// plays (2026-10-16, after an edit during playback kept playing the old frames until playback ended): a scratch
-	/// frame could never serve then, the position has moved on before it arrives, and every playback step restarted
-	/// this timer, so it never fired and the automatic re-run, which waits behind a pending scratch frame, never
-	/// started. A simulation edit stops playback at once (<see cref="Edited"/>); what plays on is a run that has not
-	/// reached the position, and the frame for the final position is asked for when playback stops.
+	/// Asks for the frame at the preview's position, now. Not while the preview plays (2026-10-16, after an edit during
+	/// playback kept playing the old frames until playback ended): a scratch frame could never serve then, the position
+	/// has moved on before it arrives. A simulation edit stops playback at once (<see cref="Edited"/>); what plays on is
+	/// a run that has not reached the position, and the frame for the final position is asked for when playback stops.
+	/// While the scene is being composed the request waits for the composition (<see cref="OnSceneComposed"/>): the
+	/// pixels would otherwise be waited for on the UI thread.
 	/// </summary>
-	private void ScheduleScratch()
+	private void RequestScratch()
 	{
-		if (_preview.IsPlaying)
+		if (_preview.IsPlaying || !NeedsScratch || Project.Simulation.Steps < 1)
 		{
 			return;
 		}
-		_scratchTimer.Restart();
-	}
-
-	private void RequestScratch()
-	{
-		_scratchTimer.Stop();
-		if (!NeedsScratch || Project.Simulation.Steps < 1)
+		if (_scene.IsComposing)
 		{
+			_requestWhenComposed = true;
 			return;
 		}
 		RunSpec? spec = TrySnapshotProject();
@@ -331,69 +362,58 @@ public sealed class LivePreview : ObservableObject
 			_pausedForScratch = run;
 		}
 		int frame = Math.Clamp(_preview.Position, 0, Math.Max(0, spec.FrameCount - 1));
-		// the newest edit with its value (2026-10-27): after the debounce, so a typed number shows as typed, not keystroke by keystroke
+		// the newest edit with its value (2026-10-27), named on the frame's line when its result shows; a request a
+		// newer one supersedes before the runner takes it is never computed and leaves the Trace line alone
 		string edit = _lastChange == null ? "" : ": " + _lastChange.Item + "." + (_lastChange.Property ?? "list") + (_lastChange.Values == null ? "" : " = " + _lastChange.NewValueText);
 		_lastChange = null;
-		Logger.Debug("Preview frame {Frame} requested from scratch ({Reason}{Edit})", frame,
-			_runs.Run == null ? "no run" : _runs.IsRunStale ? "the run is stale" : _runs.IsProbesStale ? "the probes changed" : "the run has not got there yet", edit);
-		_scratchRequested = (spec, frame);
+		string why = (_runs.Run == null ? "no run" : _runs.IsRunStale ? "the run is stale" : _runs.IsProbesStale ? "the probes changed" : "the run has not got there yet") + edit;
+		Logger.Trace("Preview frame {Frame} requested from scratch ({Why})", frame, why);
+		_scratchRequested = (spec, frame, why);
 		_scratch.Request(spec, frame);
 		_busy.ComputingFrame = frame;
 	}
 
 	private void OnScratchCompleted(object? sender, ScratchResult result)
 	{
-		// the request this result answers is the newest one: the indicator goes off (a newer request keeps it on)
+		// the request this result answers is the newest one: the indicator goes off and the paused run goes on (a newer
+		// request keeps both as they are, since its frame comes first)
 		if (_scratchRequested is { } requested && ReferenceEquals(requested.Spec, result.Spec) && requested.Frame == result.Frame)
 		{
+			Logger.Debug("Preview frame {Frame} from scratch ({Why})", result.Frame, requested.Why);
 			_scratchRequested = null;
 			_busy.ComputingFrame = -1;
-		}
-		if (_pausedForScratch is { } paused)
-		{
-			_pausedForScratch = null;
-			if (ReferenceEquals(paused, _runs.Run) && paused.IsActive)
+			if (_pausedForScratch is { } paused)
 			{
-				paused.Resume();
+				_pausedForScratch = null;
+				if (ReferenceEquals(paused, _runs.Run) && paused.IsActive)
+				{
+					paused.Resume();
+				}
 			}
 		}
 		ScratchFrame = result;
+		TryRerun();
 	}
 
-	/// <summary>After <see cref="RerunDelay"/> of quiet, redoes the stored run when the setting is on and the run is stale.</summary>
-	private void ScheduleRerun()
+	/// <summary>
+	/// Redoes the stored run when the setting is on, the run is stale and nothing holds it back: an edit still in
+	/// progress, a frame still computing, a run still active or an export in progress. True when a run was started.
+	/// </summary>
+	private bool TryRerun()
 	{
-		if (!Settings.Default.AutoRerun)
+		if (!Settings.Default.AutoRerun || !_runs.IsRunStale || _editInProgress || _runs.IsActive || ScratchPending || _busy.IsExporting)
 		{
-			return;
-		}
-		_rerunTimer.Restart();
-	}
-
-	private void AutoRerun()
-	{
-		_rerunTimer.Stop();
-		if (!Settings.Default.AutoRerun || !_runs.IsRunStale || _runs.IsActive)
-		{
-			Logger.Debug("No automatic re-run: {Reason}", !Settings.Default.AutoRerun ? "switched off" : !_runs.IsRunStale ? "the run is not stale" : "a run is active");
-			return;
-		}
-		if (_scratch?.IsBusy == true || _scratchTimer.IsRunning || _busy.IsExporting)
-		{
-			// the frame the user is looking at comes first, requested or computing; the run would take the cores away
-			// from it. An export reads the current run's store, so it keeps its run until it is done.
-			Logger.Debug("Automatic re-run postponed: {Reason}", _busy.IsExporting ? "an export is in progress" : "a preview frame is being computed");
-			ScheduleRerun();
-			return;
+			return false;
 		}
 		try
 		{
-			_runs.Start(automatic: true);
+			return _runs.Start(automatic: true);
 		}
 		catch (Exception ex) when (ex is RunSpecException or IOException or UnauthorizedAccessException or NotSupportedException)
 		{
 			// no message box for something the user did not ask for; the status bar shows the error
 			Logger.Error(ex, "The automatic re-run could not start: {Message}", ex.Message);
+			return false;
 		}
 	}
 

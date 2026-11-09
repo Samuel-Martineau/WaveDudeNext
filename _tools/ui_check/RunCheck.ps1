@@ -123,10 +123,17 @@ try {
 	Key $VK_RIGHT 100
 	Check "moving the source marks the run stale" (WaitFor { (RunStatus) -like "*edited since*" } 3000) (RunStatus)
 	Check "the shown frame is recomputed from scratch before any run" (WaitFor { (FieldHash) -ne $stored } 6000 200)
-	Check "the stored run is redone automatically after the edit" (WaitFor { (RunStatus) -like "Completed:*" -and (RunStatus) -notlike "*edited since*" } 20000 200) (RunStatus)
+	# an edit by the arrow keys is finished when the focus leaves the handle (2026-11-07, the user's rule; a quiet period of
+	# 1.5 s had stood for it): the automatic re-run follows that, so the harness leaves the handle as a user would
+	FocusOn "PreviewPlay"
+	Check "the stored run is redone automatically once the edit has finished" (WaitFor { (RunStatus) -like "Completed:*" -and (RunStatus) -notlike "*edited since*" } 20000 200) (RunStatus)
 	Check "the preview kept its position through the re-run" ((Frame) -eq "99 / 99") (Frame)
+	FocusOn "Source:Source 1"
 	Key $VK_LEFT 100
-	Check "moving it back: stale, then re-run" ((WaitFor { (RunStatus) -like "*edited since*" } 3000) -and (WaitFor { (RunStatus) -like "Completed:*" -and (RunStatus) -notlike "*edited since*" } 20000 200)) (RunStatus)
+	$stale = WaitFor { (RunStatus) -like "*edited since*" } 3000
+	FocusOn "PreviewPlay"
+	Check "moving it back: stale, then the re-run once the edit has finished" ($stale -and (WaitFor { (RunStatus) -like "Completed:*" -and (RunStatus) -notlike "*edited since*" } 20000 200)) (RunStatus)
+	FocusOn "Source:Source 1"                      # the marker focused again, as when the stored picture was taken
 	Start-Sleep -Milliseconds 200
 	Check "the re-run reproduces the original frame (same picture)" ((FieldHash) -eq $stored) ("{0} vs {1}" -f (FieldHash).Substring(0, 8), $stored.Substring(0, 8))
 	# ------------------------------------------------------------ an edit during playback (2026-10-16)
@@ -143,9 +150,13 @@ try {
 	$halted = Position
 	Start-Sleep -Milliseconds 400
 	Check "and stops playback at once" ((Position) -eq $halted) ("{0} then {1}" -f $halted, (Position))
+	FocusOn "PreviewPlay"                          # the edit is finished when the handle is left
 	Check "the re-run completes with the position kept" ((WaitFor { (RunStatus) -like "Completed:*" -and (RunStatus) -notlike "*edited since*" } 20000 200) -and (Position) -eq $halted) ("{0}, {1}" -f (RunStatus), (Frame))
+	FocusOn "Source:Source 1"
 	Key $VK_LEFT 100
-	Check "moving it back: stale, then re-run" ((WaitFor { (RunStatus) -like "*edited since*" } 3000) -and (WaitFor { (RunStatus) -like "Completed:*" -and (RunStatus) -notlike "*edited since*" } 20000 200)) (RunStatus)
+	$stale = WaitFor { (RunStatus) -like "*edited since*" } 3000
+	FocusOn "PreviewPlay"
+	Check "moving it back: stale, then the re-run once the edit has finished" ($stale -and (WaitFor { (RunStatus) -like "Completed:*" -and (RunStatus) -notlike "*edited since*" } 20000 200)) (RunStatus)
 	Key $VK_L 150                                  # loop off again
 	Check "loop off" (WaitFor { -not (LoopOn) } 1000)
 	FocusOn "PreviewPlay"
@@ -201,12 +212,15 @@ try {
 	Check "scrubbed to frame 30 of the stopped run" ((Position) -eq 30) (Frame)
 	FocusOn "Source:Source 1"
 	Key $VK_RIGHT 100
-	Check "an edit after the stopped run starts an automatic re-run" (WaitFor { (RunStatus) -like "Running:*" } 6000 100) (RunStatus)
+	FocusOn "PreviewPlay"                          # the edit is finished when the handle is left
+	Check "an edit after the stopped run starts an automatic re-run once it has finished" (WaitFor { (RunStatus) -like "Running:*" } 6000 100) (RunStatus)
 	Check "the position stayed at frame 30 and Live is off" ((Position) -eq 30 -and -not (LiveOn)) (Frame)
+	FocusOn "Source:Source 1"
 	Key $VK_RIGHT 100
 	Check "another edit stops the automatic run at once" (WaitFor { (RunStatus) -like "Stopped:*" } 3000 50) (RunStatus)
 	Check "the cancelled run does not pull the position back" ((Position) -eq 30) (Frame)
-	Check "and a fresh automatic run starts after the quiet period" (WaitFor { (RunStatus) -like "Running:*" } 6000 100) (RunStatus)
+	FocusOn "PreviewPlay"
+	Check "and a fresh automatic run starts once the edit has finished" (WaitFor { (RunStatus) -like "Running:*" } 6000 100) (RunStatus)
 	Check "the position is still frame 30" ((Position) -eq 30) (Frame)
 	Key $VK_ESCAPE 150
 	# ------------------------------------------------------------ an edit during a run the user started stops it too (2026-10-16)
@@ -217,7 +231,8 @@ try {
 	FocusOn "Source:Source 1"
 	Key $VK_RIGHT 100
 	Check "an edit stops the run the user started at once" (WaitFor { (RunStatus) -like "Stopped:*" } 3000 50) (RunStatus)
-	Check "and the automatic re-run follows after the quiet period" (WaitFor { (RunStatus) -like "Running:*" } 6000 100) (RunStatus)
+	FocusOn "PreviewPlay"
+	Check "and the automatic re-run follows once the edit has finished" (WaitFor { (RunStatus) -like "Running:*" } 6000 100) (RunStatus)
 	Key $VK_ESCAPE 150
 	Key $VK_LEFT 50; Key $VK_LEFT 50; Key $VK_LEFT 150
 	Key $VK_ESCAPE 100

@@ -87,8 +87,9 @@ harnesses run.
   DefaultCultureInfo, 2026-10-27, the user's rule: a report's reader or tool must not trip over a decimal comma). **The log must let a report be
   diagnosed** (2026-10-27, the user's rule after Jeroen's log named the property edited but not the value, nor the
   grid): every engine logs its grid, canvas, rim, edges, stride, sub-steps and work groups when built; a GPU device's
-  facts (versions, units, clock, memory, limits) once per process; the scratch request names the newest edit with its
-  value (after the debounce, so a typed number shows as typed); every change at Trace as old → new
+  facts (versions, units, clock, memory, limits) once per process; the scratch frame names the newest edit with its
+  value on the line of the frame shown (every request at Trace; since 2026-11-07 a frame is asked for at every change,
+  so the line names the edit whose frame got computed); every change at Trace as old → new
   (`PropertyValueChangedEventArgs` from `SetProperty`, carried by `ProjectChange.Values`, `library_check` proves it). **A malformed project, colour scheme or settings file is
   quoted in its error's entry** (2026-11-03, the user's rule): the catch logs an `UnreadableFileException` wrapping the error,
   whose `ToString` appends the file's text, the first 64 K characters and the line an XML error names beyond them, so the
@@ -100,6 +101,9 @@ harnesses run.
   bar, the scratch budget and its "not computed" note, a GPU JPEG front end, a Direct3D display path, a bent
   rotation lever, an unreadable settings file moved aside (2026-11-03: nobody would find it, the log quotes it), a quiet
   period or any other timer that decides when an undo step ends (2026-11-06: an edit is a step when it has finished), a
+  debounce before a scratch frame or a quiet period before the automatic re-run (2026-11-07: a frame is asked for at
+  every change, the re-run comes when the edit has finished), the abandonment of a scratch frame in flight for a newer
+  request (2026-11-09: it is finished, the newest follows), a
   quiet period or a retry with pauses before the changed scene image file is read (2026-11-06: it is read when it has been
   written and closed, at once), Ideal
   text formatting for the manual at 100 % (2026-11-05: less readable, see UI zoom). **Do not
@@ -146,8 +150,8 @@ StartRun: memory budget -> DiscardRun (returns the old store's release task) -> 
 SimulationRun: stepping loop + writer threads; IWaveEngine (WaveSimulator CPU | GpuWaveSimulator OpenCL);
    CaptureFrame/AwaitFrame -> FrameStore.Write; one heartbeat post (<= 30/s) at Background priority; final post sets
    FrameCount, then State
-ScratchRunner: one kept engine; "frame k of the project as it is now" from step 0, probes sampled; newest request
-   wins: one superseded while stepping is abandoned within 16 steps (logged), the newest is computed in full, however long
+ScratchRunner: one kept engine; "frame k of the project as it is now" from step 0, probes sampled; one request computes
+   at a time, to its end, the newest made meanwhile follows it, those between are dropped (2026-11-09)
 FramePresenter: CopyLayer -> 8-bit: FrameRenderer.RenderIndexed at the store's size, WPF scales; 16-bit: ScreenRenderer at
    the picture's size on screen -> the WriteableBitmap, copied on the pool between Lock/Unlock on the UI thread; only
    the newest request is rendered
@@ -242,15 +246,32 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
 ## The app's rules
 
 - **Live editing**: a simulation edit (scene, solver, seed, sources) marks the run stale, **stops playback and any
-  active run**, requests a scratch frame for the position (120 ms debounce; the scratch runner keeps its engine across a
+  active run**, asks for the scratch frame of the position at once (the scratch runner keeps its engine across a
   scene edit of the same grid, `TryReplaceScene`, and rebuilds only for another grid, edges or options) and re-runs
-  automatically after 1.5 s
-  of quiet (setting, default on); an automatic run never moves the preview. A probe edit never starts a run: only
+  automatically **when the edit has finished** (setting, default on; 2026-11-07, the user's choice, replacing a 120 ms
+  debounce of the requests and 1.5 s of quiet before the re-run: **nothing in the live rules keeps time**). "Finished"
+  is the undo history's boundary, `Platform/EditBoundaries` (a mouse button released or pressed, the focus leaving,
+  Enter in a text box, a command before and after, a drop, the two edits that arrive without input), handed to
+  `LivePreview.EditFinished` by the window's `OnEditFinished`; a re-run due while a frame computes, a run is active or an
+  export writes follows that thing's completion event. So arrow-key nudges on a handle or in a number box re-run when
+  the focus leaves or Enter is pressed, a drag's release or Ctrl+Z at once, a View menu change at the command's end.
+  Every change asks for its frame and the runner coalesces: **the frame in flight is finished and the newest request
+  taken after it** (2026-11-09, the user's decision, dropping the 2026-10-16 rule that a request arriving while one
+  computed abandoned it within 16 steps: that served the one request a pause of the hand made under the debounce, but
+  with a request per change it starved every frame longer than the gap between two edits, frame 100 of Example 16
+  showing nothing during a steady burst). Measured (a burst of 120 source edits at 32 a second, the edit's cost on the
+  UI thread 0.24 ms median and 2.8 ms worst on Example 7's lattice): frames are shown at the engine's rate during the
+  drag, one per frame time plus 5–9 ms of capture and hand-over (Example 16 at frame 0, a 20 ms frame: 31 a second;
+  at frame 100, 59 ms: one per 64 ms; at frame 400, 221 ms: one per 234 ms; Example 7 at frame 50, 44 ms: one per
+  53 ms), and the final frame comes 1.5–2.5 frame times after the last edit (31, 125, 377 and 110 ms), the price of
+  finishing the frame in flight. A part or scene edit asks for its frame when the composition is
+  done (`SceneComposer.Composed`, `IsComposing`), never waiting for the worker on the UI thread, so a steady part drag
+  shows frames only where the composer idles (Example 16: 6 in 3.6 s; Example 23's fibres: at the end). An automatic
+  run never moves the preview. A probe edit never starts a run: only
   the recordings are stale, the scratch frame refreshes the graph; except that an active probe the run does not
   record (switched on, added) is a simulation edit (2026-10-18). No scratch frame while playback runs. Any run
-  is paused while a scratch frame computes. The newest scratch request is computed in full, however long (no time
-  budget, 2026-10-16); a request superseded while stepping is abandoned within 16 steps and logged (the word "every" here
-  misled a reader into offering that as new, 2026-11-03).
+  is paused while a scratch frame computes. Every scratch request taken is computed in full, however long (no time
+  budget, 2026-10-16); since 2026-11-09 none is abandoned for a newer one (see above).
 - **A picture changes only when a frame for its position arrives**; otherwise the last picture stays. A long wait
   dims the pictures under a spinner, mirrored on the taskbar.
 - **Brightness** (2026-10-20, Jeroen's point 9) sits in each picture's header strip (`HeaderStrip`: title, a caption that
@@ -286,8 +307,8 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   worst gap of 71 ms, the status counting. Background had been chosen on 2026-10-16 against the opposite, keys and
   clicks delivered after the run, when the progress was several posts a second each posted the moment the last was
   handled; the one paced heartbeat leaves input its turn at any priority (RunCheck's 71 checks, which press keys
-  during a run, pass). The scene composition's coalescing and the debounce timers stay at Background: they are meant
-  to wait for the hand to rest. **The presenter's
+  during a run, pass). The scene composition's coalescing stays at Background: it is meant to wait for the hand to
+  rest. **The presenter's
   log line carries the block's worst** beside its averages, the longest frame, the longest wait at the bitmap and the
   longest gap between two presented frames: a stutter is a gap, which an average over 100 frames hides (it had shown 28
   frames a second across a 3-second freeze). Measured on the way and settled: the app's input handling is not the cost,
@@ -759,7 +780,8 @@ handlers are one line each. It needs nothing from a framework: the first version
 behind two interfaces (a UI-thread timer, "is a mouse button held"), which went again the same day with the rule
 (see Undo and redo); when an edit has finished is the app's to say, WPF's way being `Platform/EditBoundaries`, and an
 Avalonia app will need its own. (No interface each app implements existed then; the UI thread's timers came with the
-tenth step, as `IUiTimers`, for the pacing of the scratch frames and the re-run.) `ProjectItems.ListOf` maps an item to
+tenth step, as `IUiTimers`, for the pacing of the scratch frames and the re-run, and went again the same day with the
+timers.) `ProjectItems.ListOf` maps an item to
 its list for the history and the window's item commands alike. Proven by three one-off probes: the watcher under a
 real press, drag and release sent to a probe's own window (11 checks: a press says "finished" before anything is
 edited, nothing is said while the button is held, the release says it after a thumb completed its drag and after a
@@ -854,11 +876,12 @@ nothing went stale, and it now puts the resolution and the frames to Full first,
 looked for "Running" in the status bar after Play, which a reduced run of 100 steps had left in 0.2 s, and now reads the
 log from a byte mark for "Re-run started", the measurement the app makes itself. Both passed once changed; the other ten
 had passed: `library_check` 662 ok.
-The tenth step (2026-11-07): the runs and the live-editing rules, on **two more interfaces each app implements**:
-**`IUiTimers`** (`Create(interval, tick)` → `IUiTimer` with `Restart`, `Stop`, `IsRunning`; WPF's `Platform/DispatcherTimers`,
-a `DispatcherTimer` at Background priority each, as before), the user's choice among the options offered (against a
-`SynchronizationContext` plus `Task.Delay`); its two timers pace work, the scratch frame after a burst of edits (120 ms)
-and the quiet before the re-run (1.5 s), and judge no edit; and **`IMemoryWarning`** (`Ask(spec, budget, autoBudget,
+The tenth step (2026-11-07): the runs and the live-editing rules, on two more interfaces each app implements: first
+**`IUiTimers`** (`Create(interval, tick)` → `IUiTimer`; WPF's `DispatcherTimers`), the user's choice among the options
+offered for the two pacing timers, which went again the same evening when the timers did (see Live editing: the
+requests at every change, the re-run at the edit's end; the harnesses that awaited a re-run after an arrow-key nudge
+now leave the handle first, as a user does, and `PreviewQualityCheck` reads "Re-run started" in the log, since the
+stale status lasts milliseconds); and **`IMemoryWarning`** (`Ask(spec, budget, autoBudget,
 quality)` → `MemoryWarningChoice?`, the record now in `WaveDudeNext.UI`; WPF's `Platform/WpfMemoryWarning` shows
 `MemoryWarningWindow`). **`RunHost`** holds the current run and its store: `Start(automatic, trackIntensity, fullQuality,
 intensityRoot)` (the scene composed, the RAM budget, the warning, `FrameCache.CheckSpace`, the store, the worker with the
@@ -917,8 +940,8 @@ app on the 8-bit preview (the frame computed in 16-bit, the fit, the undo step r
 scratch frame re-requested as for any brightness edit in 8-bit). **The window's logic is in models now**: the window's
 partials are 1,195 lines, command handlers of a line each, the edit hub, the dialogs, the constructor's wiring and the
 things only WPF has (the dock, the jump list, the zoom, the menu bar's F10, the focus); it reaches into a pane for
-`Focus()` and `FocusList()` alone. Six interfaces each app implements: `IImageDecoder`, `IClipboard`, `IUiTimers`,
-`IMemoryWarning`, `IExportDialogs`, `IFrameDecorators`.
+`Focus()` and `FocusList()` alone. Five interfaces each app implements: `IImageDecoder`, `IClipboard`,
+`IMemoryWarning`, `IExportDialogs`, `IFrameDecorators` (`IUiTimers` came and went with the live rules' timers).
 What still anchors the rest: the live dock model (`DockItem` with WPF's `ContentProperty`, `DockSplitNode` with WPF's
 `Orientation`); `RelayCommand` requeries through WPF's `CommandManager`; the converters implement
 `IValueConverter`; the 59 commands are routed commands; the scene image is decoded by WPF's `BitmapDecoder`

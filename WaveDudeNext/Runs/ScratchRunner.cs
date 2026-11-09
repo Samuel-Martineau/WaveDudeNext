@@ -37,11 +37,15 @@ public sealed record ScratchResult(RunSpec Spec, int Frame, FrameSnapshot Snapsh
 /// picture (2026-10-14; the sampling costs a kernel launch per step and a few kilobytes of readback, nothing
 /// against the stepping). The engine is kept between requests (a GPU engine takes a few hundred
 /// milliseconds to build) and only reset, or given new emitters when just the sources changed; it is rebuilt
-/// when the scene or the solver options change. Only the newest request is served: a request arriving
-/// while one is computing abandons it. Every request is computed, however long it takes (2026-10-16, the user's
-/// rule; a budget that skipped frames predicted to take over six seconds, and a version that abandoned them while
-/// stepping, were both removed the same day: the note "not computed, would take too long" appeared on frames that
-/// would not have, and nobody had asked for it).
+/// when the scene or the solver options change. One request computes at a time, to its end, and the newest one
+/// made meanwhile follows it; the requests between are dropped (2026-11-09, the user's choice: a request that arrived
+/// while one was computing had abandoned it within 16 steps since 2026-10-16, which served the one request a pause of
+/// the hand made then, but starves every frame longer than the gap between two edits now that each edit asks for its
+/// frame, so a drag of a heavy frame showed nothing until the hand rested; finishing the frame in flight shows a frame
+/// per frame time during the drag and costs at most one frame time more at its end). Every request taken is computed
+/// in full, however long it takes (2026-10-16, the user's rule; a budget that skipped frames predicted to take over
+/// six seconds, and a version that abandoned them while stepping, were both removed the same day: the note "not
+/// computed, would take too long" appeared on frames that would not have, and nobody had asked for it).
 /// </summary>
 /// <remarks>
 /// Threads: <see cref="Request"/> may be called from any thread; the work runs on one long-running task;
@@ -53,7 +57,7 @@ public sealed class ScratchRunner : IDisposable
 {
 	private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-	/// <summary>How often the worker checks for a newer request, in steps.</summary>
+	/// <summary>How often the worker looks for its cancellation while stepping, in steps.</summary>
 	private const int CheckInterval = 16;
 
 	private readonly SynchronizationContext? _context;
@@ -120,14 +124,6 @@ public sealed class ScratchRunner : IDisposable
 		}
 	}
 
-	private bool HasNewerRequest()
-	{
-		lock (_sync)
-		{
-			return _request != null;
-		}
-	}
-
 	private void Loop()
 	{
 		CancellationToken token = _cancel.Token;
@@ -179,10 +175,8 @@ public sealed class ScratchRunner : IDisposable
 		var clock = Stopwatch.StartNew();
 		for (int i = 0; i < steps; i++)
 		{
-			if (i % CheckInterval == 0 && (HasNewerRequest() || token.IsCancellationRequested))
+			if (i % CheckInterval == 0 && token.IsCancellationRequested)
 			{
-				// the loop picks up the newer request; said in the log, so a report shows the frames that were never finished (2026-11-03)
-				Logger.Debug("Preview frame {Frame} abandoned after {Done} of {Steps} steps for a newer request", frame, i, steps);
 				return;
 			}
 			engine.AdvanceOneStep();

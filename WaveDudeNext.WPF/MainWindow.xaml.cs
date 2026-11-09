@@ -54,8 +54,8 @@ public partial class MainWindow : Window
 	{
 		var decoder = new WpfImageDecoder();
 		SceneImage = new SceneImageFile(Document, decoder, new DispatcherSynchronizationContext(Dispatcher));
-		// the embedded image replaced by its changed file is an edit complete in itself: its undo step ends there
-		SceneImage.Reembedded += (_, _) => _history!.EndStep();
+		// the embedded image replaced by its changed file is an edit complete in itself: it is finished when it arrives
+		SceneImage.Reembedded += (_, _) => OnEditFinished();
 		// the scene is composed when the UI thread is idle, so the changes of one drag step make one composition
 		SceneComposer = new SceneComposer(Document, decoder, new DispatcherSynchronizationContext(Dispatcher, DispatcherPriority.Background));
 		// back from the image editor: the scene image's file is looked at, should an event of its change have gone missing
@@ -65,8 +65,8 @@ public partial class MainWindow : Window
 		_clipboard = new ObjectClipboard(Document, Selection, _items, new WpfClipboard());
 		_history = new UndoHistory(Document, Selection);
 		_history.PropertyChanged += (_, _) => CommandManager.InvalidateRequerySuggested();
-		// an edit becomes an undo step when it has finished: the window's input says when
-		_ = new EditBoundaries(this, _history.EndStep);
+		// an edit has finished when the window's input says so: the undo step ends, the stale run is redone
+		_ = new EditBoundaries(this, OnEditFinished);
 		// the run's progress lands on the UI thread at Loaded priority (2026-11-04): the lowest priority the dispatcher
 		// still processes ahead of queued input. Background and Input priority are its "background" range, which it
 		// serves only when no input is pending, else through a 1 ms Win32 timer, a message Windows delivers after every
@@ -85,7 +85,7 @@ public partial class MainWindow : Window
 			}
 		};
 		RunHost.RunStateChanged += (_, _) => CommandManager.InvalidateRequerySuggested();
-		Live = new LivePreview(Document, RunHost, Preview, Busy, SceneComposer, new DispatcherTimers(Dispatcher), new DispatcherSynchronizationContext(Dispatcher));
+		Live = new LivePreview(Document, RunHost, Preview, Busy, SceneComposer, new DispatcherSynchronizationContext(Dispatcher));
 		Exporter = new Exporter(Document, RunHost, Preview, Busy, SceneComposer, _exportPaths, new WpfExportDialogs(this), new WpfFrameDecorators(), new DispatcherSynchronizationContext(Dispatcher));
 		Exporter.PropertyChanged += (_, _) => CommandManager.InvalidateRequerySuggested();
 		Exporter.Failed += OnExportFailed;
@@ -94,7 +94,7 @@ public partial class MainWindow : Window
 		AutoBrightness = new AutoBrightness(Document, RunHost, Preview, Busy, SceneComposer, new DispatcherSynchronizationContext(Dispatcher));
 		AutoBrightness.PropertyChanged += (_, _) => CommandManager.InvalidateRequerySuggested();
 		// a fit that computed its frame arrived after the command that asked for it: an edit complete in itself
-		AutoBrightness.Fitted += (_, _) => _history.EndStep();
+		AutoBrightness.Fitted += (_, _) => OnEditFinished();
 		// the document's moments, wired before anything is loaded; its first, empty project is taken as a replacement was
 		Document.ProjectReplacing += (_, _) => DiscardRun();
 		Document.ProjectReplaced += (_, _) => OnProjectReplaced(Document.Project);
@@ -269,6 +269,16 @@ public partial class MainWindow : Window
 
 	/// <summary>The pictures' Auto brightness: a one-shot fit to the frame shown, computed in 16-bit first for an 8-bit preview. The command is one line into it.</summary>
 	public AutoBrightness AutoBrightness { get; }
+
+	/// <summary>
+	/// An edit has finished, by the window's input (<see cref="EditBoundaries"/>) or by arriving on its own (the scene
+	/// image re-embedded, a brightness fit computed): the undo history closes its step, and the live rules redo a stale run.
+	/// </summary>
+	private void OnEditFinished()
+	{
+		_history.EndStep();
+		Live.EditFinished();
+	}
 
 	/// <summary>
 	/// Opens the file at <paramref name="fileName"/>, a project, a project of Wave Dude 2D or a colour scheme

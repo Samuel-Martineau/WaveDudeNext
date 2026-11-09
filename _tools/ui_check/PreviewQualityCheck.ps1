@@ -45,6 +45,12 @@ function LogText() {
 	try { $sr = New-Object IO.StreamReader($fs); return $sr.ReadToEnd() } finally { $fs.Dispose() }
 }
 function LogHas([string]$text) { return (LogText).Contains($text) }
+# the log from a byte mark on: what a key did, which the status bar may have moved past before UIA reads it
+function LogMark() { return (Get-Item $log).Length }
+function LogSince([long]$mark) {
+	$fs = New-Object IO.FileStream($log, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+	try { $null = $fs.Seek($mark, 'Begin'); $sr = New-Object IO.StreamReader($fs); return $sr.ReadToEnd() } finally { $fs.Dispose() }
+}
 # View (3rd header, after File and Edit) > entry $entry (0 Panes, 1 Theme, 2 UI zoom, 3 Language, 4 Preview resolution, 5 Preview frames, 6 Preview samples) > item $item
 function ChooseView([int]$entry, [int]$item) {
 	Step "F10" 0x79 150                            # the menu bar's first header (File)
@@ -56,10 +62,13 @@ function ChooseView([int]$entry, [int]$item) {
 	for ($i = 0; $i -lt $item; $i++) { Step "Down" 0x28 100 }
 	Step "Enter" $VK_RETURN 300
 }
-# a choice stales the run and the automatic re-run completes
+# a choice stales the run and the automatic re-run completes. The re-run starts the moment the menu's command ends (2026-11-07,
+# the user's rule: an edit is finished when its command is over, no quiet period), so the stale status lasts milliseconds; the
+# log says the re-run started, which it does only for a stale run
 function ChooseAndRerun([string]$what, [int]$entry, [int]$item) {
+	$mark = LogMark
 	ChooseView $entry $item
-	Check "$what marks the run stale" (WaitFor { (RunStatus) -like "*edited since*" } 3000) (RunStatus)
+	Check "$what marks the run stale and the re-run starts at once" (WaitFor { (LogSince $mark) -match "Re-run started" } 5000 50) (RunStatus)
 	Check "$what is followed by the automatic re-run" (WaitFor { (RunStatus) -like "Completed:*" -and (RunStatus) -notlike "*edited since*" } 20000 200) (RunStatus)
 	Start-Sleep -Milliseconds 300
 }

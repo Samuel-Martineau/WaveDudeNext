@@ -65,6 +65,12 @@ public sealed class SceneComposer(ProjectDocument document, IImageDecoder decode
 		private set => SetProperty(ref _pixels, value);
 	}
 
+	/// <summary>A composition asked for by <see cref="Update"/> finished, <see cref="Pixels"/> set, changed or not (also when the image could not be read); what waits for the scene goes on.</summary>
+	public event EventHandler? Composed;
+
+	/// <summary>Whether a composition is pending or in flight (<see cref="Update"/> was called and <see cref="Composed"/> has not followed yet): <see cref="Load"/> would wait for it on the UI thread, so what can wait waits for the event.</summary>
+	public bool IsComposing => _updatePending || _composition != null || _composeAgain;
+
 	/// <summary>Another project is open: nothing decoded or composed for the old one applies.</summary>
 	public void Reset()
 	{
@@ -148,6 +154,7 @@ public sealed class SceneComposer(ProjectDocument document, IImageDecoder decode
 			{
 				Logger.Debug("Scene image not shown: {Message}", ex.Message);
 				Pixels = null;
+				Composed?.Invoke(this, EventArgs.Empty);
 				return;
 			}
 			Scene scene = Project.Scene;
@@ -173,6 +180,7 @@ public sealed class SceneComposer(ProjectDocument document, IImageDecoder decode
 			long painted = System.Diagnostics.Stopwatch.GetTimestamp();
 			Pixels = composed;
 			Logger.Debug("Scene pixels updated: composed on a worker in {Paint:0.0} ms, pictures in {Pictures:0.0} ms", System.Diagnostics.Stopwatch.GetElapsedTime(started, painted).TotalMilliseconds, System.Diagnostics.Stopwatch.GetElapsedTime(painted).TotalMilliseconds);
+			Composed?.Invoke(this, EventArgs.Empty);
 		}
 		while (_composeAgain);
 	}

@@ -30,7 +30,7 @@ namespace WaveDudeNext.WPF;
 /// </summary>
 public partial class MainWindow
 {
-	/// <summary>A new project: the selection, the scene and the export paths start over, the undo history with it.</summary>
+	/// <summary>A new project: the selection, the scene and the export paths start over, the undo history with it, and the live rules last, so their first frame follows the new scene.</summary>
 	private void OnProjectReplaced(Project? project)
 	{
 		Selection.Items.Clear();
@@ -40,6 +40,7 @@ public partial class MainWindow
 		// moves after this event, and each applies its palette then. Its scene is composed when the UI thread is idle
 		SceneComposer.Update();
 		_history.Start(project);
+		Live.ProjectReplaced();
 	}
 
 	private void OnProjectChanged(object? sender, ProjectChange change)
