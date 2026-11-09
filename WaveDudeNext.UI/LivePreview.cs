@@ -193,7 +193,8 @@ public sealed class LivePreview : ObservableObject
 		_editInProgress = false;
 		if (Settings.Default.AutoRerun && _runs.IsRunStale && !TryRerun())
 		{
-			Logger.Debug("Automatic re-run waits: {Reason}", _busy.IsExporting ? "an export is in progress" : _runs.IsActive ? "a run is still active" : "a preview frame is being computed");
+			Logger.Debug("Automatic re-run waits: {Reason}", _busy.IsExporting ? "an export is in progress" : _runs.IsActive ? "a run is still active"
+				: _runs.IsStarting ? "a run's start waits for the memory warning's answer" : "a preview frame is being computed");
 		}
 	}
 
@@ -222,17 +223,20 @@ public sealed class LivePreview : ObservableObject
 	/// Play means "show me the simulation": a missing or stale run is started like an automatic one (position kept,
 	/// not followed); a failure goes to the log and status bar. Not while an export reads the store. A run refused
 	/// in the memory warning turns playback off again, before the pane's clock starts (2026-11-03): there is no
-	/// simulation to show then.
+	/// simulation to show then. Playback is held while the start is decided (<see cref="PreviewState.IsPlaybackHeld"/>,
+	/// 2026-11-09) and released after the refusal has turned it off, so the clock never starts for a refused run,
+	/// whether the answer came within the call (a blocking window) or later.
 	/// </summary>
-	public void EnsureRun()
+	public async Task EnsureRunAsync()
 	{
 		if (_busy.IsExporting || _runs.IsActive || (_runs.Run != null && !_runs.IsRunStale && !_runs.IsProbesStale))
 		{
 			return;
 		}
+		_preview.IsPlaybackHeld = true;
 		try
 		{
-			if (!_runs.Start(automatic: true))
+			if (!await _runs.StartAsync(automatic: true))
 			{
 				_preview.IsPlaying = false;
 			}
@@ -240,6 +244,10 @@ public sealed class LivePreview : ObservableObject
 		catch (Exception ex) when (ex is RunSpecException or IOException or UnauthorizedAccessException or NotSupportedException)
 		{
 			Logger.Error(ex, "The run could not start: {Message}", ex.Message);
+		}
+		finally
+		{
+			_preview.IsPlaybackHeld = false;
 		}
 	}
 
@@ -397,23 +405,34 @@ public sealed class LivePreview : ObservableObject
 
 	/// <summary>
 	/// Redoes the stored run when the setting is on, the run is stale and nothing holds it back: an edit still in
-	/// progress, a frame still computing, a run still active or an export in progress. True when a run was started.
+	/// progress, a frame still computing, a run still active, a start still waiting for the memory warning's answer or
+	/// an export in progress. True when the re-run was begun: started, or its memory warning asked (2026-11-09; a
+	/// warning cancelled within the call had counted as held back before, and was logged as waiting for a frame).
 	/// </summary>
 	private bool TryRerun()
 	{
-		if (!Settings.Default.AutoRerun || !_runs.IsRunStale || _editInProgress || _runs.IsActive || ScratchPending || _busy.IsExporting)
+		if (!Settings.Default.AutoRerun || !_runs.IsRunStale || _editInProgress || _runs.IsActive || _runs.IsStarting || ScratchPending || _busy.IsExporting)
 		{
 			return false;
 		}
+		Rerun();
+		return true;
+	}
+
+	/// <summary>
+	/// Starts the automatic re-run; the answer to its memory warning may be a while. Not awaited by anyone: an error
+	/// other than the expected ones reaches the UI thread's handler, as it did when the start was a plain call.
+	/// </summary>
+	private async void Rerun()
+	{
 		try
 		{
-			return _runs.Start(automatic: true);
+			await _runs.StartAsync(automatic: true);
 		}
 		catch (Exception ex) when (ex is RunSpecException or IOException or UnauthorizedAccessException or NotSupportedException)
 		{
 			// no message box for something the user did not ask for; the status bar shows the error
 			Logger.Error(ex, "The automatic re-run could not start: {Message}", ex.Message);
-			return false;
 		}
 	}
 

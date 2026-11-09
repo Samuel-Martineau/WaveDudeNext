@@ -233,8 +233,11 @@ try {
 	Check "an edit stops the run the user started at once" (WaitFor { (RunStatus) -like "Stopped:*" } 3000 50) (RunStatus)
 	FocusOn "PreviewPlay"
 	Check "and the automatic re-run follows once the edit has finished" (WaitFor { (RunStatus) -like "Running:*" } 6000 100) (RunStatus)
+	# no arrow keys here (2026-11-09): three Left presses once moved the source back while its handle still had the
+	# focus; since the edit is finished by leaving the handle they went to whatever held the focus after the re-run's
+	# start, and on one run the pictures' arrangement switched to side by side at that moment and was saved with the
+	# user's settings. The edits are discarded on closing anyway
 	Key $VK_ESCAPE 150
-	Key $VK_LEFT 50; Key $VK_LEFT 50; Key $VK_LEFT 150
 	Key $VK_ESCAPE 100
 	Check "the app never took the foreground" ((Foreground) -ne "APP") (Foreground)
 }

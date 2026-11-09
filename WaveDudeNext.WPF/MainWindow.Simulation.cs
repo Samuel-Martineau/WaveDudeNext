@@ -36,11 +36,12 @@ public partial class MainWindow
 
 	private void CanRun(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = !RunHost.IsActive && !Busy.IsExporting;
 
-	private void OnRun(object sender, ExecutedRoutedEventArgs e)
+	/// <summary>F5. The start's task is finished when it returns here, the memory warning being a modal window, so the handler runs to its end within the command as before.</summary>
+	private async void OnRun(object sender, ExecutedRoutedEventArgs e)
 	{
 		try
 		{
-			RunHost.Start();
+			await RunHost.StartAsync();
 		}
 		catch (Exception ex) when (ex is RunSpecException or IOException or UnauthorizedAccessException or NotSupportedException)
 		{
@@ -54,8 +55,8 @@ public partial class MainWindow
 	/// <summary>Stop applies to a run in progress, or to an export in progress (Esc cancels it).</summary>
 	private void CanStop(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = RunHost.IsActive || Exporter.IsWriting;
 
-	/// <summary>Play pressed: a missing or stale run is started (<see cref="LivePreview.EnsureRun"/>).</summary>
-	private void OnEnsureRun(object sender, ExecutedRoutedEventArgs e) => Live.EnsureRun();
+	/// <summary>Play pressed: a missing or stale run is started (<see cref="LivePreview.EnsureRunAsync"/>), decided before this returns, as F5's is.</summary>
+	private async void OnEnsureRun(object sender, ExecutedRoutedEventArgs e) => await Live.EnsureRunAsync();
 
 	private void OnTogglePause(object sender, ExecutedRoutedEventArgs e) => RunHost.TogglePause();
 

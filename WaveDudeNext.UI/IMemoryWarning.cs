@@ -29,15 +29,18 @@ public sealed record MemoryWarningChoice(PreviewQuality Quality, bool CacheAuto,
 /// The memory warning as the models of this library ask it (2026-11-07; each application implements it, WPF with its
 /// <c>MemoryWarningWindow</c>): before a preview run whose frames would not all fit in the RAM cache, the user is told
 /// the need and the budget and offered levers (2026-11-03, the user's design; the arithmetic is <see cref="RunSpec.StoreBytesAt"/>).
-/// Asked on the UI thread and answered before it returns; the caller applies the choice.
+/// Asked on the UI thread; the caller applies the choice. The answer is a task (2026-11-09): an application whose
+/// modal windows block, as WPF's do, returns it finished, and the caller goes on within the same call; one whose
+/// windows answer later, as Avalonia's do, completes it then, and the caller goes on from the UI thread's
+/// synchronization context. The application is live while the question is open, whichever it is.
 /// </summary>
 public interface IMemoryWarning
 {
-	/// <summary>Shows the warning for <paramref name="spec"/> and waits for the answer.</summary>
+	/// <summary>Shows the warning for <paramref name="spec"/>; the task completes with the answer.</summary>
 	/// <param name="spec">The run as it would be made.</param>
 	/// <param name="budget">The RAM cache's budget in bytes as the settings have it.</param>
 	/// <param name="autoBudget">The budget with the RAM cache size at Auto; the same as <paramref name="budget"/> when it is Auto already.</param>
 	/// <param name="current">The preview quality the run would use.</param>
 	/// <returns>The choice, or null for Cancel: no run.</returns>
-	MemoryWarningChoice? Ask(RunSpec spec, long budget, long autoBudget, PreviewQuality current);
+	Task<MemoryWarningChoice?> AskAsync(RunSpec spec, long budget, long autoBudget, PreviewQuality current);
 }

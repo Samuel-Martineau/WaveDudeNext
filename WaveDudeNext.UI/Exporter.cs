@@ -176,7 +176,7 @@ public sealed class Exporter : ObservableObject
 			// a still keeps the frame's name and takes the last still's folder; a run's export takes the last one's folder and name
 			(string folder, string name) = still ? _paths.StartOfStill(_document.Name + suffix) : _paths.StartOfRun(_document.Name + suffix, suffix);
 			ExportSubject subject = still ? ExportSubject.Still : field && intensity ? ExportSubject.Both : field ? ExportSubject.Field : ExportSubject.Intensity;
-			if (_dialogs.AskWhereToSave(subject, folder, name, formats, formatIndex) is not { } pick)
+			if (await _dialogs.AskWhereToSaveAsync(subject, folder, name, formats, formatIndex) is not { } pick)
 			{
 				Logger.Debug("Export cancelled in the Save dialog");
 				return;
@@ -246,7 +246,7 @@ public sealed class Exporter : ObservableObject
 		else
 		{
 			(string folder, string name) = _paths.StartOfProbe(suggested);
-			if (_dialogs.AskWhereToSave(ExportSubject.ProbeData, folder, name, [], 0) is not { } pick)
+			if (await _dialogs.AskWhereToSaveAsync(ExportSubject.ProbeData, folder, name, [], 0) is not { } pick)
 			{
 				Logger.Debug("Probe export cancelled in the Save dialog");
 				return;
@@ -361,7 +361,7 @@ public sealed class Exporter : ObservableObject
 				{
 					Logger.Debug("Export last: {Folder} replaced without asking", folder);
 				}
-				else if (!_dialogs.AskToReplaceFolder(folder))
+				else if (!await _dialogs.AskToReplaceFolderAsync(folder))
 				{
 					Logger.Debug("Export cancelled: {Folder} kept", folder);
 					return;
@@ -484,7 +484,13 @@ public sealed class Exporter : ObservableObject
 				if (reason != null)
 				{
 					Logger.Debug("Export: a run is started first ({Reason})", reason);
-					_runs.Start(automatic: true, trackIntensity: intensity, fullQuality: true, intensityRoot: intensityRoot ?? true);
+					// a full-quality run asks nothing, so its start is decided within the call; false means another start still
+					// waits for its memory warning's answer, and the run that one makes would not be this export's
+					if (!await _runs.StartAsync(automatic: true, trackIntensity: intensity, fullQuality: true, intensityRoot: intensityRoot ?? true))
+					{
+						Logger.Warn("Export abandoned: another run's start waits for the memory warning's answer");
+						return null;
+					}
 					run = _runs.Run;
 				}
 				else if (run!.IsActive)

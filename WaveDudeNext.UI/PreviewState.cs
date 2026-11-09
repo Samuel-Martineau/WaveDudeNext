@@ -37,6 +37,7 @@ public sealed class PreviewState : ObservableObject
 {
 	private int _position;
 	private bool _isPlaying;
+	private bool _isPlaybackHeld;
 	private ShownFrame? _shownFrame;
 	private int _canvasWidth = 1;
 	private int _canvasHeight = 1;
@@ -54,6 +55,18 @@ public sealed class PreviewState : ObservableObject
 	{
 		get => _isPlaying;
 		set => SetProperty(ref _isPlaying, value);
+	}
+
+	/// <summary>
+	/// Whether playback, though on, is held (2026-11-09): the run Play asked for is still being decided, the memory
+	/// warning open (<see cref="LivePreview.EnsureRunAsync"/>). The pane's clock runs while <see cref="IsPlaying"/> is
+	/// true and this is false, so it does not tick through the stale frames under the question (2026-11-03); the
+	/// application releases the hold after it has turned playback off for a refused run, never before.
+	/// </summary>
+	public bool IsPlaybackHeld
+	{
+		get => _isPlaybackHeld;
+		set => SetProperty(ref _isPlaybackHeld, value);
 	}
 
 	/// <summary>The frames the pictures show and the one shown, told by the pane; null while nothing is shown. The brightness fit reads it.</summary>

@@ -42,19 +42,21 @@ public sealed record SavePick(string Path, int FormatIndex);
 /// <summary>
 /// The dialogs of an export as the models of this library ask them (2026-11-07; each application implements it, WPF
 /// with the common Save dialog and its message window): where a file goes, and whether a sequence folder with files
-/// in it is replaced. Asked on the UI thread and answered before they return.
+/// in it is replaced. Asked on the UI thread. The answers are tasks (2026-11-09), as the memory warning's is
+/// (<see cref="IMemoryWarning"/>): finished already where the application's dialogs block, completed later where they
+/// do not.
 /// </summary>
 public interface IExportDialogs
 {
-	/// <summary>The Save dialog for <paramref name="subject"/>, starting in <paramref name="folder"/> with <paramref name="name"/> proposed.</summary>
+	/// <summary>The Save dialog for <paramref name="subject"/>, starting in <paramref name="folder"/> with <paramref name="name"/> proposed; the task completes with the pick.</summary>
 	/// <param name="subject">What is exported: the application's title and filters follow from it.</param>
 	/// <param name="folder">The folder the dialog opens in; "" for the system's choice.</param>
 	/// <param name="name">The file name proposed, without a folder.</param>
 	/// <param name="formats">The formats offered, in the order of the application's filters; empty for a subject with one filter (the probe data).</param>
 	/// <param name="formatIndex">The place in <paramref name="formats"/> of the one offered first.</param>
 	/// <returns>The pick, or null for Cancel.</returns>
-	SavePick? AskWhereToSave(ExportSubject subject, string folder, string name, IReadOnlyList<ExportFormat> formats, int formatIndex);
+	Task<SavePick?> AskWhereToSaveAsync(ExportSubject subject, string folder, string name, IReadOnlyList<ExportFormat> formats, int formatIndex);
 
-	/// <summary>Asks whether a sequence may go into <paramref name="folder"/>, which exists and holds files; true for yes.</summary>
-	bool AskToReplaceFolder(string folder);
+	/// <summary>Asks whether a sequence may go into <paramref name="folder"/>, which exists and holds files; the task completes with true for yes.</summary>
+	Task<bool> AskToReplaceFolderAsync(string folder);
 }

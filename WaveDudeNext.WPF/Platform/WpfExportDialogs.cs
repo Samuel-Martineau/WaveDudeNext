@@ -27,13 +27,14 @@ namespace WaveDudeNext.WPF.Platform;
 /// The export dialogs for the models of <c>WaveDudeNext.UI</c> (<see cref="IExportDialogs"/>): the common Save dialog
 /// with the title and the filters of the string table, its filter order being <see cref="ExportFormats.All"/>'s,
 /// <see cref="ExportFormats.Stills"/>' for a still and one CSV filter for a probe's data; and the application's message
-/// window for the question about a sequence folder. Both modal over <paramref name="owner"/>.
+/// window for the question about a sequence folder. Both modal over <paramref name="owner"/>; they block until they
+/// are answered, so each task is finished when it is returned.
 /// </summary>
 /// <param name="owner">The window the dialogs belong to, whose resources hold the strings.</param>
 public sealed class WpfExportDialogs(Window owner) : IExportDialogs
 {
 	/// <inheritdoc/>
-	public SavePick? AskWhereToSave(ExportSubject subject, string folder, string name, IReadOnlyList<ExportFormat> formats, int formatIndex)
+	public Task<SavePick?> AskWhereToSaveAsync(ExportSubject subject, string folder, string name, IReadOnlyList<ExportFormat> formats, int formatIndex)
 	{
 		var dialog = new SaveFileDialog
 		{
@@ -57,12 +58,12 @@ public sealed class WpfExportDialogs(Window owner) : IExportDialogs
 			FileName = name,
 			InitialDirectory = folder,
 		};
-		return dialog.ShowDialog(owner) == true ? new SavePick(dialog.FileName, Math.Max(0, dialog.FilterIndex - 1)) : null;
+		return Task.FromResult(dialog.ShowDialog(owner) == true ? new SavePick(dialog.FileName, Math.Max(0, dialog.FilterIndex - 1)) : null);
 	}
 
 	/// <inheritdoc/>
-	public bool AskToReplaceFolder(string folder) =>
-		MessageWindow.Show(owner, string.Format(Text("ExportFolderExistsFormat"), folder), MessageKind.Question, MessageButtons.YesNo) == MessageAnswer.Yes;
+	public Task<bool> AskToReplaceFolderAsync(string folder) =>
+		Task.FromResult(MessageWindow.Show(owner, string.Format(Text("ExportFolderExistsFormat"), folder), MessageKind.Question, MessageButtons.YesNo) == MessageAnswer.Yes);
 
 	private string Text(string key) => (string)owner.FindResource(key);
 }

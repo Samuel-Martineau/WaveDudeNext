@@ -25,7 +25,7 @@ namespace WaveDudeNext.UI;
 
 /// <summary>
 /// The current run and its frame store (a model of this library since 2026-11-07; the main window's own before). A run
-/// snapshots the project when it starts (<see cref="Start"/>: the scene composed, the RAM budget, the memory warning
+/// snapshots the project when it starts (<see cref="StartAsync"/>: the scene composed, the RAM budget, the memory warning
 /// when the frames do not fit, the store, the worker); editing the project meanwhile is allowed and does not affect
 /// it, but marks it stale (<see cref="IsRunStale"/>, <see cref="IsProbesStale"/>, set by the live-editing rules of
 /// <see cref="LivePreview"/>). The store lives until the run is replaced, the project is replaced or the application
@@ -43,6 +43,7 @@ public sealed class RunHost : ObservableObject
 	private SimulationRun? _run;
 	private bool _isRunStale;
 	private bool _isProbesStale;
+	private bool _isStarting;
 
 	/// <param name="document">The open project, snapshotted by every run.</param>
 	/// <param name="scene">The scene pixels a run takes (<see cref="SceneComposer.Load"/>).</param>
@@ -76,6 +77,18 @@ public sealed class RunHost : ObservableObject
 	/// <summary>Whether a run is in progress.</summary>
 	public bool IsActive => _run?.IsActive == true;
 
+	/// <summary>
+	/// Whether a start waits for the user's answer to the memory warning, from the question to the run's start or the
+	/// refusal (2026-11-09). The application is live meanwhile, under a blocking modal window's message loop as much
+	/// as under a window that answers later, and no other start is taken (<see cref="StartAsync"/> answers false): the
+	/// automatic re-run that a scratch frame's arrival would begin does not ask a second time over the first.
+	/// </summary>
+	public bool IsStarting
+	{
+		get => _isStarting;
+		private set => SetProperty(ref _isStarting, value);
+	}
+
 	/// <summary>Whether the project was edited in a way that changes the simulation since the current run started.</summary>
 	public bool IsRunStale
 	{
@@ -105,23 +118,32 @@ public sealed class RunHost : ObservableObject
 		Math.Max(1, Settings.Default.PreviewFrames),
 		Settings.Default.PreviewSampleBytes == 1 ? FrameFormat.Index : FrameFormat.Half);
 
-	/// <summary>Composes the scene, snapshots the project, checks the disk, creates the store and starts the worker.</summary>
+	/// <summary>
+	/// Composes the scene, snapshots the project, asks when the frames do not fit in the RAM cache, checks the disk,
+	/// creates the store and starts the worker. The task is finished when the call returns unless the memory warning was
+	/// asked and the application's window answers later (<see cref="IMemoryWarning"/>); it then completes on the UI
+	/// thread, <see cref="IsStarting"/> being true until it does.
+	/// </summary>
 	/// <param name="automatic">Started after an edit rather than by the user: the preview keeps its position.</param>
 	/// <param name="trackIntensity">Store the intensity plane whatever the project needs (an export of the intensity asks for it).</param>
 	/// <param name="fullQuality">Capture every cell of every frame as a half whatever the View menu says (an export needs that).</param>
 	/// <param name="intensityRoot">With <paramref name="fullQuality"/>: store the intensity as its square root, the preview's, or as I (an OpenEXR export of I).</param>
-	/// <returns>Whether a run was started: false when the memory warning was cancelled.</returns>
-	/// <exception cref="RunSpecException">The project cannot run as it is (no scene image, for one).</exception>
+	/// <returns>Whether a run was started: false when the memory warning was cancelled, or when another start still waits for its answer.</returns>
+	/// <exception cref="RunSpecException">The project cannot run as it is (no scene image, for one); carried by the task, as the others are.</exception>
 	/// <exception cref="IOException">The cache drive has no room for the frames that do not fit in memory, or its folder cannot be made.</exception>
-	public bool Start(bool automatic = false, bool trackIntensity = false, bool fullQuality = false, bool intensityRoot = true)
+	public async Task<bool> StartAsync(bool automatic = false, bool trackIntensity = false, bool fullQuality = false, bool intensityRoot = true)
 	{
+		if (_isStarting)
+		{
+			Logger.Debug("{Kind} not started: another start waits for the memory warning's answer", automatic ? "Re-run" : "Run");
+			return false;
+		}
 		if (!Settings.Default.UseGpu)
 		{
 			Logger.Info("Running on the CPU: 'Use the GPU' is off in the Simulation menu");
 		}
-		Project project = _document.Project;
 		PreviewQuality quality = fullQuality ? PreviewQuality.Full with { IntensityRoot = intensityRoot } : PreviewQualitySetting;
-		RunSpec spec = RunSpec.Create(project, _scene.Load(), Settings.Default.UseGpu, trackIntensity, quality);
+		RunSpec spec = RunSpec.Create(_document.Project, _scene.Load(), Settings.Default.UseGpu, trackIntensity, quality);
 		// the frames stay in memory up to the budget (the user's share of the RAM, capped by what is free now); only
 		// the rest needs room on the cache drive (2026-10-14). The outgoing run's frames count as free: Discard
 		// below gives them back, and the new store allocates its memory tier only once they are gone (2026-10-16)
@@ -136,30 +158,54 @@ public sealed class RunHost : ObservableObject
 		{
 			// the budget with the RAM cache size at Auto, the warning's fourth lever: the budget itself when it is Auto already
 			long autoBudget = Settings.Default.FrameMemoryPercent > FrameMemory.Automatic ? FrameMemory.Budget(FrameMemory.Automatic, _run?.Store.RamBytes ?? 0) : budget;
-			MemoryWarningChoice? choice = _warning.Ask(spec, budget, autoBudget, quality);
-			if (choice == null)
+			IsStarting = true;
+			try
 			{
-				Logger.Info("{Kind} not started: the memory warning was cancelled", automatic ? "Re-run" : "Run");
-				return false;
+				MemoryWarningChoice? choice = await _warning.AskAsync(spec, budget, autoBudget, quality);
+				if (choice == null)
+				{
+					Logger.Info("{Kind} not started: the memory warning was cancelled", automatic ? "Re-run" : "Run");
+					return false;
+				}
+				if (choice.Mute)
+				{
+					Settings.Default.WarnWhenRamInsufficient = false;
+				}
+				if (choice.CacheAuto)
+				{
+					Settings.Default.FrameMemoryPercent = FrameMemory.Automatic;
+				}
+				if (choice.Quality != quality)
+				{
+					Settings.Default.SetPreviewQuality(choice.Quality);
+					quality = PreviewQualitySetting;
+				}
+				// snapshotted again, whatever the choice (2026-11-09; only for another quality before): the application was
+				// live while the question was open, so an edit that came without input (the scene image re-embedded from
+				// its file) is in the run, which is marked fresh below
+				spec = RunSpec.Create(_document.Project, _scene.Load(), Settings.Default.UseGpu, trackIntensity, quality);
+				budget = FrameMemory.Budget(Settings.Default.FrameMemoryPercent, _run?.Store.RamBytes ?? 0);
+				ramFrames = Math.Min(spec.StoredFrameCount, FrameStore.FramesInBudget(spec.Shape, spec.Layers, budget));
+				Settings.Default.TrySave();
+				Begin(spec, budget, ramFrames, automatic);
+				return true;
 			}
-			if (choice.Mute)
+			finally
 			{
-				Settings.Default.WarnWhenRamInsufficient = false;
+				IsStarting = false;
 			}
-			if (choice.CacheAuto)
-			{
-				Settings.Default.FrameMemoryPercent = FrameMemory.Automatic;
-			}
-			if (choice.Quality != quality)
-			{
-				Settings.Default.SetPreviewQuality(choice.Quality);
-				quality = PreviewQualitySetting;
-				spec = RunSpec.Create(project, _scene.Load(), Settings.Default.UseGpu, trackIntensity, quality);
-			}
-			budget = FrameMemory.Budget(Settings.Default.FrameMemoryPercent, _run?.Store.RamBytes ?? 0);
-			ramFrames = Math.Min(spec.StoredFrameCount, FrameStore.FramesInBudget(spec.Shape, spec.Layers, budget));
-			Settings.Default.TrySave();
 		}
+		Begin(spec, budget, ramFrames, automatic);
+		return true;
+	}
+
+	/// <summary>The disk check, the store and the worker for <paramref name="spec"/>; the outgoing run goes first.</summary>
+	/// <param name="spec">The run to make.</param>
+	/// <param name="budget">The RAM cache's budget in bytes.</param>
+	/// <param name="ramFrames">How many of the run's frames fit in <paramref name="budget"/>.</param>
+	/// <param name="automatic">Started after an edit rather than by the user.</param>
+	private void Begin(RunSpec spec, long budget, int ramFrames, bool automatic)
+	{
 		if (ramFrames < spec.StoredFrameCount)
 		{
 			FrameCache.CheckSpace(FrameStore.SizeOf(spec.Shape, spec.Layers, spec.StoredFrameCount - ramFrames));
@@ -175,7 +221,6 @@ public sealed class RunHost : ObservableObject
 		IsProbesStale = false;
 		Run = run;
 		run.Start();
-		return true;
 	}
 
 	/// <summary>Stops the run in progress, if any; its frames stay.</summary>

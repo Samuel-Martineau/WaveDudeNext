@@ -125,6 +125,10 @@ public partial class PreviewPane : UserControl
 	public static readonly DependencyProperty IsPlayingProperty = DependencyProperty.Register(
 		nameof(IsPlaying), typeof(bool), typeof(PreviewPane), new PropertyMetadata(false, OnIsPlayingChanged));
 
+	/// <summary>Identifies the <see cref="IsPlaybackHeld"/> property.</summary>
+	public static readonly DependencyProperty IsPlaybackHeldProperty = DependencyProperty.Register(
+		nameof(IsPlaybackHeld), typeof(bool), typeof(PreviewPane), new PropertyMetadata(false, (d, _) => ((PreviewPane)d).UpdateClock()));
+
 	/// <summary>Identifies the <see cref="IsLive"/> property.</summary>
 	public static readonly DependencyProperty IsLiveProperty = DependencyProperty.Register(
 		nameof(IsLive), typeof(bool), typeof(PreviewPane),
@@ -454,6 +458,16 @@ public partial class PreviewPane : UserControl
 	{
 		get => (bool)GetValue(IsPlayingProperty);
 		set => SetValue(IsPlayingProperty, value);
+	}
+
+	/// <summary>
+	/// Whether the frame clock waits though playback is on (2026-11-09; bound to the application's
+	/// <c>PreviewState.IsPlaybackHeld</c>): the run Play asked for is still being decided, the memory warning open.
+	/// </summary>
+	public bool IsPlaybackHeld
+	{
+		get => (bool)GetValue(IsPlaybackHeldProperty);
+		set => SetValue(IsPlaybackHeldProperty, value);
 	}
 
 	/// <summary>Whether <see cref="Position"/> follows the newest frame of a run in progress. Only while a run is active; scrubbing, stepping, playing or the run's end turns it off.</summary>
@@ -1058,23 +1072,39 @@ public partial class PreviewPane : UserControl
 			// playing means showing the simulation: the window starts a run when there is none or it is stale. Asked before
 			// the clock starts (2026-11-03, the user's report): a run that does not fit asks in a modal window, whose message
 			// loop had ticked the clock through the stale frames; a refused run turns playback off again, which lands here
-			// with false before the command returns, so the clock stays off then
+			// with false before the command returns, so the clock stays off then. While the run is being decided playback is
+			// held (IsPlaybackHeld, 2026-11-09), which keeps the clock off under the question whether the command returns
+			// with the answer, as under WPF's modal window, or before it; the hold's release starts the clock
 			SimulationCommands.EnsureRun.Execute(null, pane);
 			if (!pane.IsPlaying)
 			{
 				return;
 			}
-			pane._carry = 0.0;
-			pane._clock.Restart();
-			pane._ticker.Change(0, TickMilliseconds);
+		}
+		pane.UpdateClock();
+		CommandManager.InvalidateRequerySuggested();
+		pane.MoveFocusToCounterpart((bool)e.NewValue);
+	}
+
+	/// <summary>The frame clock runs while playback is on and not held (<see cref="IsPlaybackHeld"/>): started from zero, or stopped, when that changes.</summary>
+	private void UpdateClock()
+	{
+		bool runs = IsPlaying && !IsPlaybackHeld;
+		if (runs == _clock.IsRunning)
+		{
+			return;
+		}
+		if (runs)
+		{
+			_carry = 0.0;
+			_clock.Restart();
+			_ticker.Change(0, TickMilliseconds);
 		}
 		else
 		{
-			pane._ticker.Change(Timeout.Infinite, Timeout.Infinite);
-			pane._clock.Stop();
+			_ticker.Change(Timeout.Infinite, Timeout.Infinite);
+			_clock.Stop();
 		}
-		CommandManager.InvalidateRequerySuggested();
-		pane.MoveFocusToCounterpart((bool)e.NewValue);
 	}
 
 	/// <summary>

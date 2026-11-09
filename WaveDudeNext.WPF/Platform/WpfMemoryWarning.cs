@@ -22,11 +22,15 @@ using WaveDudeNext.WPF.Dialogs;
 
 namespace WaveDudeNext.WPF.Platform;
 
-/// <summary>The memory warning for the models of <c>WaveDudeNext.UI</c> (<see cref="IMemoryWarning"/>): <see cref="MemoryWarningWindow"/>, modal over <paramref name="owner"/>.</summary>
+/// <summary>
+/// The memory warning for the models of <c>WaveDudeNext.UI</c> (<see cref="IMemoryWarning"/>): <see cref="MemoryWarningWindow"/>,
+/// modal over <paramref name="owner"/>. The window blocks until it is answered, so the task is finished when it is
+/// returned and the model goes on within the call.
+/// </summary>
 /// <param name="owner">The window the dialog belongs to.</param>
 public sealed class WpfMemoryWarning(Window owner) : IMemoryWarning
 {
 	/// <inheritdoc/>
-	public MemoryWarningChoice? Ask(RunSpec spec, long budget, long autoBudget, PreviewQuality current) =>
-		MemoryWarningWindow.Show(owner, spec, budget, autoBudget, current);
+	public Task<MemoryWarningChoice?> AskAsync(RunSpec spec, long budget, long autoBudget, PreviewQuality current) =>
+		Task.FromResult(MemoryWarningWindow.Show(owner, spec, budget, autoBudget, current));
 }

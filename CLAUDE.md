@@ -1044,6 +1044,58 @@ What still anchors the rest: the live dock model (`DockItem` with WPF's `Content
 `IValueConverter`; the 59 commands are routed commands; the scene image is decoded by WPF's `BitmapDecoder`
 (`SceneImageLoader`; the library writes PNG but reads none); the manual and license are FlowDocuments, which Avalonia has
 only in its paid tier.
+**A contributed Avalonia port** (2026-11-09, read that day): `C:\Work\WaveDudeNext-PRs\wavedude-next-huygens` (Forgejo
+`hibryda/wavedude-next-huygens`, author Hibryda, written with Claude Code over 2026-11-07 to 09, 157 commits, Avalonia
+12.1.5), based on be0023f (0.1.3), the commit before `WaveDudeNext.UI`, which it carries as `upstream/`. Its controls,
+docking and presenter are close translations of the WPF files (87 % of `DockHost`'s lines carried over, 79 % of
+`SceneOverlay`'s); its window is 3,800 lines of 0.1.3 window logic wired in code (no binding in `MainWindow.axaml` or
+`PreviewPane.axaml`, the old live-rule timers), and it has its own `Settings`, `ColorSchemeCatalog`, `Examples`,
+`AppTheme` and `DockLayout`; 160 headless tests (xunit.v3, `Avalonia.Headless`) port the twelve `ui_check` scripts; every
+file's header names JJM Vleggaar (Huygens Optics) as the copyright holder. The user built and ran it on Windows himself.
+Recommended: keep its controls, panes, forms, themes, docking, manual renderer, Skia painters and tests, and translate the
+window from master's WPF window on the models rather than adapt its own; open for his word: the git form (one commit or the
+history, which carries a second copy of the 0.1.3 tree), the credit, what else to take (the CLI, the Linux packaging, the
+ffmpeg MP4 pipe, the OpenCL loader name and `/proc/meminfo` into the library), the look on Windows (Inter instead of Segoe
+UI, no menu glyphs, dark default, antialiased lines at a fractional zoom, no jump list, taskbar progress or title-bar
+click-through), `Avalonia.Controls.ColorPicker` (referenced, apparently unused). **The string tables stay as they are**
+(2026-11-09, the user's choice: each is 902 `s:String` entries and nothing else, `WaveDudeNext.UI` reads no string, and the
+port's conversion was three text substitutions): WPF loads them natively as now, and the Avalonia project converts the same
+files at build (an inline task like `Documents.targets`, output in `obj`), so both heads load compiled dictionaries;
+reading them as XML at run time in Avalonia is the fallback should its compiler not take generated files. Refused: both
+heads reading XML at run time (the WPF designer would show no text), a new format (resx or our own).
+The thirteenth step (2026-11-09, before the Avalonia head): **the models' dialogs answer as tasks**, since Avalonia's
+windows and file pickers answer only later (the user's choice over a nested dispatcher frame in the Avalonia
+implementation): `IMemoryWarning.AskAsync`, `IExportDialogs.AskWhereToSaveAsync` and `AskToReplaceFolderAsync`,
+`RunHost.StartAsync` (`Task<bool>`), `LivePreview.EnsureRunAsync`. WPF's implementations return finished tasks after their
+blocking windows, so every await goes on within the call and the order of events is the old one (`OnRun` and `OnEnsureRun`
+are `async void` handlers; the re-run inside `LivePreview` is a private `async void`, so an unexpected error reaches the UI
+thread's handler as it did). **`RunHost.IsStarting`** is true from the question to the start or the refusal: no other
+start is taken meanwhile (`StartAsync` answers false, `TryRerun` holds), which closes a gap the blocking window had too: the
+application is live under a modal window's message loop, and a scratch frame arriving there began the automatic re-run,
+which asked a second time over the open question (shown on that afternoon's build with a stand-in warning that pumps the UI
+thread while open: asked twice, nested; never seen in the app). The project is snapshotted again after the answer,
+whatever the choice, so an edit that came without input meanwhile is in the run that is marked fresh. **`PreviewState.IsPlaybackHeld`**
+holds the pane's clock while Play's run is decided: set and released by `EnsureRunAsync`, released after a refusal has
+turned playback off, never before (a hold on `IsStarting` itself would be released first and start the clock for a
+refused run); the pane's clock runs while `IsPlaying && !IsPlaybackHeld` (`UpdateClock`). The window's own dialogs (Open,
+Save As, the save question, errors, About, the scene image's) are called by no model and stay as they are. Proven without
+a window (28 checks: a start that asks nothing finished at return; the automatic re-run's question open while a scratch
+frame arrives, an edit finishes and a second start is refused, each unasked; Cancel; F5's question with an edit under it in
+the run; Play refused later with playback off before the hold's release, Play accepted; the blocking answers decided at
+return in the same order; a project that cannot run; the export's Save dialog and folder question answered later and at
+once), in the app by a keyboard probe with the real warning window on a 1920 × 1080 project of 0.8 GB against a RAM cache
+at 1 % (17 checks: Play refused with the position held at 0 under the question and playback off after Esc, F5 refused,
+Play accepted with the re-run starting and playback moving; the settings file backed up and put back), `ExportCheck` 44
+of 44, `RunCheck` 69 of 71 and then 70 of 71 (the first run: four keys at the end of the first session had no effect,
+L, Space, Space, F5, with the foreground moving from the harness's window to another's in that span; the same sequence
+passed seven rounds in a probe of its own; the second run: every check but the foreground guard, the window having been
+activated during the first session). On the way `RunCheck`'s three trailing Left keys went (they had moved the source
+back while its handle held the focus; since a74c04a leaves the handle first they hit whatever had the focus after the
+re-run's start, and on the first run switched the pictures to side by side, saved into the user's settings and put back
+by hand). For the Avalonia head: its export dialogs must keep a second export from beginning while one is open where the
+platform's picker does not block the window (`Exporter` guards a second export only once it waits or writes), and the
+warning's choice changes the quality settings inside the start, which `PreviewQualityChanged` treats as an edit whose end
+a command brings, so that head's edit boundaries must end it when the dialog closes.
 
 ## People, name, license
 
