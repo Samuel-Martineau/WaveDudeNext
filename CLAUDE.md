@@ -635,7 +635,15 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   Save As proposes; an import is named the same way). The set is 24 files
   curated from Jeroen's examples (the Classic ones through the importer, open edges with a rim, his drawn scenes rebuilt
   from parts: the ball lens, the spherical mirror, the test glass, the fibres); the UI harnesses count the File menu's
-  entries, so a new entry moves their Down presses.
+  entries, so a new entry moves their Down presses. **An entry's tooltip is the project's description** (2026-11-10, the
+  user's request; the WPF entries had none, the port's showed the file name): `ExampleEntry.Description`, the root's own
+  `Description` element read from the embedded file with an `XmlReader` when the list is built (not the serializer, and not
+  a nested scheme's element of that name), null for none, which both heads bind as the tip; every example has one. With
+  it **the WPF theme's tooltips wrap at 400 px** (`MaxWidth` on the style, an implicit wrapping `TextBlock` style inside
+  the template's presenter, the width the Avalonia head had wrapped at since the port): the descriptions run to 430
+  characters, and the part kinds' tips had run past the screen on one line as well. Proven by a probe that opens the
+  submenu by keys and reads the first entry's HelpText (both heads report a string tip there) and captures the tip WPF
+  shows on keyboard focus, 391 × 53 px.
 - **Manual** (2026-10-30, the user's request and choices): Help > Manual (F1, below About) opens MANUAL.md in a window
   owned by the main window (the user's choice, after a day unowned: not modal, but attached, so it is minimised and
   restored with the main window and stays above it; Windows does not maximise an owned window with its owner); F1 again

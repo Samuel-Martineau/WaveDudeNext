@@ -209,7 +209,8 @@ public partial class MainWindow
 		foreach (ExampleEntry example in Examples.All)
 		{
 			var item = new MenuItem { Header = example.Header, Command = Command(_ => Fire(OpenExampleAsync(example))) };
-			ToolTip.SetTip(item, example.FileName);
+			// the project's description, as the WPF entries show it (2026-11-10, the user's request; the port had shown the file name)
+			ToolTip.SetTip(item, example.Description);
 			Avalonia.Automation.AutomationProperties.SetAutomationId(item, example.AutomationId);
 			mnuExamples.Items.Add(item);
 		}

@@ -646,6 +646,9 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
 		<Setter Property="BorderBrush" Value="{DynamicResource ToolTipBorder}" />
 		<Setter Property="HasDropShadow" Value="False" />
+		<!-- a long tip wraps at 400 px (2026-11-10, with the examples' descriptions as tips, up to 430 characters; a one-line
+		     tip ran past the screen, the part kinds' descriptions too; the Avalonia head wraps at the same width) -->
+		<Setter Property="MaxWidth" Value="400" />
 		<Setter Property="LayoutTransform" Value="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTransform}}" />
 		<Setter Property="TextOptions.TextFormattingMode" Value="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource ZoomTextFormatting}}" />
 		<Setter Property="TextOptions.TextRenderingMode" Value="{x:Static theming:WindowZoom.TextRendering}" />
@@ -657,7 +660,14 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 					     line's thickness but keeps it centred on the unrounded half, a quarter pixel outside at 1.5 -->
 					<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
 					        BorderThickness="1" Padding="6,3" SnapsToDevicePixels="True">
-						<ContentPresenter />
+						<ContentPresenter>
+							<ContentPresenter.Resources>
+								<!-- the text block WPF makes for a string tip, found by the implicit style: it wraps within the MaxWidth -->
+								<Style TargetType="{x:Type TextBlock}">
+									<Setter Property="TextWrapping" Value="Wrap" />
+								</Style>
+							</ContentPresenter.Resources>
+						</ContentPresenter>
 					</Border>
 				</ControlTemplate>
 			</Setter.Value>

@@ -17,18 +17,21 @@
 
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Xml;
 
 namespace WaveDudeNext.UI;
 
 /// <summary>
-/// One shipped example: the embedded resource, the file it came from, its number and its title ("Example07_Random_emitter_lattice.wdproj"
-/// is number 7, "Random emitter lattice").
+/// One shipped example: the embedded resource, the file it came from, its number, its title ("Example07_Random_emitter_lattice.wdproj"
+/// is number 7, "Random emitter lattice") and the project's description.
 /// </summary>
 /// <param name="Resource">The manifest resource name, "Examples/" and the file name.</param>
 /// <param name="FileName">The project file's name, suggested when the example is saved.</param>
 /// <param name="Number">The two-digit number leading the file name, the examples' order.</param>
 /// <param name="Title">The file name after the number, underscores as spaces.</param>
-public sealed record ExampleEntry(string Resource, string FileName, int Number, string Title)
+/// <param name="Description">The project's description (its Description element, the author's notes), the menu entry's tooltip
+/// (2026-11-10, the user's request); null when the file has none, so no tooltip is shown.</param>
+public sealed record ExampleEntry(string Resource, string FileName, int Number, string Title, string? Description)
 {
 	/// <summary>The menu entry's text: the number and the title.</summary>
 	public string Header => $"{Number}. {Title}";
@@ -72,9 +75,46 @@ public static class Examples
 			// a file outside the pattern is listed last, under its own name
 			int number = match.Success ? int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : int.MaxValue;
 			string title = (match.Success ? match.Groups[2].Value : Path.GetFileNameWithoutExtension(fileName)).Replace('_', ' ');
-			examples.Add(new ExampleEntry(resource, fileName, number, title));
+			examples.Add(new ExampleEntry(resource, fileName, number, title, ReadDescription(resource)));
 		}
 		examples.Sort((a, b) => a.Number != b.Number ? a.Number.CompareTo(b.Number) : string.CompareOrdinal(a.FileName, b.FileName));
 		return examples;
+	}
+
+	/// <summary>
+	/// The project's Description element of the embedded file, read with an XML reader rather than the serializer (the file
+	/// is not loaded for its menu entry): the root's own child of that name, since a project scheme inside the file has a
+	/// Description too; null for none, an empty one or a file that is no XML (which the open reports when it is chosen).
+	/// </summary>
+	private static string? ReadDescription(string resource)
+	{
+		try
+		{
+			using Stream stream = typeof(Examples).Assembly.GetManifestResourceStream(resource)!;
+			using var reader = XmlReader.Create(stream, new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore, IgnoreComments = true, IgnoreWhitespace = true });
+			if (!reader.ReadToFollowing("Project"))
+			{
+				return null;
+			}
+			int depth = reader.Depth + 1;
+			while (reader.Read())
+			{
+				if (reader.NodeType != XmlNodeType.Element || reader.Depth != depth)
+				{
+					continue;
+				}
+				if (reader.Name == "Description")
+				{
+					string text = reader.ReadElementContentAsString().Trim();
+					return text.Length > 0 ? text : null;
+				}
+				reader.Skip();
+			}
+			return null;
+		}
+		catch (XmlException)
+		{
+			return null;
+		}
 	}
 }
