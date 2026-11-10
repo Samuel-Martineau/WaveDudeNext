@@ -8,7 +8,7 @@
 //     <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
 //   0x23 (Diffraction Limited), author of WaveSimulator2D
 //     <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
-//   Mark <mark@pab-ai.com>, author of the Avalonia port
+//   Mark <mark@pab-ai.com>, co-author of the AvaloniaUI port
 //
 // WaveDude Next is free software: you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free Software
@@ -60,17 +60,14 @@ public static class AboutInfo
 	/// <summary>The second credit line, word for word as in the source header.</summary>
 	public const string CreditWaveSimulator2D = "0x23 (Diffraction Limited), author of WaveSimulator2D";
 
+	/// <summary>The third credit line of this head's source header (2026-11-09, the user's choice, as the port's author asked to be named), word for word.</summary>
+	public const string CreditPort = "Mark <mark@pab-ai.com>, co-author of the AvaloniaUI port";
+
 	/// <summary>The product name of the assembly ("WaveDude Next").</summary>
 	public static string Product { get; } = Assembly.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "WaveDude Next";
 
-	/// <summary>
-	/// Upstream's copyright line, as the author's About shows it and his checks read it; the port's own line is
-	/// <see cref="PortCopyright"/>. (The assembly's copyright attribute holds both in one line, for the file properties.)
-	/// </summary>
+	/// <summary>The copyright line, as the WPF head's About shows it and its checks read it; the source header's, which names the port's author under the two contributors (<see cref="CreditPort"/>).</summary>
 	public static string Copyright => "Copyright (C) 2026 Alexander Gräf";
-
-	/// <summary>The port's copyright line, shown under upstream's.</summary>
-	public static string PortCopyright => "Linux and Windows port Copyright (C) 2026 JJM Vleggaar (Huygens Optics)";
 
 	/// <summary>
 	/// The version for people: "0.1.3 (05e5865)", the informational version with the SDK's commit hash shortened to

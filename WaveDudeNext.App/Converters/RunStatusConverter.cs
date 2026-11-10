@@ -8,7 +8,7 @@
 //     <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
 //   0x23 (Diffraction Limited), author of WaveSimulator2D
 //     <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
-//   Mark <mark@pab-ai.com>, author of the Avalonia port
+//   Mark <mark@pab-ai.com>, co-author of the AvaloniaUI port
 //
 // WaveDude Next is free software: you can redistribute it and/or modify it under
 // the terms of the GNU General Public License as published by the Free Software

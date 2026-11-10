@@ -9,7 +9,7 @@ Based on the work of
     <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
   0x23 (Diffraction Limited), author of WaveSimulator2D
     <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
-  Mark <mark@pab-ai.com>, author of the Avalonia port
+  Mark <mark@pab-ai.com>, co-author of the AvaloniaUI port
 
 WaveDude Next is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -42,14 +42,13 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<TextBlock x:Name="productText" FontSize="20" FontWeight="SemiBold" AutomationProperties.AutomationId="AboutProduct" />
 				<TextBlock x:Name="versionText" Margin="0,2,0,0" AutomationProperties.AutomationId="AboutVersion" />
 				<TextBlock x:Name="copyrightText" AutomationProperties.AutomationId="AboutCopyright" />
-				<TextBlock x:Name="portCopyrightText" AutomationProperties.AutomationId="AboutPortCopyright" />
 				<TextBlock Text="{DynamicResource AboutTagline}" Foreground="{DynamicResource GrayText}" Margin="0,2,0,0" />
 			</StackPanel>
 		</DockPanel>
 
 		<StackPanel Grid.Row="1">
 			<Border Classes="section"><TextBlock Text="{DynamicResource AboutCredits}" /></Border>
-			<!-- the credits are the source header's lines, in English, so every place names the two the same way -->
+			<!-- the credits are the source header's lines, in English, so every place names the three the same way -->
 			<TextBlock x:Name="creditVleggaar" TextWrapping="Wrap" AutomationProperties.AutomationId="AboutCreditVleggaar" />
 			<StackPanel Orientation="Horizontal" Margin="16,0,0,0">
 				<Button Classes="link" Content="youtube.com/@HuygensOptics" Click="OnLink" AutomationProperties.AutomationId="AboutLinkHuygensYouTube" />
@@ -62,6 +61,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				<TextBlock Text=" · " VerticalAlignment="Center" />
 				<Button Classes="link" Content="github.com/0x23/WaveSimulator2D" Click="OnLink" AutomationProperties.AutomationId="AboutLinkWaveSimulator2D" />
 			</StackPanel>
+			<TextBlock x:Name="creditPort" TextWrapping="Wrap" Margin="0,6,0,0" AutomationProperties.AutomationId="AboutCreditPort" />
 		</StackPanel>
 
 		<StackPanel Grid.Row="2">

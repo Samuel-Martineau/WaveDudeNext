@@ -1132,9 +1132,11 @@ windows with PrintWindow, never the screen** (2026-11-09: a capture through
 `CopyFromScreen` at the app's rectangle caught another window the user had over it, deleted unread; a popup is a window
 of its own, found by enumerating the process's visible windows, since UI Automation files none of them under the root).
 **Every file of the project
-carries the repository's header with a third "Based on" line, "Mark <mark@pab-ai.com>, author of the Avalonia port"**
+carries the repository's header with a third "Based on" line, "Mark <mark@pab-ai.com>, co-author of the AvaloniaUI port"**
 (the user's choice, as the author asked to be named): an `.editorconfig` section `[WaveDudeNext.App/**.cs]` holds that
-template, so IDE0073 enforces it there as the root template elsewhere; the markup files carry it as the WPF ones do.
+template, so IDE0073 enforces it there as the root template elsewhere; the markup files carry it as the WPF ones do;
+**the About window says the same** (2026-11-10, the user's rule): the copyright line is his, and the header's third line
+is the third credit under "Based on the work of" (`AboutInfo.CreditPort`), where the port's own copyright line stood.
 **The string tables are converted at build**: `Build/StringTables.targets` with the inline task `StringTables.cs` turns
 `WaveDudeNext.WPF/Strings/Strings.*.xaml` into `obj/.../Strings/Strings.*.axaml` (three substitutions: the default
 namespace, the System namespace, `s:String` → `x:String`), added as `AvaloniaXaml` with the Link `Strings/…` before
