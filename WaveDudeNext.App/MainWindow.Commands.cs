@@ -232,7 +232,8 @@ public partial class MainWindow
 		foreach (AppTheme theme in ThemeController.Instance.Options)
 		{
 			var item = new MenuItem { Command = ThemeController.Instance.SelectCommand, CommandParameter = theme, ToggleType = MenuItemToggleType.Radio };
-			item.Bind(MenuItem.HeaderProperty, item.GetResourceObservable("MenuViewTheme" + theme));
+			// the enum's member texts, as the WPF menu names them through EnumNameConverter (the port had asked for MenuViewTheme<Member>, keys no table has)
+			item.Bind(MenuItem.HeaderProperty, item.GetResourceObservable("Enum.AppTheme." + theme));
 			_checkedMenus.Add((item, () => ThemeController.Instance.Current == theme));
 			mnuTheme.Items.Add(item);
 		}

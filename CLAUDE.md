@@ -1174,7 +1174,9 @@ menu has opened once (the port's author had found the same), so `RegisterHotKeys
 the markup names on the window's `KeyBindings`; a text box's own Ctrl+C/V/X/A and Delete stay its own, since a handled
 key never reaches the window's bindings. The menus whose entries come from data (recent files, examples, panes, theme,
 zoom, language, the preview quality, the RAM cache) are still filled in code from the port, their check marks pushed
-(`_checkedMenus`); ItemsSource bindings are a later cleanup, as are the Pause/Resume and Play/Pause headers that follow
+(`_checkedMenus`; 2026-11-10: the theme entries name their texts by `Enum.AppTheme.<Member>`, the keys the WPF menu's
+`EnumNameConverter` uses, where the port had asked for `MenuViewTheme<Member>`, keys no table has, so the entries were
+blank; every other fixed key the App's code names was checked against the table and the themes); ItemsSource bindings are a later cleanup, as are the Pause/Resume and Play/Pause headers that follow
 the state. **The preview pane places its own timeline bar and scene overlays** (the port's window had put them into the
 pane's hosts from outside; 2026-11-10: the bar binds its own `Background` and `Foreground`, which a pane method's
 bare `BackgroundProperty` had missed for the pane's, so the bar had come out dark with a black playhead; seen against the
