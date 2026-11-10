@@ -29,7 +29,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
      newer than its output; the items are added before Avalonia gathers its resources. -->
 <Project>
 
-  <UsingTask TaskName="ConvertStringTables" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+  <UsingTask TaskName="ConvertStringTables" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
       <Destination ParameterType="System.String" Required="true" />
@@ -48,16 +48,16 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
        here is evaluated when the project imports the file, before the SDK has set IntermediateOutputPath -->
   <Target Name="ConvertStringTables"
           Inputs="@(StringTable);$(StringTableConverter);$(MSBuildThisFileFullPath)"
-          Outputs="@(StringTable->'$(IntermediateOutputPath)Strings\%(Filename).axaml')">
-    <ConvertStringTables Sources="@(StringTable)" Destination="$(IntermediateOutputPath)Strings\" />
+          Outputs="@(StringTable->'$(IntermediateOutputPath)Strings/%(Filename).axaml')">
+    <ConvertStringTables Sources="@(StringTable)" Destination="$(IntermediateOutputPath)Strings/" />
   </Target>
 
   <!-- the converted tables as XAML of this project, under Strings/ by their Link; before Avalonia's resource gathering,
        whose first step runs before ResolveReferences -->
   <Target Name="IncludeStringTables" BeforeTargets="BeforeBuild;AddAvaloniaResources;_GenerateAvaloniaResourcesDependencyCache;_InjectAvaloniaAdditionalFiles" DependsOnTargets="ConvertStringTables">
     <ItemGroup>
-      <_StringTableXaml Include="$(IntermediateOutputPath)Strings\*.axaml" />
-      <AvaloniaXaml Include="@(_StringTableXaml)" Link="Strings\%(Filename)%(Extension)" />
+      <_StringTableXaml Include="$(IntermediateOutputPath)Strings/*.axaml" />
+      <AvaloniaXaml Include="@(_StringTableXaml)" Link="Strings/%(Filename)%(Extension)" />
       <FileWrites Include="@(_StringTableXaml)" />
     </ItemGroup>
   </Target>
