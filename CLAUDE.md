@@ -85,7 +85,7 @@ harnesses run.
   plate 32 px thick without a rise (Jeroen's choices of 2026-11-08; off, 64 and 32 before): `Load` gives a file up to
   version 3 the old values where it names none (`OverlayInExportRead`, `ThicknessRead`, `CoatingRead`, set by the setters
   as `Scene.DampingEdgeRead` is), and it is saved as version 4 with them written out; `library_check` proves it. The
-  examples and the harnesses' projects stay version 3, `figures.wdproj` is 4. Clipboard fragments carry no version and
+  examples up to 24 and the harnesses' projects stay version 3, `figures.wdproj` and Examples 25 to 33 are 4. Clipboard fragments carry no version and
   read with today's defaults.
 - **C# style**: modern and concise, expression-bodied accessors, no `this.`, no `IDisposable` on interfaces,
   `out` not `ref`, tabs, Allman; `///` docs state threading, units and coordinate systems. `grep -E`, not `-P`.
@@ -645,10 +645,21 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
 - **Examples** (2026-10-29, the user's request): File > Examples lists the project files of the repository's `Examples`
   folder, embedded in `WaveDudeNext.UI` (`EmbeddedResource` there, `Examples.cs`), in file order with the two-digit
   number leading each name; one opens as an unsaved project named after its file in the title (`SuggestedFileName`, which
-  Save As proposes; an import is named the same way). The set is 24 files
+  Save As proposes; an import is named the same way). The set is 33 files: 24
   curated from Jeroen's examples (the Classic ones through the importer, open edges with a rim, his drawn scenes rebuilt
-  from parts: the ball lens, the spherical mirror, the test glass, the fibres); the UI harnesses count the File menu's
-  entries, so a new entry moves their Down presses. **An entry's tooltip is the project's description** (2026-11-10, the
+  from parts: the ball lens, the spherical mirror, the test glass, the fibres), and nine he made for the kinds and the
+  detectors of his sessions of 2026-11-07/08 (25 to 33, integrated 2026-11-10 on the user's word: the Fresnel lens, the
+  diffusers, the interference filter, the blazed and the lattice grating, the meta prism, then the three with detectors,
+  the meta lens, the imaging detector, the fibre split; none for the meta axicon). His files as saved, format version 4,
+  less the document type definition, which no example carries, with the descriptions corrected (spelling, British
+  "fibre", "diffuser") and the names made what `INamed` promises and the form does not enforce, unique within their
+  list: his pairs of "Absorber", "Absorbing boundary" and "Source A" are numbered or lettered, a "Source 1 copy" is
+  "Source 2", padded and lower-case names are trimmed and capitalised. A detector is seeded by its name, so the renamed
+  "Multi Pixel Photon Counter" draws other detections of the same statistics. Each is byte for byte what the program
+  saves from it, and runs (a one-off probe; `library_check` validates and paints every example). Example 30 needs
+  19.7 GB at full quality, as Example 7 does. A tenth file of his was a bug report (see the smoothed square under
+  Architecture). The UI harnesses count the File menu's entries, so a new entry moves their Down presses; the Examples
+  submenu is walked from its first entry only. **An entry's tooltip is the project's description** (2026-11-10, the
   user's request; the WPF entries had none, the port's showed the file name): `ExampleEntry.Description`, the root's own
   `Description` element read from the embedded file with an `XmlReader` when the list is built (not the serializer, and not
   a nested scheme's element of that name), null for none, which both heads bind as the tip; every example has one. With
@@ -1270,8 +1281,10 @@ README and a documentation file (he writes them); an integer
 upscale in exports; HEVC;
 dropping the 9-point Laplacian (undecided);
 **optical parts**: the open points at the end of `OpticalParts.md` (a `PartCheck.ps1` harness, example projects,
-Bragg thicknesses in pixels) wait for the user; **after Jeroen's drop of 2026-11-08**: example projects for the new
-kinds, and by hand, since no harness presses the mouse: the caret in a new item's name after a pick from "+ Part" and
+Bragg thicknesses in pixels) wait for the user; **after Jeroen's drop of 2026-11-08**: an example project for the
+meta axicon (the other new kinds have theirs since 2026-11-10, Examples 25 to 33), the figure of the File > Examples
+submenu, which with `Assets/Legend.md` still shows 24 entries beside the manual's list of 33 until a figure run on the
+user's word, and by hand, since no harness presses the mouse: the caret in a new item's name after a pick from "+ Part" and
 "+ Probe" with the window active, a filter layer dragged by its grip as one undo step, and the emitter dots after a
 drag on Jeroen's machine with and without the cache renewal. The figures were retaken that afternoon with the user's word (51, 14 of them new; of the 37 there before, 22 came out
 byte for byte as committed and 15 differ where the change shows: the "+ Probe" arrow in the toolbar, in the tree, the
