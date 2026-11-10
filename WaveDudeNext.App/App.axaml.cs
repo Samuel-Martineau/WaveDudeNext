@@ -168,6 +168,8 @@ public partial class App : Application
 			(MachineFacts Facts, PreviewTier Tier)? firstStart = Settings.IsFirstStart ? ChoosePreviewDefaults() : null;
 			ColorSchemeCatalog.Instance.Load();
 			ThemeController.Instance.Apply();
+			// tooltips let the pointer through to what lies under them, as the WPF head's do (2026-11-10, the user's report)
+			Controls.ToolTipPassThrough.Install();
 			LanguageController.Instance.Apply();
 			ReadArguments(desktop.Args ?? []);
 			var window = new MainWindow();

@@ -1139,6 +1139,16 @@ measured 610,359 under a header at 603..635 × 339..363, now 603,363), **the "+ 
 button** (`PlacementMode.BottomEdgeAlignedLeft`; Avalonia centres a flyout by default: 699 under a button at 746, now
 746), and **a flyout's presenter and a context menu have `FontSize` 12** (a flyout's presenter is a root of its own and
 took Fluent's 14 px; the user's report on the Part menu). The window handles F10 as the port's did (`menu.Open()`).
+**Tooltips let the pointer through** (`Controls/ToolTipPassThrough`, 2026-11-10, the user's report on the Examples entries:
+the tooltip "steals the hover under it"): Avalonia places a tooltip 20 px below the pointer in a popup window that takes
+the mouse, and its `ToolTipService` keeps a tooltip open while the pointer is over that window, so moving down a menu
+parked the pointer on the tooltip of the entry just left and the entry beneath got no hover; `PopupRoot.IsHitTestVisible`
+forwards to `IPopupImpl.SetHitTestVisible`, documented to make the native window input-transparent (on Win32 its
+`WM_NCHITTEST` answers `HTTRANSPARENT`), which the tooltip never sets, so a class handler on `ToolTip`'s `Loaded` sets it on
+every tooltip's popup root (a new root per opening), and the pointer reaches the window beneath as under WPF's tooltips.
+Proven by a startup-hook probe that opened a tooltip programmatically and asked its popup window `WM_NCHITTEST` at its
+centre: −1; Avalonia's default is `HTCLIENT` by its source (read at tag 12.1.5, the service's `Update` returning early
+"while the pointer is over a tooltip"). The hover itself the user tests by hand (tooltips show on the pointer alone).
 **The menu of part kinds is the WPF head's** (the same evening, the user's report that the eight kinds of 2026-11-07/08
 were missing): `ProjectTree`'s kind tables carry them in `PartMenuEntries`' order with the Diffraction gratings and Meta
 surfaces submenus among the optics (`Submenu`, which the Optical logic submenu uses too), and `Themes/Icons.axaml` had
