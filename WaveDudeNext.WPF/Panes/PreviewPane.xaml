@@ -355,7 +355,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<Style TargetType="{x:Type controls:TimelineBar}">
 			<Setter Property="Background" Value="{DynamicResource ScrollBarBackground}" />
 			<Setter Property="Foreground" Value="{DynamicResource WindowForeground}" />
-			<Setter Property="TickBrush" Value="{DynamicResource ControlBorder}" />
+			<Setter Property="TickBrush" Value="{DynamicResource TimelineTick}" />
+			<Setter Property="OutlineBrush" Value="{DynamicResource ControlBorder}" />
 			<Setter Property="LabelBrush" Value="{DynamicResource GrayText}" />
 			<Setter Property="AccentBrush" Value="{DynamicResource Accent}" />
 			<Setter Property="AvailableBrush" Value="{DynamicResource DropPreviewFill}" />

@@ -1176,8 +1176,15 @@ key never reaches the window's bindings. The menus whose entries come from data 
 zoom, language, the preview quality, the RAM cache) are still filled in code from the port, their check marks pushed
 (`_checkedMenus`); ItemsSource bindings are a later cleanup, as are the Pause/Resume and Play/Pause headers that follow
 the state. **The preview pane places its own timeline bar and scene overlays** (the port's window had put them into the
-pane's hosts from outside), gained `IsPlaybackHeld` with the WPF pane's `UpdateClock` and `ColorsVersion`, and its
-`MemoryWarningChoice` record went for the UI library's. The status bar's message comes from the log target as in the
+pane's hosts from outside; 2026-11-10: the bar binds its own `Background` and `Foreground`, which a pane method's
+bare `BackgroundProperty` had missed for the pane's, so the bar had come out dark with a black playhead; seen against the
+WPF bar's capture in the same state; both draw the same ticks, minor every frame and major with a label every 5, in
+`ControlBorder` #3F3F46 on the bar's #3E3E42, four levels apart and as good as invisible, counted pixel for pixel in
+both, so the ticks the user saw in the Avalonia bar were those marks on the missing fill; **the ticks are visible but
+subtle in both heads since 2026-11-10**, the user's request: a theme brush `TimelineTick` of their own, #78787F dark and
+#A6A8B2 light, about 60 levels from the fill (30 was "a bit too subtle"), bound to `TickBrush`, while the bar's outline and hover line stay on `ControlBorder`
+through a new `OutlineBrush` of both bars; measured 9 and 10 tick pixels of #5C5C64 in the same strip of each), gained `IsPlaybackHeld` with the WPF pane's
+`UpdateClock` and `ColorsVersion`, and its `MemoryWarningChoice` record went for the UI library's. The status bar's message comes from the log target as in the
 port (`MainWindow.Status.cs`). Proven by a keyboard probe on `tiny.wdproj` by argument (13 of 13): the title, the open
 and the first scratch frame in the log, nine tree rows, "0 / 99", F5's run completed and followed to 99, Space playing
 and pausing, a nudge staling the run and asking for its frame, the re-run when the handle is left, the nudge one undo

@@ -372,9 +372,12 @@ public partial class PreviewPane : UserControl
 		timeline.Bind(TimelineBar.RangeEndProperty, OwnBinding(nameof(OutPoint)));
 		timeline.SetRangeStartCommand = SetRangeStartCommand;
 		timeline.SetRangeEndCommand = SetRangeEndCommand;
-		timeline[!BackgroundProperty] = new DynamicResourceExtension("ScrollBarBackground");
-		timeline[!ForegroundProperty] = new DynamicResourceExtension("WindowForeground");
-		timeline[!TimelineBar.TickBrushProperty] = new DynamicResourceExtension("ControlBorder");
+		// the bar's own Background and Foreground, not the pane's inherited ones of the same name (2026-11-10: the bar had
+		// come out dark with a black playhead for a day)
+		timeline[!TimelineBar.BackgroundProperty] = new DynamicResourceExtension("ScrollBarBackground");
+		timeline[!TimelineBar.ForegroundProperty] = new DynamicResourceExtension("WindowForeground");
+		timeline[!TimelineBar.TickBrushProperty] = new DynamicResourceExtension("TimelineTick");
+		timeline[!TimelineBar.OutlineBrushProperty] = new DynamicResourceExtension("ControlBorder");
 		timeline[!TimelineBar.LabelBrushProperty] = new DynamicResourceExtension("GrayText");
 		timeline[!TimelineBar.AccentBrushProperty] = new DynamicResourceExtension("Accent");
 		timeline[!ToolTip.TipProperty] = new DynamicResourceExtension("TipPreviewTimeline");

@@ -88,9 +88,13 @@ public sealed class TimelineBar : FrameworkElement
 	public static readonly DependencyProperty ForegroundProperty = DependencyProperty.Register(
 		nameof(Foreground), typeof(Brush), typeof(TimelineBar), new FrameworkPropertyMetadata(Brushes.Black, FrameworkPropertyMetadataOptions.AffectsRender));
 
-	/// <summary>Identifies the <see cref="TickBrush"/> property: ticks, bar border and hover line.</summary>
+	/// <summary>Identifies the <see cref="TickBrush"/> property: the ticks.</summary>
 	public static readonly DependencyProperty TickBrushProperty = DependencyProperty.Register(
 		nameof(TickBrush), typeof(Brush), typeof(TimelineBar), new FrameworkPropertyMetadata(Brushes.Gray, FrameworkPropertyMetadataOptions.AffectsRender));
+
+	/// <summary>Identifies the <see cref="OutlineBrush"/> property: the bar's border and the hover line.</summary>
+	public static readonly DependencyProperty OutlineBrushProperty = DependencyProperty.Register(
+		nameof(OutlineBrush), typeof(Brush), typeof(TimelineBar), new FrameworkPropertyMetadata(Brushes.Gray, FrameworkPropertyMetadataOptions.AffectsRender));
 
 	/// <summary>Identifies the <see cref="LabelBrush"/> property: tick labels and the hover label.</summary>
 	public static readonly DependencyProperty LabelBrushProperty = DependencyProperty.Register(
@@ -178,11 +182,21 @@ public sealed class TimelineBar : FrameworkElement
 		set => SetValue(ForegroundProperty, value);
 	}
 
-	/// <summary>Ticks, the bar's border and the hover line.</summary>
+	/// <summary>
+	/// The ticks (2026-11-10, the user's request: visible but subtle; the theme's TimelineTick, a few dozen levels from the
+	/// bar's fill, where ControlBorder had been four levels from it and the ticks invisible since the bar was drawn).
+	/// </summary>
 	public Brush TickBrush
 	{
 		get => (Brush)GetValue(TickBrushProperty);
 		set => SetValue(TickBrushProperty, value);
+	}
+
+	/// <summary>The bar's border and the hover line.</summary>
+	public Brush OutlineBrush
+	{
+		get => (Brush)GetValue(OutlineBrushProperty);
+		set => SetValue(OutlineBrushProperty, value);
 	}
 
 	/// <summary>Tick labels and the hover label.</summary>
@@ -283,7 +297,7 @@ public sealed class TimelineBar : FrameworkElement
 		// arithmetic is the one before, pixel for pixel
 		double t = DevicePixels.Hairline(_dpi);
 		double half = t / 2;
-		Pen pen = PenFor(TickBrush, t);
+		Pen pen = PenFor(OutlineBrush, t);
 		var bar = new Rect(half, BarTop + half, w - t, BarHeight - t);
 		// fills and ticks lie on whole pixels inside the outline, whose rectangle runs through the centres of its pixels:
 		// on those half-pixel edges a fill is smeared over one row or column more (2026-11-01, the in point's bracket)
@@ -326,7 +340,7 @@ public sealed class TimelineBar : FrameworkElement
 		// only when the width, the range, the brushes, the culture or the DPI change
 		if (Maximum > 0)
 		{
-			dc.DrawDrawing(TicksDrawing(w, inner, pen, t));
+			dc.DrawDrawing(TicksDrawing(w, inner, PenFor(TickBrush, t), t));
 		}
 
 		// the brackets over the ticks: a tick on a point's frame (frame 0 always has one) cut a notch into its bracket

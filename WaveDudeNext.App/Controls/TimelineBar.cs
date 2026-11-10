@@ -97,9 +97,13 @@ public sealed class TimelineBar : Control
 	public static readonly StyledProperty<IBrush?> ForegroundProperty =
 		AvaloniaProperty.Register<TimelineBar, IBrush?>(nameof(Foreground), Brushes.Black);
 
-	/// <summary>Identifies the <see cref="TickBrush"/> property: ticks, bar border and hover line.</summary>
+	/// <summary>Identifies the <see cref="TickBrush"/> property: the ticks.</summary>
 	public static readonly StyledProperty<IBrush?> TickBrushProperty =
 		AvaloniaProperty.Register<TimelineBar, IBrush?>(nameof(TickBrush), Brushes.Gray);
+
+	/// <summary>Identifies the <see cref="OutlineBrush"/> property: the bar's border and the hover line.</summary>
+	public static readonly StyledProperty<IBrush?> OutlineBrushProperty =
+		AvaloniaProperty.Register<TimelineBar, IBrush?>(nameof(OutlineBrush), Brushes.Gray);
 
 	/// <summary>Identifies the <see cref="LabelBrush"/> property: tick labels and the hover label.</summary>
 	public static readonly StyledProperty<IBrush?> LabelBrushProperty =
@@ -140,7 +144,7 @@ public sealed class TimelineBar : Control
 	static TimelineBar()
 	{
 		AffectsRender<TimelineBar>(MaximumProperty, ValueProperty, RangeStartProperty, RangeEndProperty, BackgroundProperty, ForegroundProperty,
-			TickBrushProperty, LabelBrushProperty, AccentBrushProperty, AvailableProperty, AvailableBrushProperty);
+			TickBrushProperty, OutlineBrushProperty, LabelBrushProperty, AccentBrushProperty, AvailableProperty, AvailableBrushProperty);
 	}
 
 	/// <summary>A focusable bar of <see cref="DefaultHeight"/> that draws its own focus rectangle (so no theme adorner).</summary>
@@ -208,11 +212,21 @@ public sealed class TimelineBar : Control
 		set => SetValue(ForegroundProperty, value);
 	}
 
-	/// <summary>Ticks, the bar's border and the hover line.</summary>
+	/// <summary>
+	/// The ticks (2026-11-10, the user's request: visible but subtle; the theme's TimelineTick, a few dozen levels from the
+	/// bar's fill, where ControlBorder had been four levels from it and the ticks invisible).
+	/// </summary>
 	public IBrush? TickBrush
 	{
 		get => GetValue(TickBrushProperty);
 		set => SetValue(TickBrushProperty, value);
+	}
+
+	/// <summary>The bar's border and the hover line.</summary>
+	public IBrush? OutlineBrush
+	{
+		get => GetValue(OutlineBrushProperty);
+		set => SetValue(OutlineBrushProperty, value);
 	}
 
 	/// <summary>Tick labels and the hover label.</summary>
@@ -332,7 +346,7 @@ public sealed class TimelineBar : Control
 		// at 100 % the arithmetic is upstream's, pixel for pixel
 		double t = Hairline;
 		double half = t / 2;
-		IPen pen = PenFor(TickBrush, t);
+		IPen pen = PenFor(OutlineBrush, t);
 		double right = Snap(w);
 		double barTop = Snap(BarTop);
 		double barBottom = Snap(BarTop + BarHeight);
@@ -367,7 +381,7 @@ public sealed class TimelineBar : Control
 		// is rebuilt only when the width, the range or the culture change, and the labels come from the label cache
 		if (Maximum > 0)
 		{
-			DrawTicks(dc, w, inner, pen, half);
+			DrawTicks(dc, w, inner, PenFor(TickBrush, t), half);
 		}
 
 		// the brackets over the ticks: a tick on a point's frame (frame 0 always has one) cut a notch into its bracket

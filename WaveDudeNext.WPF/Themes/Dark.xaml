@@ -106,6 +106,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 	<SolidColorBrush x:Key="DropIndicatorGlyph" Color="#FFF1F1F1" />
 	<SolidColorBrush x:Key="DropIndicatorHot" Color="#FF007ACC" />
 	<SolidColorBrush x:Key="DropPreviewFill" Color="#60007ACC" />
+	<!-- the timeline's ticks: visible but subtle on the bar's ScrollBarBackground (2026-11-10, the user's request) -->
+	<SolidColorBrush x:Key="TimelineTick" Color="#FF78787F" />
 	<SolidColorBrush x:Key="DropPreviewBorder" Color="#FF007ACC" />
 
 	<!-- buttons / inputs -->
