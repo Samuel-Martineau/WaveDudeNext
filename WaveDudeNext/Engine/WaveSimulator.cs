@@ -707,15 +707,18 @@ public sealed class WaveSimulator : IWaveEngine, IDisposable
 	/// off-width first; a non-positive period yields 1). Within
 	/// the "on" span the amplitude is shaped by the pulse shape: Gaussian tapers smoothly to (about) 0 at both
 	/// ends of the "on" span (a bell centred in the on-window with σ = on-width/6), and SmoothedSquare rises and
-	/// falls quickly (an atan-smoothed square wave, avoiding a hard on/off step that would ring the field).
+	/// falls quickly (an atan-smoothed square wave, avoiding a hard on/off step that would ring the field): half
+	/// the amplitude at each end of the "on" span, an edge 0.35 cycles wide, and in a gap the tail of the nearer
+	/// burst, so the envelope is continuous and a gap of two cycles still falls to a tenth at its middle.
 	/// <paramref name="pos"/> and <paramref name="offWidth"/> come from <see cref="ComputePulsePosition"/>, as
 	/// does <paramref name="isFirstCycle"/> - see the SmoothedSquare branch for why that one matters.
+	/// Pure and thread-safe; internal for <c>library_check</c>, which proves the shape.
 	/// </summary>
 	/// <param name="el">The source; supplies the pulse shape and on-width.</param>
 	/// <param name="pos">Position within the period in cycles, as returned by <see cref="ComputePulsePosition"/>.</param>
 	/// <param name="offWidth">Off-width (cycles) in effect for this period.</param>
 	/// <param name="isFirstCycle">Whether this is the first period (suppresses the tail wrapping of the smoothed square).</param>
-	private static double PulseEnvelope(Emitter el, double pos, int offWidth, bool isFirstCycle)
+	internal static double PulseEnvelope(Emitter el, double pos, int offWidth, bool isFirstCycle)
 	{
 		int onWidthCycles = el.OnWidthCycles;
 		int period = onWidthCycles + offWidth;
@@ -736,28 +739,28 @@ public sealed class WaveSimulator : IWaveEngine, IDisposable
 			return Math.Exp(-0.5 * z * z);
 		}
 		// a flat-topped pulse (envelope 1 while "on", 0 while "off") with a short, FIXED-width (in cycles, not a
-		// fraction of the on/off span) smoothed edge at the rise and the fall, evaluated on a coordinate shifted
-		// so the "on" span starts at 0 (folding around the period).
-		if (onPos < 0.0 && !isFirstCycle)
+		// fraction of the on/off span) smoothed edge at the rise and the fall: one burst is a rising step about
+		// its start times a falling step about its end, and a position takes the burst nearest in time. The gap is
+		// shared at its middle: its first half is the falling tail of the burst that just ended (onPos wrapped
+		// forward by a period), its second half the rising tail of the burst to come. A burst is symmetric about
+		// its centre, so the halves meet at one value and the envelope is continuous for any pair of widths.
+		// (Until 2026-11-10 the rising step went by the nearest rising edge, switching at half the period, and the
+		// falling step by the edge last passed: right only inside the on-span of a burst no longer than its gap.
+		// A burst longer than its gap was cut at half the period, 20 on and 2 off emitting for 11 cycles and
+		// pausing for 11, Jeroen's report; and each edge's outer half was missing, the envelope stepping between
+		// 0.5 and about 0 there, unseen at phase 0, where the wave itself is 0 at both edges.)
+		if (onPos < -offWidth / 2.0 && !isFirstCycle)
 		{
-			// wrapping onPos forward by a full period makes it continue the falling tail of the on-span that
-			// JUST ended - correct from the second off-span onward, where that on-span really happened. A
-			// source's very first off-span (isFirstCycle) has no real preceding on-emission to continue from, so
-			// wrapping there would fabricate one: pos = 0 would land exactly on that phantom falling edge and
-			// start the run at envelope ~0.5 instead of ~0, emitting a spurious one-cycle "blip" before the
-			// source actually goes quiet. Left un-wrapped (deeply negative) instead, riseArg/fallArg below
-			// correctly place it far from both edges, so the envelope is (very close to) 0 until the real rising edge.
+			// A source's very first off-span (isFirstCycle; only an element with a randomised off-width starts
+			// in one) has no burst before it whose tail it could continue: wrapping there would fabricate one,
+			// pos = 0 landing on that phantom falling edge and starting the run at envelope ~0.5 instead of ~0,
+			// a spurious "blip" before the source goes quiet. Left un-wrapped, deeply negative, it lies far
+			// before the rising edge, so the envelope is (very close to) 0 until the real one.
 			onPos += period;
 		}
 		const double EdgeWidth = 0.35;
-		double fallArg = onPos - onWidthCycles;   // 0 at the falling edge, grows past it
-		double riseArg = onPos;                   // 0 at the rising edge
-		if (riseArg > period / 2.0)
-		{
-			riseArg -= period;   // signed distance to the *nearest* rising edge
-		}
-		double rise = 0.5 + Math.Atan(riseArg / EdgeWidth) / Math.PI;
-		double fall = 0.5 - Math.Atan(fallArg / EdgeWidth) / Math.PI;
+		double rise = 0.5 + Math.Atan(onPos / EdgeWidth) / Math.PI;                     // 0.5 at the rising edge
+		double fall = 0.5 - Math.Atan((onPos - onWidthCycles) / EdgeWidth) / Math.PI;   // 0.5 at the falling edge
 		return rise * fall;
 	}
 

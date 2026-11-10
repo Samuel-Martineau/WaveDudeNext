@@ -267,6 +267,7 @@ internal static class Program
 		CheckEmitterMapping();
 		CheckMirror(W, H);
 		CheckDecimalLevels(W, H);
+		CheckPulseEnvelope(W, H);
 		CheckMovable();
 		CheckRanges();
 		CheckHistory();
@@ -1188,6 +1189,90 @@ internal static class Program
 			Run(gpu, 150);
 			float diff = MaxDiff(cpu, gpu.FieldData);
 			Check(diff < 1e-3f * Math.Max(1f, MaxAbs(cpu)), "GPU agrees on a decimal level and phase (max diff " + diff + ")");
+		}
+	}
+
+	// The smoothed square's envelope (2026-11-10, Jeroen's report: a source of 20 cycles on and 2 off emitted for 11 and
+	// paused for 11). Until then the rising step went by the nearest rising edge, which cut a burst longer than its gap
+	// at half the period, and each edge's outer half was missing, the envelope stepping by half the amplitude there.
+	private static void CheckPulseEnvelope(int W, int H)
+	{
+		Console.WriteLine("--- smoothed-square pulse envelope");
+		const int perCycle = 1000;
+		bool spans = true, ends = true, middles = true;
+		double worstStep = 0;
+		foreach ((int on, int off) in new[] { (20, 2), (10, 10), (5, 20), (3, 1), (1, 7), (7, 3) })
+		{
+			Emitter e = Make(0, 0, 100, 1.0, SourceMode.Pulsed, PulseShape.SmoothedSquare, onWidth: on, offWidth: off);
+			int samples = (on + off) * perCycle;
+			// a period that is not the source's first; the position counts from the start of the gap, the burst begins at off
+			double At(int i) => WaveSimulator.PulseEnvelope(e, (double)(i % samples) / perCycle, off, false);
+			double rising = At(off * perCycle), falling = At(0);
+			ends &= Math.Abs(rising - falling) < 1e-12 && rising > 0.44 && rising <= 0.5;
+			int loud = 0, least = 0;
+			for (int i = 0; i < samples; i++)
+			{
+				double value = At(i);
+				loud += value > rising ? 1 : 0;
+				least = value < At(least) ? i : least;
+				worstStep = Math.Max(worstStep, Math.Abs(At(i + 1) - value));
+			}
+			spans &= Math.Abs(loud - on * perCycle) <= 1;
+			middles &= least == off * perCycle / 2;
+		}
+		Check(ends, "half the amplitude at both ends of the burst, the same at the rise and the fall");
+		Check(spans, "the envelope is above that for the pulse width and below it for the off width, whichever is longer");
+		Check(middles, "a gap is quietest at its middle");
+		Check(worstStep < 0.001, $"no step anywhere, the gap's middle and the period's end included (largest change in a thousandth of a cycle {worstStep:0.00000})");
+		Emitter late = Make(0, 0, 100, 1.0, SourceMode.Pulsed, PulseShape.SmoothedSquare, onWidth: 5, offWidth: 10);
+		Check(WaveSimulator.PulseEnvelope(late, 0, 10, true) < 0.02 && Math.Abs(WaveSimulator.PulseEnvelope(late, 0, 10, false) - 0.5) < 0.02,
+			"a run that begins in a gap begins silent: no tail of a burst that never was");
+		// through the engines: the source of Jeroen's project, the peak of the field at its cell in each cycle of the second
+		// period, 20 loud and the gap's 2 quiet (measured on his file: a gap cycle reaches 0.37 of the top at most, a
+		// burst's first and last cycle 0.85 at least)
+		const int on20 = 20, off2 = 2, cycles = 2 * (on20 + off2);
+		var options = new EngineOptions(2.0, 1.0, false, false, 10.0, 1.0);
+		List<Emitter> emitters = [Make(W / 2, H / 2, 100, 1.0, SourceMode.Pulsed, PulseShape.SmoothedSquare, onWidth: on20, offWidth: off2)];
+		double stepsPerCycle = 2 * Math.PI / (float)(100 / 255.0 * 0.5 * options.SourceFrequencyScale);
+		int steps = (int)Math.Ceiling(cycles * stepsPerCycle);
+		SceneData Scene() => SceneData.Empty(W, H, -32, 1.0, true);
+		float[] Series(IWaveEngine engine)
+		{
+			engine.SetProbes(ProbeSampler.Build([new ProbeSpec("At the source", ProbeKind.Point, ProbeMeasurement.Amplitude, W / 2, H / 2, 0, 0, 0)], W, H, 32));
+			for (int i = 0; i < steps; i++)
+			{
+				engine.AdvanceOneStep();
+				engine.SampleProbes();
+			}
+			return engine.TakeProbeSamples()[0];
+		}
+		bool TwentyAndTwo(float[] series, out string found)
+		{
+			double[] peaks = new double[cycles];
+			for (int i = 0; i < series.Length; i++)
+			{
+				int cycle = Math.Min(cycles - 1, (int)(i / stepsPerCycle));
+				peaks[cycle] = Math.Max(peaks[cycle], Math.Abs(series[i]));
+			}
+			double top = peaks.Max();
+			bool[] loud = [.. peaks.Skip(on20 + off2).Select(peak => peak > top / 2)];
+			found = $"{loud.Count(l => l)} loud, {loud.Count(l => !l)} quiet";
+			return loud.Take(on20).All(l => l) && loud.Skip(on20).All(l => !l);
+		}
+		float[] cpu = Series(new WaveSimulator(Scene(), options, emitters));
+		Check(TwentyAndTwo(cpu, out string cpuFound), "CPU: 20 cycles on and 2 off are 20 loud cycles and 2 quiet ones (" + cpuFound + ")");
+		GpuWaveSimulator? gpu = GpuWaveSimulator.TryCreate(Scene(), options, emitters, out string problems);
+		if (gpu == null)
+		{
+			Console.WriteLine("  skip GPU: " + problems);
+			return;
+		}
+		using (gpu)
+		{
+			float[] card = Series(gpu);
+			Check(TwentyAndTwo(card, out string gpuFound), "GPU: the same (" + gpuFound + ")");
+			float diff = MaxDiff(cpu, card);
+			Check(diff < 1e-3f * MaxAbs(cpu), "GPU agrees with the CPU at the source over both periods (max diff " + diff + " of " + MaxAbs(cpu) + ")");
 		}
 	}
 

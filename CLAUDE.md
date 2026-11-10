@@ -222,6 +222,19 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   bit for bit on random gaps. A source's frequency level, amplitude and phase take decimals (2026-10-19, Jeroen's point 10); the
   level is capped at 255, above which the grid cannot sample the wave; object sources carry their frequency as a float on
   the GPU, the 256-entry table serves the image sources. The importer's fallbacks differ from the model's defaults on purpose.
+  **The smoothed square's envelope is no longer Jeroen's formula** (2026-11-10, his report with a project of one source,
+  20 cycles on and 2 off, which emitted for 11 and paused for 11): his formula, the same in his VB on both engines and
+  ported line for line, took the rising step by the nearest rising edge, switching at half the period, and the falling
+  step by the edge last passed, right only inside the on-span of a burst no longer than its gap: a longer burst was cut
+  at half the period by a step of the whole amplitude, and each edge's outer half was missing, a step of 0.49 unseen at
+  phase 0, where the wave is 0 at both edges. Now a position takes the burst nearest in time, the gap shared at its
+  middle (`WaveSimulator.PulseEnvelope` and the kernel): continuous for any widths, and the old values bit for bit in
+  an on-span up to half the period. Measured on his file at the source's cell, both engines: 11 loud cycles of 22
+  before, 20 after, the gap's two at 0.24 to 0.37 of the top (the atan edge has a long tail: the middle of a 2-cycle
+  gap is at 0.107 of the amplitude, of a 10-cycle gap at 0.022). Of the examples, 16 (the figures' project: one burst,
+  detached inside it) and the Gaussian ones are bit for bit the same; 1, 18 and 23 (10/10, 10/20, 15/15) gain the outer
+  halves, 1 to 2 % of a burst's energy. `library_check` proves the shape for six pairs of widths and 20/2 through both
+  engines.
 - **Frames vs steps**: frame k is the state after step `k × VisualizeEvery`.
 - **The engine choice is a user setting** (Simulation > Use the GPU, default on, CPU fallback logged).
 - **Frame store**: budget = the lesser of free physical memory and available commit (2026-10-19: Windows refuses an
@@ -758,7 +771,7 @@ machine has), no Direct3D display path.
 
 ## Harnesses
 
-`library_check` (100+ checks: engines, store, renderer, half tables, screen path, schemes, probes, scratch, reduced preview, importer, export, parts, group move, open edges, work groups on a prime grid, ranges, XOR gate, zone plate, gate port follower, history, clipboard, the project file's DTD, the first start's tiers, the engine's page-locked snapshots, scene replacement, the memory warning's store bytes, the painter's runs and the glowing edges' lanes byte for byte against pixel by pixel, the diffuser, the interference filter, the simple and the facetted grating, the Fresnel lens, the meta surfaces' fills and the detectors' statistics).
+`library_check` (100+ checks: engines, store, renderer, half tables, screen path, schemes, probes, scratch, reduced preview, importer, export, parts, group move, the smoothed square's envelope, open edges, work groups on a prime grid, ranges, XOR gate, zone plate, gate port follower, history, clipboard, the project file's DTD, the first start's tiers, the engine's page-locked snapshots, scene replacement, the memory warning's store bytes, the painter's runs and the glowing edges' lanes byte for byte against pixel by pixel, the diffuser, the interference filter, the simple and the facetted grating, the Fresnel lens, the meta surfaces' fills and the detectors' statistics).
 UI, all on `Common.ps1`, with their check counts: `PreviewCheck` 43, `RunCheck` 71, `LanguageCheck` 11,
 `ProbeGraphCheck` 39, `ImportCheck` 10, `ExportCheck` 44, `PreviewQualityCheck` 35, `SceneImageCheck` 8,
 `ColorPickerCheck` 13, `KeyboardCheck` 13, `AboutCheck` 18, `SelectionCheck` 10. Test projects `tiny*.wdproj` sit beside them. The

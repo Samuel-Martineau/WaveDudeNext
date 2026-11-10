@@ -948,23 +948,23 @@ public sealed class GpuWaveSimulator : IWaveEngine, IDisposable
 		source.AppendLine("            } else {");
 		source.AppendLine("                // a flat-topped pulse (envelope 1 while on, 0 while off) with a short, FIXED-width");
 		source.AppendLine("                // (in cycles) smoothed edge at the rise and the fall - fixed, so a long off span");
-		source.AppendLine("                // sits at (very close to) 0 for nearly all of it instead of lingering. The math is");
-		source.AppendLine("                // exactly the on-first formula, fed a coordinate shifted so the on span starts at 0.");
+		source.AppendLine("                // sits at (very close to) 0 for nearly all of it instead of lingering. One burst is a");
+		source.AppendLine("                // rising step about its start times a falling step about its end, on a coordinate");
+		source.AppendLine("                // with the on span starting at 0; a position takes the burst nearest in time.");
 		source.AppendLine("                float shifted = pos - (float)ow;");
-		// wrapping shifted forward by a full period makes it continue the falling tail of the on-span that JUST
-		// ended - correct from the second off-span onward, where that on-span really happened. The very first
-		// off-span (isFirstCycle) has no real preceding on-emission to continue from, so wrapping there would
-		// fabricate one: pos = 0 would land exactly on that phantom falling edge and start the run at envelope ~0.5
-		// instead of ~0, emitting a spurious one-cycle "blip" before the source actually goes quiet. Left un-wrapped
-		// (deeply negative) instead, dRise/dFall below correctly place it far from both edges, keeping the envelope
-		// at (very close to) 0 until the real rising edge - matching WaveSimulator.PulseEnvelope exactly.
-		source.AppendLine("                if (shifted < 0.0f && !isFirstCycle) shifted += (float)period;");
+		// The gap is shared at its middle: its first half is the falling tail of the burst that just ended (shifted
+		// wrapped forward by a period), its second half the rising tail of the burst to come; a burst is symmetric
+		// about its centre, so the halves meet at one value (see WaveSimulator.PulseEnvelope, kept in exact agreement
+		// with this kernel, for what stood here until 2026-11-10: a burst longer than its gap was cut at half the
+		// period). The very first off-span (isFirstCycle) has no burst before it whose tail it could continue, so
+		// wrapping there would fabricate one: pos = 0 would land exactly on that phantom falling edge and start the
+		// run at envelope ~0.5 instead of ~0, emitting a spurious "blip" before the source actually goes quiet. Left
+		// un-wrapped (deeply negative) instead, it lies far before the rising edge, keeping the envelope at (very
+		// close to) 0 until the real one.
+		source.AppendLine("                if (shifted < -0.5f * (float)ow && !isFirstCycle) shifted += (float)period;");
 		source.AppendLine("                float edgeWidth = 0.35f;");
-		source.AppendLine("                float dFall = shifted - (float)onWidth[k];");
-		source.AppendLine("                float dRise = shifted;");
-		source.AppendLine("                if (dRise > (float)period / 2.0f) dRise -= (float)period;");
-		source.AppendLine("                float rising = 0.5f + atan(dRise / edgeWidth) / M_PI_F;");
-		source.AppendLine("                float falling = 0.5f - atan(dFall / edgeWidth) / M_PI_F;");
+		source.AppendLine("                float rising = 0.5f + atan(shifted / edgeWidth) / M_PI_F;");
+		source.AppendLine("                float falling = 0.5f - atan((shifted - (float)onWidth[k]) / edgeWidth) / M_PI_F;");
 		source.AppendLine("                envelope = rising * falling;");
 		source.AppendLine("            }");
 		source.AppendLine("        }");
