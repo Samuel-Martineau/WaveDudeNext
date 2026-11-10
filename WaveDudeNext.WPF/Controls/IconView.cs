@@ -24,16 +24,14 @@ using System.Windows.Shapes;
 namespace WaveDudeNext.WPF.Controls;
 
 /// <summary>
-/// A 16 px icon (2026-10-23): a <see cref="Glyph"/> of Windows' icon font, or one of the app's own <see cref="Drawing"/>s,
-/// in its inherited text colour, so it greys out with the text beside it. The project tree's rows and toolbar hold one each,
-/// and <see cref="MenuIcon"/> gives one to a menu entry. Not focusable. UI thread.
+/// A 16 px icon (2026-10-23): one of the app's own <see cref="Drawing"/>s (the theme's Icons.xaml), in its inherited text
+/// colour, so it greys out with the text beside it. The project tree's rows and toolbar hold one each, and <see cref="MenuIcon"/>
+/// gives one to a menu entry. Until 2026-11-10 an icon could also be a glyph of Windows' icon font (Segoe Fluent Icons), which
+/// the menus used for the standard commands; every one of those is a drawing now, since the drawings are shared with the
+/// Avalonia head and Linux and macOS have no Segoe (the user's choice). Not focusable. UI thread.
 /// </summary>
 public sealed class IconView : ContentControl
 {
-	/// <summary>Identifies the <see cref="Glyph"/> property.</summary>
-	public static readonly DependencyProperty GlyphProperty = DependencyProperty.Register(
-		nameof(Glyph), typeof(string), typeof(IconView), new PropertyMetadata(null, OnIconChanged));
-
 	/// <summary>Identifies the <see cref="Drawing"/> property.</summary>
 	public static readonly DependencyProperty DrawingProperty = DependencyProperty.Register(
 		nameof(Drawing), typeof(string), typeof(IconView), new PropertyMetadata(null, OnIconChanged));
@@ -49,13 +47,6 @@ public sealed class IconView : ContentControl
 		IsTabStop = false;
 		Width = 16;
 		Height = 16;
-	}
-
-	/// <summary>The icon font's character (Segoe Fluent Icons, Segoe MDL2 Assets on Windows 10), or null.</summary>
-	public string? Glyph
-	{
-		get => (string?)GetValue(GlyphProperty);
-		set => SetValue(GlyphProperty, value);
 	}
 
 	/// <summary>
@@ -79,18 +70,11 @@ public sealed class IconView : ContentControl
 		set => SetValue(PlusBadgeProperty, value);
 	}
 
-	/// <summary>The glyph when there is one, else the drawing with its badge; nothing for neither.</summary>
+	/// <summary>The drawing with its badge; nothing for none.</summary>
 	private static void OnIconChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 	{
 		var view = (IconView)d;
-		if (view.Glyph is { Length: > 0 } glyph)
-		{
-			var text = new TextBlock { Text = glyph };
-			// resolved once the element is in place, so a menu built in code finds the theme's style too
-			text.SetResourceReference(StyleProperty, "IconGlyphText");
-			view.Content = text;
-		}
-		else if (view.Drawing is { Length: > 0 } drawing)
+		if (view.Drawing is { Length: > 0 } drawing)
 		{
 			// the inherited text colour each path holds itself (an ancestor lookup ran before the icon was in place and never
 			// found one, 2026-10-23)

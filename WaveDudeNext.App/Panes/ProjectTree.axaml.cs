@@ -176,7 +176,7 @@ public partial class ProjectTree : UserControl
 		tree.DataTemplates.Insert(0, new FuncTreeDataTemplate<Project>((_, _) => BuildProjectHeader(), _ => _rootChildren));
 
 		_probeSeparator = new Separator();
-		_exportProbeCsv = Entry("MenuExportProbeCsv", nameof(AppCommands.ExportProbeCsv), null, "ContextExportProbeCsv");
+		_exportProbeCsv = Entry("MenuExportProbeCsv", nameof(AppCommands.ExportProbeCsv), null, "ContextExportProbeCsv", "Export");
 		_rowMenu = BuildRowMenu();
 		addPartButton.Flyout = CreatePartKindsFlyout();
 
@@ -637,38 +637,42 @@ public partial class ProjectTree : UserControl
 	private ContextMenu BuildRowMenu()
 	{
 		var menu = new ContextMenu();
-		menu.Items.Add(Entry("MenuProjectAddSource", nameof(AppCommands.AddSource)));
-		MenuItem addPart = Entry("MenuProjectAddPart", null);
+		menu.Items.Add(Entry("MenuProjectAddSource", nameof(AppCommands.AddSource), drawing: "Add"));
+		MenuItem addPart = Entry("MenuProjectAddPart", null, drawing: "Add");
 		foreach (Control entry in PartKindEntries())
 		{
 			addPart.Items.Add(entry);
 		}
 		menu.Items.Add(addPart);
-		menu.Items.Add(Entry("MenuProjectAddProbe", nameof(AppCommands.AddProbe)));
+		menu.Items.Add(Entry("MenuProjectAddProbe", nameof(AppCommands.AddProbe), drawing: "Add"));
 		menu.Items.Add(new Separator());
-		menu.Items.Add(Entry("MenuProjectToggleSelected", nameof(AppCommands.ToggleSelected), "Insert", "ContextToggleSelected"));
+		menu.Items.Add(Entry("MenuProjectToggleSelected", nameof(AppCommands.ToggleSelected), "Insert", "ContextToggleSelected", "ToggleSelected"));
 		menu.Items.Add(Entry("MenuProjectSelectAll", nameof(AppCommands.SelectAll), "Ctrl+A", "ContextSelectAll"));
 		menu.Items.Add(new Separator());
-		menu.Items.Add(Entry("MenuProjectToggleEnabled", nameof(AppCommands.ToggleEnabled), "Space"));
-		menu.Items.Add(Entry("MenuProjectDuplicate", nameof(AppCommands.Duplicate), "Ctrl+D"));
-		menu.Items.Add(Entry("MenuEditCut", nameof(AppCommands.Cut), "Ctrl+X"));
-		menu.Items.Add(Entry("MenuEditCopy", nameof(AppCommands.Copy), "Ctrl+C"));
-		menu.Items.Add(Entry("MenuEditPaste", nameof(AppCommands.Paste), "Ctrl+V"));
-		menu.Items.Add(Entry("MenuProjectRemove", nameof(AppCommands.Remove), "Delete"));
+		menu.Items.Add(Entry("MenuProjectToggleEnabled", nameof(AppCommands.ToggleEnabled), "Space", drawing: "ToggleEnabled"));
+		menu.Items.Add(Entry("MenuProjectDuplicate", nameof(AppCommands.Duplicate), "Ctrl+D", drawing: "Duplicate"));
+		menu.Items.Add(Entry("MenuEditCut", nameof(AppCommands.Cut), "Ctrl+X", drawing: "Cut"));
+		menu.Items.Add(Entry("MenuEditCopy", nameof(AppCommands.Copy), "Ctrl+C", drawing: "Copy"));
+		menu.Items.Add(Entry("MenuEditPaste", nameof(AppCommands.Paste), "Ctrl+V", drawing: "Paste"));
+		menu.Items.Add(Entry("MenuProjectRemove", nameof(AppCommands.Remove), "Delete", drawing: "Remove"));
 		menu.Items.Add(new Separator());
-		menu.Items.Add(Entry("MenuProjectMoveUp", nameof(AppCommands.MoveUp), "Alt+Up"));
-		menu.Items.Add(Entry("MenuProjectMoveDown", nameof(AppCommands.MoveDown), "Alt+Down"));
+		menu.Items.Add(Entry("MenuProjectMoveUp", nameof(AppCommands.MoveUp), "Alt+Up", drawing: "MoveUp"));
+		menu.Items.Add(Entry("MenuProjectMoveDown", nameof(AppCommands.MoveDown), "Alt+Down", drawing: "MoveDown"));
 		// a probe's recording as CSV: only a probe row shows the entry, last
 		menu.Items.Add(_probeSeparator);
 		menu.Items.Add(_exportProbeCsv);
 		return menu;
 	}
 
-	/// <summary>A menu entry: the text from the string table, following a language switch; the gesture shown as text, not bound (the tree's keys do that).</summary>
-	private MenuItem Entry(string headerKey, string? member, string? gesture = null, string? automationId = null)
+	/// <summary>
+	/// A menu entry: the text from the string table, following a language switch; the gesture shown as text, not bound (the
+	/// tree's keys do that); the icon one of the shared drawings, as the WPF head's entry has it (<see cref="MenuIcon"/>).
+	/// </summary>
+	private MenuItem Entry(string headerKey, string? member, string? gesture = null, string? automationId = null, string? drawing = null)
 	{
 		var item = new MenuItem();
 		item[!HeaderedSelectingItemsControl.HeaderProperty] = new DynamicResourceExtension(headerKey);
+		MenuIcon.SetDrawing(item, drawing);
 		if (member != null)
 		{
 			item.Bind(MenuItem.CommandProperty, CommandBinding(member));

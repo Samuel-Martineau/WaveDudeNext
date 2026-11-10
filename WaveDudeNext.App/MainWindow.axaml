@@ -20,6 +20,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:WaveDudeNext.App.Controls"
         xmlns:converters="using:WaveDudeNext.App.Converters"
         xmlns:docking="using:WaveDudeNext.App.Docking"
         xmlns:layout="using:WaveDudeNext.UI.Docking"
@@ -61,63 +62,63 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 	<DockPanel>
 		<Menu x:Name="menu" DockPanel.Dock="Top" Background="{DynamicResource MenuBackground}" Foreground="{DynamicResource MenuForeground}">
 			<MenuItem Header="{DynamicResource MenuFile}">
-				<MenuItem Header="{DynamicResource MenuFileNew}" Command="{Binding Commands.New}" HotKey="Ctrl+N" InputGesture="Ctrl+N" />
-				<MenuItem Header="{DynamicResource MenuFileOpen}" Command="{Binding Commands.Open}" HotKey="Ctrl+O" InputGesture="Ctrl+O" />
-				<MenuItem x:Name="mnuRecent" Header="{DynamicResource MenuFileRecent}" />
-				<MenuItem x:Name="mnuExamples" Header="{DynamicResource MenuFileExamples}" AutomationProperties.AutomationId="MenuExamples" />
+				<MenuItem Header="{DynamicResource MenuFileNew}" controls:MenuIcon.Drawing="New" Command="{Binding Commands.New}" HotKey="Ctrl+N" InputGesture="Ctrl+N" />
+				<MenuItem Header="{DynamicResource MenuFileOpen}" controls:MenuIcon.Drawing="Open" Command="{Binding Commands.Open}" HotKey="Ctrl+O" InputGesture="Ctrl+O" />
+				<MenuItem x:Name="mnuRecent" Header="{DynamicResource MenuFileRecent}" controls:MenuIcon.Drawing="Recent" />
+				<MenuItem x:Name="mnuExamples" Header="{DynamicResource MenuFileExamples}" controls:MenuIcon.Drawing="Examples" AutomationProperties.AutomationId="MenuExamples" />
 				<Separator />
-				<MenuItem Header="{DynamicResource MenuFileSave}" Command="{Binding Commands.Save}" HotKey="Ctrl+S" InputGesture="Ctrl+S" />
-				<MenuItem Header="{DynamicResource MenuFileSaveAs}" Command="{Binding Commands.SaveAs}" HotKey="Ctrl+Shift+S" InputGesture="Ctrl+Shift+S" />
+				<MenuItem Header="{DynamicResource MenuFileSave}" controls:MenuIcon.Drawing="Save" Command="{Binding Commands.Save}" HotKey="Ctrl+S" InputGesture="Ctrl+S" />
+				<MenuItem Header="{DynamicResource MenuFileSaveAs}" controls:MenuIcon.Drawing="SaveAs" Command="{Binding Commands.SaveAs}" HotKey="Ctrl+Shift+S" InputGesture="Ctrl+Shift+S" />
 				<Separator />
-				<MenuItem Header="{DynamicResource MenuFileExport}" AutomationProperties.AutomationId="MenuExport">
-					<MenuItem Header="{DynamicResource MenuFileExportField}" Command="{Binding Commands.ExportField}" HotKey="Ctrl+Shift+E" InputGesture="Ctrl+Shift+E" />
-					<MenuItem Header="{DynamicResource MenuFileExportIntensity}" Command="{Binding Commands.ExportIntensity}" HotKey="Ctrl+Shift+I" InputGesture="Ctrl+Shift+I" />
-					<MenuItem Header="{DynamicResource MenuFileExportBoth}" Command="{Binding Commands.ExportBoth}" HotKey="Ctrl+Shift+B" InputGesture="Ctrl+Shift+B" />
+				<MenuItem Header="{DynamicResource MenuFileExport}" controls:MenuIcon.Drawing="Export" AutomationProperties.AutomationId="MenuExport">
+					<MenuItem Header="{DynamicResource MenuFileExportField}" controls:MenuIcon.Drawing="Export" Command="{Binding Commands.ExportField}" HotKey="Ctrl+Shift+E" InputGesture="Ctrl+Shift+E" />
+					<MenuItem Header="{DynamicResource MenuFileExportIntensity}" controls:MenuIcon.Drawing="Export" Command="{Binding Commands.ExportIntensity}" HotKey="Ctrl+Shift+I" InputGesture="Ctrl+Shift+I" />
+					<MenuItem Header="{DynamicResource MenuFileExportBoth}" controls:MenuIcon.Drawing="Export" Command="{Binding Commands.ExportBoth}" HotKey="Ctrl+Shift+B" InputGesture="Ctrl+Shift+B" />
 					<Separator />
-					<MenuItem Header="{DynamicResource MenuFileExportFieldFrame}" Command="{Binding Commands.ExportFrame}" CommandParameter="{x:Static model:ProbeLayer.Field}" HotKey="Ctrl+Shift+F" InputGesture="Ctrl+Shift+F" />
-					<MenuItem Header="{DynamicResource MenuFileExportIntensityFrame}" Command="{Binding Commands.ExportFrame}" CommandParameter="{x:Static model:ProbeLayer.Intensity}" HotKey="Ctrl+Shift+G" InputGesture="Ctrl+Shift+G" />
+					<MenuItem Header="{DynamicResource MenuFileExportFieldFrame}" controls:MenuIcon.Drawing="Scene" Command="{Binding Commands.ExportFrame}" CommandParameter="{x:Static model:ProbeLayer.Field}" HotKey="Ctrl+Shift+F" InputGesture="Ctrl+Shift+F" />
+					<MenuItem Header="{DynamicResource MenuFileExportIntensityFrame}" controls:MenuIcon.Drawing="Scene" Command="{Binding Commands.ExportFrame}" CommandParameter="{x:Static model:ProbeLayer.Intensity}" HotKey="Ctrl+Shift+G" InputGesture="Ctrl+Shift+G" />
 				</MenuItem>
-				<MenuItem Header="{DynamicResource MenuFileExportLast}" Command="{Binding Commands.ExportLast}" HotKey="Ctrl+E" InputGesture="Ctrl+E" AutomationProperties.AutomationId="MenuExportLast" />
+				<MenuItem Header="{DynamicResource MenuFileExportLast}" controls:MenuIcon.Drawing="ExportLast" Command="{Binding Commands.ExportLast}" HotKey="Ctrl+E" InputGesture="Ctrl+E" AutomationProperties.AutomationId="MenuExportLast" />
 				<Separator />
-				<MenuItem Header="{DynamicResource MenuFileClose}" Command="{Binding Commands.CloseProject}" />
-				<MenuItem Header="{DynamicResource MenuFileExit}" Command="{Binding Commands.Exit}" InputGesture="Alt+F4" />
+				<MenuItem Header="{DynamicResource MenuFileClose}" controls:MenuIcon.Drawing="CloseProject" Command="{Binding Commands.CloseProject}" />
+				<MenuItem Header="{DynamicResource MenuFileExit}" controls:MenuIcon.Drawing="Exit" Command="{Binding Commands.Exit}" InputGesture="Alt+F4" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuEdit}">
-				<MenuItem Header="{DynamicResource MenuEditUndo}" Command="{Binding Commands.Undo}" HotKey="Ctrl+Z" InputGesture="Ctrl+Z" />
-				<MenuItem Header="{DynamicResource MenuEditRedo}" Command="{Binding Commands.Redo}" HotKey="Ctrl+Y" InputGesture="Ctrl+Y" />
+				<MenuItem Header="{DynamicResource MenuEditUndo}" controls:MenuIcon.Drawing="Undo" Command="{Binding Commands.Undo}" HotKey="Ctrl+Z" InputGesture="Ctrl+Z" />
+				<MenuItem Header="{DynamicResource MenuEditRedo}" controls:MenuIcon.Drawing="Redo" Command="{Binding Commands.Redo}" HotKey="Ctrl+Y" InputGesture="Ctrl+Y" />
 				<Separator />
-				<MenuItem Header="{DynamicResource MenuEditCut}" Command="{Binding Commands.Cut}" HotKey="Ctrl+X" InputGesture="Ctrl+X" />
-				<MenuItem Header="{DynamicResource MenuEditCopy}" Command="{Binding Commands.Copy}" HotKey="Ctrl+C" InputGesture="Ctrl+C" />
-				<MenuItem Header="{DynamicResource MenuEditPaste}" Command="{Binding Commands.Paste}" HotKey="Ctrl+V" InputGesture="Ctrl+V" />
-				<MenuItem Header="{DynamicResource MenuEditDelete}" Command="{Binding Commands.Delete}" InputGesture="Delete" />
+				<MenuItem Header="{DynamicResource MenuEditCut}" controls:MenuIcon.Drawing="Cut" Command="{Binding Commands.Cut}" HotKey="Ctrl+X" InputGesture="Ctrl+X" />
+				<MenuItem Header="{DynamicResource MenuEditCopy}" controls:MenuIcon.Drawing="Copy" Command="{Binding Commands.Copy}" HotKey="Ctrl+C" InputGesture="Ctrl+C" />
+				<MenuItem Header="{DynamicResource MenuEditPaste}" controls:MenuIcon.Drawing="Paste" Command="{Binding Commands.Paste}" HotKey="Ctrl+V" InputGesture="Ctrl+V" />
+				<MenuItem Header="{DynamicResource MenuEditDelete}" controls:MenuIcon.Drawing="Delete" Command="{Binding Commands.Delete}" InputGesture="Delete" />
 				<Separator />
-				<MenuItem Header="{DynamicResource MenuProjectSelectAll}" Command="{Binding Commands.SelectAll}" HotKey="Ctrl+A" InputGesture="Ctrl+A" />
+				<MenuItem Header="{DynamicResource MenuProjectSelectAll}" controls:MenuIcon.Drawing="SelectAll" Command="{Binding Commands.SelectAll}" HotKey="Ctrl+A" InputGesture="Ctrl+A" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuView}">
-				<MenuItem x:Name="mnuPanes" Header="{DynamicResource MenuViewPanes}" />
-				<MenuItem x:Name="mnuTheme" Header="{DynamicResource MenuViewTheme}" />
-				<MenuItem x:Name="mnuUiZoom" Header="{DynamicResource MenuViewUiZoom}" />
-				<MenuItem x:Name="mnuLanguage" Header="{DynamicResource MenuViewLanguage}" />
+				<MenuItem x:Name="mnuPanes" Header="{DynamicResource MenuViewPanes}" controls:MenuIcon.Drawing="Panes" />
+				<MenuItem x:Name="mnuTheme" Header="{DynamicResource MenuViewTheme}" controls:MenuIcon.Drawing="Theme" />
+				<MenuItem x:Name="mnuUiZoom" Header="{DynamicResource MenuViewUiZoom}" controls:MenuIcon.Drawing="Zoom" />
+				<MenuItem x:Name="mnuLanguage" Header="{DynamicResource MenuViewLanguage}" controls:MenuIcon.Drawing="Language" />
 				<Separator />
-				<MenuItem x:Name="mnuResolution" Header="{DynamicResource MenuViewResolution}" />
-				<MenuItem x:Name="mnuFrames" Header="{DynamicResource MenuViewFrames}" />
-				<MenuItem x:Name="mnuSamples" Header="{DynamicResource MenuViewSamples}" />
-				<MenuItem x:Name="mnuDither" Header="{DynamicResource MenuViewDither}" />
+				<MenuItem x:Name="mnuResolution" Header="{DynamicResource MenuViewResolution}" controls:MenuIcon.Drawing="PreviewResolution" />
+				<MenuItem x:Name="mnuFrames" Header="{DynamicResource MenuViewFrames}" controls:MenuIcon.Drawing="PreviewFrames" />
+				<MenuItem x:Name="mnuSamples" Header="{DynamicResource MenuViewSamples}" controls:MenuIcon.Drawing="PreviewSamples" />
+				<MenuItem x:Name="mnuDither" Header="{DynamicResource MenuViewDither}" controls:MenuIcon.Drawing="PreviewDither" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuSimulation}">
-				<MenuItem Header="{DynamicResource MenuSimulationRun}" Command="{Binding Commands.Run}" HotKey="F5" InputGesture="F5" />
-				<MenuItem Header="{DynamicResource MenuSimulationPause}" Command="{Binding Commands.TogglePause}" HotKey="F6" InputGesture="F6" />
-				<MenuItem Header="{DynamicResource MenuSimulationStop}" Command="{Binding Commands.Stop}" HotKey="Shift+F5" InputGesture="Shift+F5" />
-				<MenuItem Header="{DynamicResource MenuSimulationPlay}" Command="{Binding Commands.PlayPause}" HotKey="F7" InputGesture="F7" />
+				<MenuItem Header="{DynamicResource MenuSimulationRun}" controls:MenuIcon.Drawing="Run" Command="{Binding Commands.Run}" HotKey="F5" InputGesture="F5" />
+				<MenuItem Header="{DynamicResource MenuSimulationPause}" controls:MenuIcon.Drawing="Pause" Command="{Binding Commands.TogglePause}" HotKey="F6" InputGesture="F6" />
+				<MenuItem Header="{DynamicResource MenuSimulationStop}" controls:MenuIcon.Drawing="Stop" Command="{Binding Commands.Stop}" HotKey="Shift+F5" InputGesture="Shift+F5" />
+				<MenuItem Header="{DynamicResource MenuSimulationPlay}" controls:MenuIcon.Drawing="Run" Command="{Binding Commands.PlayPause}" HotKey="F7" InputGesture="F7" />
 				<Separator />
 				<MenuItem x:Name="mnuUseGpu" Header="{DynamicResource MenuSimulationUseGpu}" ToggleType="CheckBox" />
 				<MenuItem x:Name="mnuAutoRerun" Header="{DynamicResource MenuSimulationAutoRerun}" ToggleType="CheckBox" />
 				<MenuItem x:Name="mnuWarnMemory" Header="{DynamicResource MenuSimulationWarnMemory}" ToggleType="CheckBox" />
-				<MenuItem x:Name="mnuFrameMemory" Header="{DynamicResource MenuSimulationFrameMemory}" />
+				<MenuItem x:Name="mnuFrameMemory" Header="{DynamicResource MenuSimulationFrameMemory}" controls:MenuIcon.Drawing="FrameMemory" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuHelp}">
-				<MenuItem Header="{DynamicResource MenuHelpAbout}" Command="{Binding Commands.About}" />
-				<MenuItem Header="{DynamicResource MenuHelpManual}" Command="{Binding Commands.Manual}" HotKey="F1" InputGesture="F1" />
+				<MenuItem Header="{DynamicResource MenuHelpAbout}" controls:MenuIcon.Drawing="About" Command="{Binding Commands.About}" />
+				<MenuItem Header="{DynamicResource MenuHelpManual}" controls:MenuIcon.Drawing="Manual" Command="{Binding Commands.Manual}" HotKey="F1" InputGesture="F1" />
 			</MenuItem>
 		</Menu>
 

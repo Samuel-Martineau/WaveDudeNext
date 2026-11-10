@@ -338,6 +338,7 @@ public sealed class ProbeGraphOverlay : Panel
 			// (the thumbs are rebuilt when Commands changes, so the command set here is the current one)
 			var export = new MenuItem { CommandParameter = probe, Command = Commands?.ExportProbeCsv };
 			export.Bind(MenuItem.HeaderProperty, this.GetResourceObservable("MenuExportProbeCsv"));
+			MenuIcon.SetDrawing(export, "Export");
 			AutomationProperties.SetAutomationId(export, "ContextExportProbeCsv");
 			thumb.ContextMenu = new ContextMenu { Items = { export } };
 		}

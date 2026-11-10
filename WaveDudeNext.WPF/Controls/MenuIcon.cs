@@ -21,23 +21,13 @@ using System.Windows.Controls;
 namespace WaveDudeNext.WPF.Controls;
 
 /// <summary>
-/// A menu entry's icon, an <see cref="IconView"/> made from an attached property: <c>controls:MenuIcon.Glyph="&amp;#xE74E;"</c>
-/// for a glyph of Windows' icon font (2026-10-22, the user's request for the standard icons; Segoe Fluent Icons on Windows 11,
-/// Segoe MDL2 Assets on Windows 10, in the theme's <c>IconGlyphText</c> style), <c>controls:MenuIcon.Drawing="Lens"</c> for one
-/// of the app's own drawings (2026-10-23, for the entries the font has no glyph for). UI thread.
+/// A menu entry's icon, an <see cref="IconView"/> made from an attached property: <c>controls:MenuIcon.Drawing="Lens"</c>
+/// names one of the app's own drawings (2026-10-23). A second property, Glyph, had given an entry a character of Windows' icon
+/// font (2026-10-22, the user's request for the standard icons); it went on 2026-11-10 with the drawings shared between the
+/// heads, every standard icon drawn (the user's choice, since Linux and macOS have no Segoe). UI thread.
 /// </summary>
 public static class MenuIcon
 {
-	/// <summary>Identifies the attached Glyph property: the icon font's character for the entry, or null for none.</summary>
-	public static readonly DependencyProperty GlyphProperty = DependencyProperty.RegisterAttached(
-		"Glyph", typeof(string), typeof(MenuIcon), new PropertyMetadata(null, OnGlyphChanged));
-
-	/// <summary>Gets the glyph of <paramref name="item"/>.</summary>
-	public static string? GetGlyph(MenuItem item) => (string?)item.GetValue(GlyphProperty);
-
-	/// <summary>Sets the glyph of <paramref name="item"/>, which becomes its icon.</summary>
-	public static void SetGlyph(MenuItem item, string? glyph) => item.SetValue(GlyphProperty, glyph);
-
 	/// <summary>Identifies the attached Drawing property: the name of one of the app's 16 px drawings (<see cref="IconView.Drawing"/>), or null for none.</summary>
 	public static readonly DependencyProperty DrawingProperty = DependencyProperty.RegisterAttached(
 		"Drawing", typeof(string), typeof(MenuIcon), new PropertyMetadata(null, OnDrawingChanged));
@@ -47,14 +37,6 @@ public static class MenuIcon
 
 	/// <summary>Sets the drawing of <paramref name="item"/>, which becomes its icon.</summary>
 	public static void SetDrawing(MenuItem item, string? name) => item.SetValue(DrawingProperty, name);
-
-	private static void OnGlyphChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-	{
-		if (d is MenuItem item)
-		{
-			item.Icon = e.NewValue is string glyph ? new IconView { Glyph = glyph } : null;
-		}
-	}
 
 	private static void OnDrawingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 	{

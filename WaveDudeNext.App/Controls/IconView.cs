@@ -26,12 +26,13 @@ using Avalonia.Media;
 namespace WaveDudeNext.App.Controls;
 
 /// <summary>
-/// A 16 px icon: one of the application's own drawings (Themes/Icons.axaml, upstream's geometries) named by
-/// <see cref="Drawing"/>, stroked at 1 px in the inherited text colour so it greys out with the text beside it, with the
-/// filled part the <c>Icon{name}Fill</c> geometry gives it, and, for an add button, the <see cref="PlusBadge"/> in the
-/// bottom-right corner. The project tree's rows, folders and toolbar hold one each, and a menu entry takes one as its
-/// icon. Upstream's IconView also showed a glyph of Windows' icon font; the port has no icon font (ADR 0002), so the four
-/// rows that used one have drawings of their own in Icons.axaml. Not focusable. UI thread.
+/// A 16 px icon: one of the application's own drawings named by <see cref="Drawing"/> (Themes/Icons.axaml, the WPF head's
+/// Themes/Icons.xaml converted at build, Build/SharedXaml.targets, 2026-11-10: one set of geometries for both heads),
+/// stroked at 1 px in the inherited text colour so it greys out with the text beside it, with the filled part the
+/// <c>Icon{name}Fill</c> geometry gives it, and, for an add button, the <see cref="PlusBadge"/> in the bottom-right
+/// corner. The project tree's rows, folders and toolbar hold one each, and a menu entry takes one as its icon
+/// (<see cref="MenuIcon"/>). The WPF head's IconView had also shown a glyph of Windows' icon font, which this head never
+/// had (the port's ADR 0002); since 2026-11-10 every one of those is a drawing in the shared file. Not focusable. UI thread.
 /// </summary>
 public sealed class IconView : Control
 {

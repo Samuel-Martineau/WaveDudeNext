@@ -1,0 +1,68 @@
+<!--
+SPDX-License-Identifier: GPL-3.0-or-later
+Copyright (C) 2026 Alexander Graef <alex@graef.cc>
+
+This file is part of WaveDude Next, a 2D wave simulator.
+
+Based on the work of
+  Jeroen Vleggaar (Huygens Optics), author of Wave Dude 2D, Copyright (C) 2026
+    <https://www.youtube.com/@HuygensOptics>, <https://www.huygensoptics.com>
+  0x23 (Diffraction Limited), author of WaveSimulator2D
+    <https://www.youtube.com/@DiffractionLimited>, <https://github.com/0x23/WaveSimulator2D>
+  Mark <mark@pab-ai.com>, co-author of the AvaloniaUI port
+
+WaveDude Next is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
+<https://www.gnu.org/licenses/>.
+-->
+
+<!-- Build action: the resource dictionaries both heads share (the SharedXaml items of the project file: the WPF head's
+     string tables WaveDudeNext.WPF/Strings/Strings.XX.xaml, its icon geometries Themes/Icons.xaml and its colour tables
+     Themes/Dark.xaml and Light.xaml) become Avalonia resource dictionaries under obj/<Configuration>/Shared/<Folder>/ and
+     are compiled into this assembly under the item's Folder (avares://WaveDudeNext.App/Strings/Strings.XX.axaml,
+     avares://WaveDudeNext.App/Themes/Icons.axaml, ...), where App.axaml, the language switch and IconView find them. The
+     files hold s:String, StreamGeometry and SolidColorBrush entries and nothing else, so the conversion is textual: the
+     default namespace, the System namespace declaration, the string element's prefix (2026-11-09, the user's choice for
+     the tables, 2026-11-10 for the icons and the colours: one source for both heads, each loading a compiled dictionary;
+     Mark's port had converted the tables the same way with a script and kept the copies, and had copied the icons and
+     the colours by hand). The converter is SharedXaml.cs beside this file, an inline C# task (RoslynCodeTaskFactory, part
+     of MSBuild). A file is converted again only when it, the converter or this file is newer than its output; the items
+     are added before Avalonia gathers its resources. -->
+<Project>
+
+  <UsingTask TaskName="ConvertSharedXaml" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Destination ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)SharedXaml.cs" />
+    </Task>
+  </UsingTask>
+
+  <PropertyGroup>
+    <SharedXamlConverter>$(MSBuildThisFileDirectory)SharedXaml.cs</SharedXamlConverter>
+  </PropertyGroup>
+
+  <!-- the conversion into obj/<Configuration>/<Framework>/Shared/<Folder>/, skipped while every output is newer than its
+       source, the converter and this file. The output folder is named in the targets, not in a property of this file: a
+       property here is evaluated when the project imports the file, before the SDK has set IntermediateOutputPath -->
+  <Target Name="ConvertSharedXaml"
+          Inputs="@(SharedXaml);$(SharedXamlConverter);$(MSBuildThisFileFullPath)"
+          Outputs="@(SharedXaml->'$(IntermediateOutputPath)Shared\%(Folder)\%(Filename).axaml')">
+    <ConvertSharedXaml Sources="@(SharedXaml)" Destination="$(IntermediateOutputPath)Shared\" />
+  </Target>
+
+  <!-- the converted files as XAML of this project, under their Folder by their Link; before Avalonia's resource gathering,
+       whose first step runs before ResolveReferences -->
+  <Target Name="IncludeSharedXaml" BeforeTargets="BeforeBuild;AddAvaloniaResources;_GenerateAvaloniaResourcesDependencyCache;_InjectAvaloniaAdditionalFiles" DependsOnTargets="ConvertSharedXaml">
+    <ItemGroup>
+      <_SharedXamlOutput Include="$(IntermediateOutputPath)Shared\**\*.axaml" />
+      <AvaloniaXaml Include="@(_SharedXamlOutput)" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+      <FileWrites Include="@(_SharedXamlOutput)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -547,19 +547,21 @@ public partial class PreviewPane : UserControl
 	/// <summary>The picture's context menu: the brightness first, then a still of this picture, then the exports in the File menu's order.</summary>
 	private ContextMenu BuildContextMenu(ProbeLayer layer)
 	{
-		MenuItem brightness = MenuEntry("MenuBrightness", "ContextBrightness");
+		MenuItem brightness = MenuEntry("MenuBrightness", "ContextBrightness", drawing: "Brightness");
 		brightness.Click += (_, _) => EditBrightness(layer);
-		MenuItem auto = MenuEntry("MenuAutoBrightness", "ContextAutoBrightness", commands => commands.AutoBrightness, layer);
-		MenuItem frame = MenuEntry("MenuExportThisFrame", "ContextExportFrame", commands => commands.ExportFrame, layer, layer == ProbeLayer.Field ? "Ctrl+Shift+F" : "Ctrl+Shift+G");
-		MenuItem field = MenuEntry("MenuFileExportField", "ContextExportField", commands => commands.ExportField, null, "Ctrl+Shift+E");
-		MenuItem intensity = MenuEntry("MenuFileExportIntensity", "ContextExportIntensity", commands => commands.ExportIntensity, null, "Ctrl+Shift+I");
-		MenuItem both = MenuEntry("MenuFileExportBoth", "ContextExportBoth", commands => commands.ExportBoth, null, "Ctrl+Shift+B");
+		MenuItem auto = MenuEntry("MenuAutoBrightness", "ContextAutoBrightness", commands => commands.AutoBrightness, layer, drawing: "AutoBrightness");
+		MenuItem frame = MenuEntry("MenuExportThisFrame", "ContextExportFrame", commands => commands.ExportFrame, layer, layer == ProbeLayer.Field ? "Ctrl+Shift+F" : "Ctrl+Shift+G", "Scene");
+		MenuItem field = MenuEntry("MenuFileExportField", "ContextExportField", commands => commands.ExportField, null, "Ctrl+Shift+E", "Export");
+		MenuItem intensity = MenuEntry("MenuFileExportIntensity", "ContextExportIntensity", commands => commands.ExportIntensity, null, "Ctrl+Shift+I", "Export");
+		MenuItem both = MenuEntry("MenuFileExportBoth", "ContextExportBoth", commands => commands.ExportBoth, null, "Ctrl+Shift+B", "Export");
 		return new ContextMenu { Items = { brightness, auto, new Separator(), frame, new Separator(), field, intensity, both } };
 	}
 
-	private MenuItem MenuEntry(string headerKey, string automationId, Func<AppCommands, ICommand>? pick = null, object? parameter = null, string? gesture = null)
+	/// <summary>An entry of the picture's menu: the text by key, the command picked from the window's when they arrive, the icon one of the shared drawings as in the WPF head's menu.</summary>
+	private MenuItem MenuEntry(string headerKey, string automationId, Func<AppCommands, ICommand>? pick = null, object? parameter = null, string? gesture = null, string? drawing = null)
 	{
 		var item = new MenuItem { CommandParameter = parameter };
+		MenuIcon.SetDrawing(item, drawing);
 		item.Bind(HeaderedSelectingItemsControl.HeaderProperty, this.GetResourceObservable(headerKey));
 		AutomationProperties.SetAutomationId(item, automationId);
 		if (gesture != null)

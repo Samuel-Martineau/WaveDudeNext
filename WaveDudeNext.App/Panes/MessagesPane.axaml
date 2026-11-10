@@ -25,6 +25,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
      GridView; a filtered collection (Visible) stands in for the CollectionView filter Avalonia does not have. -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WaveDudeNext.App.Controls"
              xmlns:logging="using:WaveDudeNext.App.Logging"
              xmlns:panes="using:WaveDudeNext.App.Panes"
              x:Class="WaveDudeNext.App.Panes.MessagesPane"
@@ -114,10 +115,10 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 			</ListBox.KeyBindings>
 			<ListBox.ContextMenu>
 				<ContextMenu>
-					<MenuItem Header="{DynamicResource MessagesCopy}" Command="{Binding CopyCommand}" InputGesture="Ctrl+C" />
-					<MenuItem Header="{DynamicResource MessagesCopyAll}" Command="{Binding CopyAllCommand}" />
+					<MenuItem Header="{DynamicResource MessagesCopy}" controls:MenuIcon.Drawing="Copy" Command="{Binding CopyCommand}" InputGesture="Ctrl+C" />
+					<MenuItem Header="{DynamicResource MessagesCopyAll}" controls:MenuIcon.Drawing="Copy" Command="{Binding CopyAllCommand}" />
 					<Separator />
-					<MenuItem Header="{DynamicResource MessagesClear}" Command="{Binding ClearCommand}" />
+					<MenuItem Header="{DynamicResource MessagesClear}" controls:MenuIcon.Drawing="Clear" Command="{Binding ClearCommand}" />
 				</ContextMenu>
 			</ListBox.ContextMenu>
 			<ListBox.ItemsPanel>

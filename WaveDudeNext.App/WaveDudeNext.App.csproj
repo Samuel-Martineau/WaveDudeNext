@@ -44,14 +44,16 @@
     <EmbeddedResource Include="..\Assets\*.svg" Link="Help\Figures\%(Filename)%(Extension)" LogicalName="Assets/%(Filename)%(Extension)" />
   </ItemGroup>
 
-  <!-- the string tables are the WPF head's (2026-11-09, the user's choice: one source, both heads loading compiled
-       dictionaries): WaveDudeNext.WPF/Strings/Strings.XX.xaml, converted at build into Avalonia dictionaries under obj/
-       and compiled from there as Strings/Strings.XX.axaml. The Build folder's C# is the build's converter, compiled by
-       MSBuild, not part of the app -->
+  <!-- the string tables, the icon geometries and the colour tables are the WPF head's (2026-11-09 and 2026-11-10, the
+       user's choice: one source, both heads loading compiled dictionaries): WaveDudeNext.WPF/Strings/Strings.XX.xaml and
+       Themes/Icons.xaml, Dark.xaml, Light.xaml, converted at build into Avalonia dictionaries under obj/ and compiled from
+       there under the Folder named here (Strings/Strings.XX.axaml, Themes/Icons.axaml, ...). The Build folder's C# is the
+       build's converter, compiled by MSBuild, not part of the app -->
   <ItemGroup>
-    <StringTable Include="..\WaveDudeNext.WPF\Strings\Strings.*.xaml" />
+    <SharedXaml Include="..\WaveDudeNext.WPF\Strings\Strings.*.xaml" Folder="Strings" />
+    <SharedXaml Include="..\WaveDudeNext.WPF\Themes\Icons.xaml;..\WaveDudeNext.WPF\Themes\Dark.xaml;..\WaveDudeNext.WPF\Themes\Light.xaml" Folder="Themes" />
   </ItemGroup>
-  <Import Project="Build\StringTables.targets" />
+  <Import Project="Build\SharedXaml.targets" />
   <ItemGroup>
     <Compile Remove="Build\**" />
     <None Include="Build\**\*.cs" />

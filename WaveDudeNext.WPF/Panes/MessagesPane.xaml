@@ -183,10 +183,10 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 			</ListView.ItemContainerStyle>
 			<ListView.ContextMenu>
 				<ContextMenu>
-					<MenuItem Header="{DynamicResource MessagesCopy}" Command="ApplicationCommands.Copy" InputGestureText="Ctrl+C" controls:MenuIcon.Glyph="&#xE8C8;" />
-					<MenuItem Header="{DynamicResource MessagesCopyAll}" Command="{x:Static local:MessagesPane.CopyAll}" controls:MenuIcon.Glyph="&#xE8C8;" />
+					<MenuItem Header="{DynamicResource MessagesCopy}" Command="ApplicationCommands.Copy" InputGestureText="Ctrl+C" controls:MenuIcon.Drawing="Copy" />
+					<MenuItem Header="{DynamicResource MessagesCopyAll}" Command="{x:Static local:MessagesPane.CopyAll}" controls:MenuIcon.Drawing="Copy" />
 					<Separator />
-					<MenuItem Header="{DynamicResource MessagesClear}" Command="{x:Static local:MessagesPane.Clear}" controls:MenuIcon.Glyph="&#xE894;" />
+					<MenuItem Header="{DynamicResource MessagesClear}" Command="{x:Static local:MessagesPane.Clear}" controls:MenuIcon.Drawing="Clear" />
 				</ContextMenu>
 			</ListView.ContextMenu>
 			<ListView.View>

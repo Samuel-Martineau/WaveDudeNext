@@ -17,7 +17,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 <https://www.gnu.org/licenses/>.
 -->
 
-<!-- Dark colour table (Visual Studio dark values). Keys must match Light.xaml exactly. -->
+<!-- Dark colour table (Visual Studio dark values). Keys must match Light.xaml exactly. The Avalonia head builds its Themes/Dark.axaml
+     from this file (WaveDudeNext.App/Build/SharedXaml.targets, 2026-11-10), so a brush added here reaches both heads. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 

@@ -253,26 +253,26 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 										<Setter Property="CommandParameter" Value="{Binding}" />
 									</Style>
 								</ContextMenu.Resources>
-								<MenuItem Header="{DynamicResource MenuProjectAddSource}" Command="{x:Static commands:ProjectCommands.AddSource}" controls:MenuIcon.Glyph="&#xE710;" />
-								<MenuItem Header="{DynamicResource MenuProjectAddPart}" local:ProjectTree.MenuEntries="{StaticResource PartMenuEntries}" controls:MenuIcon.Glyph="&#xE710;" />
-								<MenuItem Header="{DynamicResource MenuProjectAddProbe}" local:ProjectTree.MenuEntries="{StaticResource ProbeMenuEntries}" controls:MenuIcon.Glyph="&#xE710;" />
+								<MenuItem Header="{DynamicResource MenuProjectAddSource}" Command="{x:Static commands:ProjectCommands.AddSource}" controls:MenuIcon.Drawing="Add" />
+								<MenuItem Header="{DynamicResource MenuProjectAddPart}" local:ProjectTree.MenuEntries="{StaticResource PartMenuEntries}" controls:MenuIcon.Drawing="Add" />
+								<MenuItem Header="{DynamicResource MenuProjectAddProbe}" local:ProjectTree.MenuEntries="{StaticResource ProbeMenuEntries}" controls:MenuIcon.Drawing="Add" />
 								<Separator />
-								<MenuItem Header="{DynamicResource MenuProjectToggleSelected}" controls:MenuIcon.Glyph="&#xE762;" Command="{x:Static commands:ProjectCommands.ToggleSelected}" InputGestureText="Ins" AutomationProperties.AutomationId="ContextToggleSelected" />
-								<MenuItem Header="{DynamicResource MenuProjectSelectAll}" Command="{x:Static commands:ProjectCommands.SelectAll}" InputGestureText="Ctrl+A" AutomationProperties.AutomationId="ContextSelectAll" controls:MenuIcon.Glyph="&#xE8B3;" />
+								<MenuItem Header="{DynamicResource MenuProjectToggleSelected}" controls:MenuIcon.Drawing="ToggleSelected" Command="{x:Static commands:ProjectCommands.ToggleSelected}" InputGestureText="Ins" AutomationProperties.AutomationId="ContextToggleSelected" />
+								<MenuItem Header="{DynamicResource MenuProjectSelectAll}" Command="{x:Static commands:ProjectCommands.SelectAll}" InputGestureText="Ctrl+A" AutomationProperties.AutomationId="ContextSelectAll" controls:MenuIcon.Drawing="SelectAll" />
 								<Separator />
-								<MenuItem Header="{DynamicResource MenuProjectToggleEnabled}" Command="{x:Static commands:ProjectCommands.ToggleEnabled}" InputGestureText="Space" controls:MenuIcon.Glyph="&#xE73A;" />
-								<MenuItem Header="{DynamicResource MenuProjectDuplicate}" Command="{x:Static commands:ProjectCommands.Duplicate}" InputGestureText="Ctrl+D" controls:MenuIcon.Glyph="&#xF413;" />
-								<MenuItem Header="{DynamicResource MenuEditCut}" controls:MenuIcon.Glyph="&#xE8C6;" Command="ApplicationCommands.Cut" />
-								<MenuItem Header="{DynamicResource MenuEditCopy}" controls:MenuIcon.Glyph="&#xE8C8;" Command="ApplicationCommands.Copy" />
-								<MenuItem Header="{DynamicResource MenuEditPaste}" controls:MenuIcon.Glyph="&#xE77F;" Command="ApplicationCommands.Paste" />
-								<MenuItem Header="{DynamicResource MenuProjectRemove}" Command="{x:Static commands:ProjectCommands.Remove}" InputGestureText="Del" controls:MenuIcon.Glyph="&#xE738;" />
+								<MenuItem Header="{DynamicResource MenuProjectToggleEnabled}" Command="{x:Static commands:ProjectCommands.ToggleEnabled}" InputGestureText="Space" controls:MenuIcon.Drawing="ToggleEnabled" />
+								<MenuItem Header="{DynamicResource MenuProjectDuplicate}" Command="{x:Static commands:ProjectCommands.Duplicate}" InputGestureText="Ctrl+D" controls:MenuIcon.Drawing="Duplicate" />
+								<MenuItem Header="{DynamicResource MenuEditCut}" controls:MenuIcon.Drawing="Cut" Command="ApplicationCommands.Cut" />
+								<MenuItem Header="{DynamicResource MenuEditCopy}" controls:MenuIcon.Drawing="Copy" Command="ApplicationCommands.Copy" />
+								<MenuItem Header="{DynamicResource MenuEditPaste}" controls:MenuIcon.Drawing="Paste" Command="ApplicationCommands.Paste" />
+								<MenuItem Header="{DynamicResource MenuProjectRemove}" Command="{x:Static commands:ProjectCommands.Remove}" InputGestureText="Del" controls:MenuIcon.Drawing="Remove" />
 								<Separator />
-								<MenuItem Header="{DynamicResource MenuProjectMoveUp}" Command="{x:Static commands:ProjectCommands.MoveUp}" InputGestureText="Alt+Up" controls:MenuIcon.Glyph="&#xE74A;" />
-								<MenuItem Header="{DynamicResource MenuProjectMoveDown}" Command="{x:Static commands:ProjectCommands.MoveDown}" InputGestureText="Alt+Down" controls:MenuIcon.Glyph="&#xE74B;" />
+								<MenuItem Header="{DynamicResource MenuProjectMoveUp}" Command="{x:Static commands:ProjectCommands.MoveUp}" InputGestureText="Alt+Up" controls:MenuIcon.Drawing="MoveUp" />
+								<MenuItem Header="{DynamicResource MenuProjectMoveDown}" Command="{x:Static commands:ProjectCommands.MoveDown}" InputGestureText="Alt+Down" controls:MenuIcon.Drawing="MoveDown" />
 								<!-- a probe's recording as CSV (2026-10-18): only a probe node shows the entry -->
 								<Separator Visibility="{Binding Converter={StaticResource IsType}, ConverterParameter={x:Type model:Probe}}" />
 								<MenuItem Header="{DynamicResource MenuExportProbeCsv}" Command="{x:Static commands:ExportCommands.ProbeCsv}" AutomationProperties.AutomationId="ContextExportProbeCsv"
-								          Visibility="{Binding Converter={StaticResource IsType}, ConverterParameter={x:Type model:Probe}}" controls:MenuIcon.Glyph="&#xEDE1;" />
+								          Visibility="{Binding Converter={StaticResource IsType}, ConverterParameter={x:Type model:Probe}}" controls:MenuIcon.Drawing="Export" />
 							</ContextMenu>
 						</Setter.Value>
 					</Setter>
@@ -310,19 +310,19 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 
 				<DataTemplate DataType="{x:Type model:Scene}">
 					<StackPanel Orientation="Horizontal">
-						<controls:IconView Glyph="&#xEB9F;" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<controls:IconView Drawing="Scene" Margin="0,0,4,0" VerticalAlignment="Center" />
 						<TextBlock Text="{DynamicResource TreeScene}" VerticalAlignment="Center" />
 					</StackPanel>
 				</DataTemplate>
 				<DataTemplate DataType="{x:Type model:Simulation}">
 					<StackPanel Orientation="Horizontal">
-						<controls:IconView Glyph="&#xE916;" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<controls:IconView Drawing="Simulation" Margin="0,0,4,0" VerticalAlignment="Center" />
 						<TextBlock Text="{DynamicResource TreeSimulation}" VerticalAlignment="Center" />
 					</StackPanel>
 				</DataTemplate>
 				<DataTemplate DataType="{x:Type model:Display}">
 					<StackPanel Orientation="Horizontal">
-						<controls:IconView Glyph="&#xE7F4;" Margin="0,0,4,0" VerticalAlignment="Center" />
+						<controls:IconView Drawing="Display" Margin="0,0,4,0" VerticalAlignment="Center" />
 						<TextBlock Text="{DynamicResource TreeDisplay}" VerticalAlignment="Center" />
 					</StackPanel>
 				</DataTemplate>
@@ -360,7 +360,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 											<Setter Property="Drawing" Value="Probe" />
 										</DataTrigger>
 										<DataTrigger Binding="{Binding Key}" Value="TreeColorSchemes">
-											<Setter Property="Glyph" Value="&#xE790;" />
+											<Setter Property="Drawing" Value="ColorSchemes" />
 										</DataTrigger>
 									</Style.Triggers>
 								</Style>

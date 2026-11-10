@@ -29,9 +29,10 @@ The class is the kind (2026-10-22: the `PartKind` enum was removed).
 5. A form in `Views/` with its `DataTemplate` in `PropertiesPane.xaml` (a template for a base class serves its
    subclasses: one for `LogicGatePart`), and its strings (`MenuAdd…`, `Label.`, `Hint.`, `Enum.` for its enums) in all
    four tables.
-6. A 16 px drawing in `Themes/Controls.xaml` (2026-10-23): `Icon<Name>` stroked and, for solid parts, `Icon<Name>Fill`,
-   `<Name>` the class name without "Part", 1 px lines on half pixels, the ink in rows and columns 0 to 14; the menu
-   entry names it (`controls:MenuIcon.Drawing`) and the tree row finds it by the class name (`PartIconConverter`).
+6. A 16 px drawing in `WaveDudeNext.WPF/Themes/Icons.xaml` (2026-10-23; the one icon file of both heads since 2026-11-10, the
+   Avalonia head builds its copy from it): `Icon<Name>` stroked and, for solid parts, `Icon<Name>Fill`, `<Name>` the class
+   name without "Part", 1 px lines on half pixels, the ink in rows and columns 0 to 14; the menu entry names it
+   (`controls:MenuIcon.Drawing`, in both heads) and the tree row finds it by the class name (`PartIconConverter`).
 
 `library_check` finds every part class by reflection: it fails one without its file element, one that `AddPart`
 cannot add as "<stem> 1", and a clamped number without its `[Range]`. The menu entry, the form and the drawing are not

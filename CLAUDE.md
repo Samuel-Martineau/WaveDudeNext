@@ -425,11 +425,20 @@ FrameStore: native memory up to the budget, the rest in a temp file (%LOCALAPPDA
   the clipboard and parses each text once; the window reads the clipboard once per change of Windows' clipboard
   sequence number. The tree and the pictures claim a drag only when they take it; a file dropped anywhere is the window's,
   which opens it (2026-10-26, Jeroen's report: for three days a file over the tree or a picture was refused).
-- **Icons** (2026-10-22/23): a menu entry gets one through the attached `MenuIcon.Glyph` (a code point of Segoe Fluent
-  Icons that Segoe MDL2 Assets has too, for Windows 10; the `IconGlyphText` style, greyscale) or `MenuIcon.Drawing`, the
-  name of an `Icon<Name>` (and `Icon<Name>Fill`) `StreamGeometry` in `Themes/Controls.xaml`; both make an `IconView`,
-  which the tree's rows and toolbar use directly (`PlusBadge` on the add buttons) and which draws in the inherited text
-  colour, so a disabled row's icon greys with its name through one trigger on the row. A lens row's icon is its own
+- **Icons** (2026-10-22/23): a menu entry gets one through the attached `MenuIcon.Drawing`, the name of an `Icon<Name>` (and
+  `Icon<Name>Fill`) `StreamGeometry` in **`WaveDudeNext.WPF/Themes/Icons.xaml`, the one icon dictionary of both heads**
+  (2026-11-10, the user's choice: merged into `Controls.xaml`, and the Avalonia head builds its `Themes/Icons.axaml` from it
+  at build, see Port), which makes an `IconView`, which the tree's rows and toolbar use directly (`PlusBadge` on the add
+  buttons) and which draws in the inherited text colour, so a disabled row's icon greys with its name through one trigger
+  on the row. **Every icon is a drawing** (2026-11-10, the user's choice, option A of two: an icon font Linux and macOS do
+  not have against drawings for both heads): the 36 Segoe Fluent glyphs the WPF menus, the tree's folders, the Messages
+  pane and the scene form had used (`MenuIcon.Glyph`, `IconView.Glyph`, the `IconGlyphText` style, 2026-10-22, all gone)
+  are 40 drawings in the same style (New, Open, Recent, Examples, Save, SaveAs, Export, ExportLast, CloseProject, Exit,
+  Undo, Redo, Cut, Copy, Paste, Delete, SelectAll, ToggleSelected, Duplicate, Remove, ToggleEnabled, MoveUp, MoveDown,
+  Add, Run, Pause, Stop, Brightness, Panes, Theme, Zoom, Language, About, Manual, Clear) plus the port's five for the
+  tree's folders (Scene, Simulation, Display, ColorSchemes, a picture frame, a stopwatch, a monitor, a palette, where the
+  WPF tree had shown glyphs); a still export's entry shows the Scene drawing, as it had shared the folder's glyph. Seen in
+  captures of the five menus of both heads and of both trees: the same drawings entry for entry. A lens row's icon is its own
   profile (2026-10-29, the user's design): nine `IconLens<Left><Right>` drawings, each surface convex, flat or concave by
   its sag at the rim (`LensPart.ShapeOf`: flat under half a pixel, 2026-10-29, the user's report: Example 1's mirror of radii
   14401 on 104 px showed as biconvex), chosen by `LensIconConverter` from R1, R2 and the diameter in a template scoped to
@@ -1124,10 +1133,26 @@ button** (`PlacementMode.BottomEdgeAlignedLeft`; Avalonia centres a flyout by de
 took Fluent's 14 px; the user's report on the Part menu). The window handles F10 as the port's did (`menu.Open()`).
 **The menu of part kinds is the WPF head's** (the same evening, the user's report that the eight kinds of 2026-11-07/08
 were missing): `ProjectTree`'s kind tables carry them in `PartMenuEntries`' order with the Diffraction gratings and Meta
-surfaces submenus among the optics (`Submenu`, which the Optical logic submenu uses too), and `Themes/Icons.axaml` has
+surfaces submenus among the optics (`Submenu`, which the Optical logic submenu uses too), and `Themes/Icons.axaml` had
 the twelve geometries the WPF theme had gained (the eight kinds, the two submenus, the two detectors), copied as they
 are, since the path markup is the same in both frameworks; the tree's row icon is the class name without "Part", so
-the rows of the new kinds find theirs. The entries' commands come with the models. **A probe captures the app's own
+the rows of the new kinds find theirs. The entries' commands come with the models. **The icons and the colour tables are
+built from the WPF files as the string tables are** (2026-11-10, the user's choice, option A of two for each of his two
+questions, the menu glyphs and the duplicated geometries): `Build/SharedXaml.targets` with the inline task `SharedXaml.cs`
+(the former `StringTables.targets`, generalised) converts the `SharedXaml` items of the project file, each with a `Folder`
+metadata, into `obj/.../Shared/<Folder>/<name>.axaml`, added as `AvaloniaXaml` with the Link `<Folder>/<name>.axaml`:
+`WaveDudeNext.WPF/Strings/Strings.*.xaml` under `Strings`, `WaveDudeNext.WPF/Themes/Icons.xaml`, `Dark.xaml` and
+`Light.xaml` under `Themes`, so `avares://WaveDudeNext.App/Themes/Icons.axaml` (loaded by `IconView`) and the two theme
+dictionaries of `App.axaml` are the WPF files; the App's copies of the three are gone (the port's 92-key tables were the
+WPF ones key for key, its icons 48 of the WPF 53 plus its five folder drawings, now in the WPF file). The conversion is
+the same three substitutions, of which the theme files need the namespace alone. `WaveDudeNext.WPF/Themes/Icons.xaml`
+holds every `StreamGeometry` the WPF `Controls.xaml` had (the chrome's arrows and chevrons too, which the App's
+`Controls.axaml` still declares for itself), merged into `Controls.xaml` at its top; `IconPlusBadgeStyle` stays in
+`Controls.xaml`. The App's `Controls/MenuIcon` is the attached `Drawing` property the WPF head has, on its menus in the
+markup and on the code-built context menus (the tree's rows, the pictures, the graph boxes, the Messages pane); the
+scene form's save button is the shared Save drawing in both. Not shared: the control-local geometries each head's panes
+declare for their own chrome (the timeline's buttons, the tree's plus and minus, the markers), the port's translations of
+the WPF ones. **A probe captures the app's own
 windows with PrintWindow, never the screen** (2026-11-09: a capture through
 `CopyFromScreen` at the app's rectangle caught another window the user had over it, deleted unread; a popup is a window
 of its own, found by enumerating the process's visible windows, since UI Automation files none of them under the root).

@@ -20,6 +20,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using NLog;
@@ -180,7 +181,8 @@ public partial class App : Application
 			{
 				Logger.Info("Display scale {Percent} %, UI zoom {Zoom}", Math.Round(window.RenderScaling * 100), Settings.Default.UiZoom);
 				// the last start-up line, and so the status bar's first text unless this is a first start or a file is opened below
-				Logger.Info("{Title} {Version} ready", window.Title, Program.DisplayVersion);
+				// the product's name from the string table, as the WPF head logs it; the window's title carries the project's name too
+				Logger.Info("{Title} {Version} ready", window.TryFindResource("Title", out object? title) ? title : window.Title, Program.DisplayVersion);
 				if (firstStart is { } first)
 				{
 					Logger.Info("First start on this machine: {Memory:0.0} GB of memory, {Threads} threads, {Gpu}, cache drive {Drive} {DriveKind}: the preview is set to {Quality} (View menu)",

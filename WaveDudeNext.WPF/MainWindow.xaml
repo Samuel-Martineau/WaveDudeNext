@@ -248,58 +248,58 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 		<!-- not in the Tab cycle (Windows convention: F10 or Alt reach the menu bar); Tab used to wander through the headers into a submenu -->
 		<Menu x:Name="mainMenu" DockPanel.Dock="Top" KeyboardNavigation.TabNavigation="None" IsTabStop="False" PreviewKeyDown="OnMenuPreviewKeyDown">
 			<MenuItem Header="{DynamicResource MenuFile}">
-				<MenuItem Command="ApplicationCommands.New" Header="{DynamicResource MenuFileNew}" controls:MenuIcon.Glyph="&#xE8A5;" />
-				<MenuItem Command="ApplicationCommands.Open" Header="{DynamicResource MenuFileOpen}" controls:MenuIcon.Glyph="&#xE8E5;" />
+				<MenuItem Command="ApplicationCommands.New" Header="{DynamicResource MenuFileNew}" controls:MenuIcon.Drawing="New" />
+				<MenuItem Command="ApplicationCommands.Open" Header="{DynamicResource MenuFileOpen}" controls:MenuIcon.Drawing="Open" />
 				<MenuItem Header="{DynamicResource MenuFileRecent}"
 				          ItemsSource="{Binding RecentFiles, Source={x:Static ui:Settings.Default}}"
-				          ItemContainerStyle="{StaticResource RecentFileMenuItemStyle}" controls:MenuIcon.Glyph="&#xE81C;" />
+				          ItemContainerStyle="{StaticResource RecentFileMenuItemStyle}" controls:MenuIcon.Drawing="Recent" />
 				<!-- the shipped examples, embedded in the application (2026-10-29) -->
 				<MenuItem Header="{DynamicResource MenuFileExamples}" AutomationProperties.AutomationId="MenuExamples"
 				          ItemsSource="{x:Static ui:Examples.All}"
-				          ItemContainerStyle="{StaticResource ExampleMenuItemStyle}" controls:MenuIcon.Glyph="&#xE8F1;" />
+				          ItemContainerStyle="{StaticResource ExampleMenuItemStyle}" controls:MenuIcon.Drawing="Examples" />
 				<Separator />
-				<MenuItem Command="ApplicationCommands.Save" Header="{DynamicResource MenuFileSave}" controls:MenuIcon.Glyph="&#xE74E;" />
-				<MenuItem Command="ApplicationCommands.SaveAs" Header="{DynamicResource MenuFileSaveAs}" InputGestureText="Ctrl+Shift+S" controls:MenuIcon.Glyph="&#xE792;" />
+				<MenuItem Command="ApplicationCommands.Save" Header="{DynamicResource MenuFileSave}" controls:MenuIcon.Drawing="Save" />
+				<MenuItem Command="ApplicationCommands.SaveAs" Header="{DynamicResource MenuFileSaveAs}" InputGestureText="Ctrl+Shift+S" controls:MenuIcon.Drawing="SaveAs" />
 				<Separator />
 				<!-- export of the current run's frames (the export range, the display settings as they are); the same entries sit on the pictures' context menus -->
-				<MenuItem Header="{DynamicResource MenuFileExport}" AutomationProperties.AutomationId="MenuExport" controls:MenuIcon.Glyph="&#xEDE1;">
-					<MenuItem Command="{x:Static commands:ExportCommands.Field}" Header="{DynamicResource MenuFileExportField}" InputGestureText="Ctrl+Shift+E" AutomationProperties.AutomationId="MenuExportField" controls:MenuIcon.Glyph="&#xEDE1;" />
-					<MenuItem Command="{x:Static commands:ExportCommands.Intensity}" Header="{DynamicResource MenuFileExportIntensity}" InputGestureText="Ctrl+Shift+I" AutomationProperties.AutomationId="MenuExportIntensity" controls:MenuIcon.Glyph="&#xEDE1;" />
-					<MenuItem Command="{x:Static commands:ExportCommands.Both}" Header="{DynamicResource MenuFileExportBoth}" InputGestureText="Ctrl+Shift+B" AutomationProperties.AutomationId="MenuExportBoth" controls:MenuIcon.Glyph="&#xEDE1;" />
+				<MenuItem Header="{DynamicResource MenuFileExport}" AutomationProperties.AutomationId="MenuExport" controls:MenuIcon.Drawing="Export">
+					<MenuItem Command="{x:Static commands:ExportCommands.Field}" Header="{DynamicResource MenuFileExportField}" InputGestureText="Ctrl+Shift+E" AutomationProperties.AutomationId="MenuExportField" controls:MenuIcon.Drawing="Export" />
+					<MenuItem Command="{x:Static commands:ExportCommands.Intensity}" Header="{DynamicResource MenuFileExportIntensity}" InputGestureText="Ctrl+Shift+I" AutomationProperties.AutomationId="MenuExportIntensity" controls:MenuIcon.Drawing="Export" />
+					<MenuItem Command="{x:Static commands:ExportCommands.Both}" Header="{DynamicResource MenuFileExportBoth}" InputGestureText="Ctrl+Shift+B" AutomationProperties.AutomationId="MenuExportBoth" controls:MenuIcon.Drawing="Export" />
 					<Separator />
 					<!-- the frame the preview shows, from the same run, as one image -->
-					<MenuItem Command="{x:Static commands:ExportCommands.FieldFrame}" Header="{DynamicResource MenuFileExportFieldFrame}" InputGestureText="Ctrl+Shift+F" AutomationProperties.AutomationId="MenuExportFieldFrame" controls:MenuIcon.Glyph="&#xEB9F;" />
-					<MenuItem Command="{x:Static commands:ExportCommands.IntensityFrame}" Header="{DynamicResource MenuFileExportIntensityFrame}" InputGestureText="Ctrl+Shift+G" AutomationProperties.AutomationId="MenuExportIntensityFrame" controls:MenuIcon.Glyph="&#xEB9F;" />
+					<MenuItem Command="{x:Static commands:ExportCommands.FieldFrame}" Header="{DynamicResource MenuFileExportFieldFrame}" InputGestureText="Ctrl+Shift+F" AutomationProperties.AutomationId="MenuExportFieldFrame" controls:MenuIcon.Drawing="Scene" />
+					<MenuItem Command="{x:Static commands:ExportCommands.IntensityFrame}" Header="{DynamicResource MenuFileExportIntensityFrame}" InputGestureText="Ctrl+Shift+G" AutomationProperties.AutomationId="MenuExportIntensityFrame" controls:MenuIcon.Drawing="Scene" />
 				</MenuItem>
 				<!-- the session's last run export again, the same layers, format and path, nothing asked (2026-10-28, the user's request) -->
-				<MenuItem Command="{x:Static commands:ExportCommands.Last}" Header="{DynamicResource MenuFileExportLast}" InputGestureText="Ctrl+E" AutomationProperties.AutomationId="MenuExportLast" controls:MenuIcon.Glyph="&#xE8EE;" />
+				<MenuItem Command="{x:Static commands:ExportCommands.Last}" Header="{DynamicResource MenuFileExportLast}" InputGestureText="Ctrl+E" AutomationProperties.AutomationId="MenuExportLast" controls:MenuIcon.Drawing="ExportLast" />
 				<Separator />
-				<MenuItem Command="ApplicationCommands.Close" Header="{DynamicResource MenuFileClose}" controls:MenuIcon.Glyph="&#xE711;" />
+				<MenuItem Command="ApplicationCommands.Close" Header="{DynamicResource MenuFileClose}" controls:MenuIcon.Drawing="CloseProject" />
 				<Separator />
-				<MenuItem Command="{StaticResource FileExit}" Header="{DynamicResource MenuFileExit}" controls:MenuIcon.Glyph="&#xE7E8;" />
+				<MenuItem Command="{StaticResource FileExit}" Header="{DynamicResource MenuFileExit}" controls:MenuIcon.Drawing="Exit" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuEdit}">
-				<MenuItem Header="{DynamicResource MenuEditUndo}" Command="{x:Static commands:EditCommands.Undo}" AutomationProperties.AutomationId="MenuUndo" controls:MenuIcon.Glyph="&#xE7A7;" />
-				<MenuItem Header="{DynamicResource MenuEditRedo}" Command="{x:Static commands:EditCommands.Redo}" AutomationProperties.AutomationId="MenuRedo" controls:MenuIcon.Glyph="&#xE7A6;" />
+				<MenuItem Header="{DynamicResource MenuEditUndo}" Command="{x:Static commands:EditCommands.Undo}" AutomationProperties.AutomationId="MenuUndo" controls:MenuIcon.Drawing="Undo" />
+				<MenuItem Header="{DynamicResource MenuEditRedo}" Command="{x:Static commands:EditCommands.Redo}" AutomationProperties.AutomationId="MenuRedo" controls:MenuIcon.Drawing="Redo" />
 				<Separator />
-				<MenuItem Header="{DynamicResource MenuEditCut}" Command="ApplicationCommands.Cut" AutomationProperties.AutomationId="MenuCut" controls:MenuIcon.Glyph="&#xE8C6;" />
-				<MenuItem Header="{DynamicResource MenuEditCopy}" Command="ApplicationCommands.Copy" AutomationProperties.AutomationId="MenuCopy" controls:MenuIcon.Glyph="&#xE8C8;" />
-				<MenuItem Header="{DynamicResource MenuEditPaste}" Command="ApplicationCommands.Paste" AutomationProperties.AutomationId="MenuPaste" controls:MenuIcon.Glyph="&#xE77F;" />
-				<MenuItem Header="{DynamicResource MenuEditDelete}" Command="{x:Static commands:EditCommands.Delete}" InputGestureText="Del" AutomationProperties.AutomationId="MenuDelete" controls:MenuIcon.Glyph="&#xE74D;" />
+				<MenuItem Header="{DynamicResource MenuEditCut}" Command="ApplicationCommands.Cut" AutomationProperties.AutomationId="MenuCut" controls:MenuIcon.Drawing="Cut" />
+				<MenuItem Header="{DynamicResource MenuEditCopy}" Command="ApplicationCommands.Copy" AutomationProperties.AutomationId="MenuCopy" controls:MenuIcon.Drawing="Copy" />
+				<MenuItem Header="{DynamicResource MenuEditPaste}" Command="ApplicationCommands.Paste" AutomationProperties.AutomationId="MenuPaste" controls:MenuIcon.Drawing="Paste" />
+				<MenuItem Header="{DynamicResource MenuEditDelete}" Command="{x:Static commands:EditCommands.Delete}" InputGestureText="Del" AutomationProperties.AutomationId="MenuDelete" controls:MenuIcon.Drawing="Delete" />
 				<Separator />
 				<!-- the tree's Select all, here too (2026-11-04, the user's request); Ctrl+A is the command's gesture, so it works in the preview as well -->
-				<MenuItem Header="{DynamicResource MenuProjectSelectAll}" Command="{x:Static commands:ProjectCommands.SelectAll}" AutomationProperties.AutomationId="MenuSelectAll" controls:MenuIcon.Glyph="&#xE8B3;" />
+				<MenuItem Header="{DynamicResource MenuProjectSelectAll}" Command="{x:Static commands:ProjectCommands.SelectAll}" AutomationProperties.AutomationId="MenuSelectAll" controls:MenuIcon.Drawing="SelectAll" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuView}">
-				<MenuItem Header="{DynamicResource MenuViewPanes}" controls:MenuIcon.Glyph="&#xE8A0;"
+				<MenuItem Header="{DynamicResource MenuViewPanes}" controls:MenuIcon.Drawing="Panes"
 				          ItemsSource="{Binding Items, ElementName=dockHost}"
 				          ItemContainerStyle="{StaticResource PaneMenuItemStyle}" />
-				<MenuItem x:Name="themeMenu" Header="{DynamicResource MenuViewTheme}" controls:MenuIcon.Glyph="&#xE790;"
+				<MenuItem x:Name="themeMenu" Header="{DynamicResource MenuViewTheme}" controls:MenuIcon.Drawing="Theme"
 				          ItemsSource="{Binding Options, Source={x:Static theming:ThemeController.Instance}}"
 				          ItemContainerStyle="{StaticResource ThemeMenuItemStyle}" />
 				<!-- the UI zoom (2026-11-02, the user's request): every window's content at the factor, a user setting applied
 				     live (WindowZoom); the parameter is the factor with a decimal point -->
-				<MenuItem Header="{DynamicResource MenuViewUiZoom}" controls:MenuIcon.Glyph="&#xE8A3;" AutomationProperties.AutomationId="MenuUiZoom">
+				<MenuItem Header="{DynamicResource MenuViewUiZoom}" controls:MenuIcon.Drawing="Zoom" AutomationProperties.AutomationId="MenuUiZoom">
 					<MenuItem Header="{DynamicResource MenuViewUiZoom50}" Command="{x:Static commands:ViewCommands.SetUiZoom}" CommandParameter="0.5"
 					          IsChecked="{Binding Source={x:Static ui:Settings.Default}, Path=UiZoom, Converter={StaticResource DoubleEquals}, ConverterParameter=0.5, Mode=OneWay}"
 					          AutomationProperties.AutomationId="MenuUiZoom50" />
@@ -327,7 +327,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				</MenuItem>
 				<MenuItem Header="{DynamicResource MenuViewLanguage}"
 				          ItemsSource="{Binding Options, Source={x:Static localization:LanguageController.Instance}}"
-				          ItemContainerStyle="{StaticResource LanguageMenuItemStyle}" controls:MenuIcon.Glyph="&#xE774;" />
+				          ItemContainerStyle="{StaticResource LanguageMenuItemStyle}" controls:MenuIcon.Drawing="Language" />
 				<Separator />
 				<!-- the reduced preview (2026-10-15): how much of a run is captured and kept, for weaker machines; user
 				     settings, never the project's, and an export always uses a full run -->
@@ -383,9 +383,9 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				</MenuItem>
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuSimulation}">
-				<MenuItem Command="{x:Static commands:SimulationCommands.Run}" Header="{DynamicResource MenuSimulationRun}" InputGestureText="F5" controls:MenuIcon.Glyph="&#xE768;" />
+				<MenuItem Command="{x:Static commands:SimulationCommands.Run}" Header="{DynamicResource MenuSimulationRun}" InputGestureText="F5" controls:MenuIcon.Drawing="Run" />
 				<!-- one entry pauses and resumes; the header follows whether a pause is pending -->
-				<MenuItem Command="{x:Static commands:SimulationCommands.TogglePause}" InputGestureText="F6" controls:MenuIcon.Glyph="&#xE769;">
+				<MenuItem Command="{x:Static commands:SimulationCommands.TogglePause}" InputGestureText="F6" controls:MenuIcon.Drawing="Pause">
 					<MenuItem.Style>
 						<Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource {x:Type MenuItem}}">
 							<Setter Property="Header" Value="{DynamicResource MenuSimulationPause}" />
@@ -397,7 +397,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 						</Style>
 					</MenuItem.Style>
 				</MenuItem>
-				<MenuItem Command="{x:Static commands:SimulationCommands.Stop}" Header="{DynamicResource MenuSimulationStop}" InputGestureText="Shift+F5" controls:MenuIcon.Glyph="&#xE71A;" />
+				<MenuItem Command="{x:Static commands:SimulationCommands.Stop}" Header="{DynamicResource MenuSimulationStop}" InputGestureText="Shift+F5" controls:MenuIcon.Drawing="Stop" />
 				<Separator />
 				<!-- the timeline's Play and Pause, F7, so the keyboard has them from anywhere (2026-11-04, the user's request):
 				     the header and the glyph follow the preview's state, as the run's Pause and Resume do above -->
@@ -405,11 +405,11 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 					<MenuItem.Style>
 						<Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource {x:Type MenuItem}}">
 							<Setter Property="Header" Value="{DynamicResource MenuSimulationPlay}" />
-							<Setter Property="controls:MenuIcon.Glyph" Value="&#xE768;" />
+							<Setter Property="controls:MenuIcon.Drawing" Value="Run" />
 							<Style.Triggers>
 								<DataTrigger Binding="{Binding IsPlaying, ElementName=previewPane}" Value="True">
 									<Setter Property="Header" Value="{DynamicResource MenuSimulationPausePlayback}" />
-									<Setter Property="controls:MenuIcon.Glyph" Value="&#xE769;" />
+									<Setter Property="controls:MenuIcon.Drawing" Value="Pause" />
 								</DataTrigger>
 							</Style.Triggers>
 						</Style>
@@ -435,8 +435,8 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 				          ItemContainerStyle="{StaticResource FrameMemoryMenuItemStyle}" />
 			</MenuItem>
 			<MenuItem Header="{DynamicResource MenuHelp}">
-				<MenuItem Header="{DynamicResource MenuHelpAbout}" Command="{x:Static commands:HelpCommands.About}" AutomationProperties.AutomationId="MenuHelpAbout" controls:MenuIcon.Glyph="&#xE946;" />
-				<MenuItem Header="{DynamicResource MenuHelpManual}" Command="{x:Static commands:HelpCommands.Manual}" InputGestureText="F1" AutomationProperties.AutomationId="MenuHelpManual" controls:MenuIcon.Glyph="&#xE736;" />
+				<MenuItem Header="{DynamicResource MenuHelpAbout}" Command="{x:Static commands:HelpCommands.About}" AutomationProperties.AutomationId="MenuHelpAbout" controls:MenuIcon.Drawing="About" />
+				<MenuItem Header="{DynamicResource MenuHelpManual}" Command="{x:Static commands:HelpCommands.Manual}" InputGestureText="F1" AutomationProperties.AutomationId="MenuHelpManual" controls:MenuIcon.Drawing="Manual" />
 			</MenuItem>
 		</Menu>
 

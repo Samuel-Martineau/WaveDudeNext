@@ -58,8 +58,7 @@ version. It is distributed WITHOUT ANY WARRANTY. See the LICENSE.md file or
 					<Button Grid.Column="2" Margin="4,0,0,0" Padding="5,0" MinHeight="22" ToolTip.Tip="{DynamicResource TipSaveSceneImage}"
 					        AutomationProperties.Name="{DynamicResource TipSaveSceneImage}" AutomationProperties.AutomationId="SceneSaveImage"
 					        Command="{Binding $parent[panes:PropertiesPane].Commands.SaveSceneImage}">
-						<Path Data="{StaticResource SaveGeometry}" Width="13" Height="13" Stretch="Uniform" StrokeThickness="1"
-						      Stroke="{Binding $parent[Button].Foreground}" />
+						<controls:IconView Drawing="Save" />
 					</Button>
 					<Button Grid.Column="3" Margin="4,0,0,0" Padding="7,0" MinHeight="22" ToolTip.Tip="{DynamicResource TipRemoveSceneImage}"
 					        AutomationProperties.Name="{DynamicResource TipRemoveSceneImage}" AutomationProperties.AutomationId="SceneRemoveImage"
